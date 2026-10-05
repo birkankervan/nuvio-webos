@@ -166,12 +166,13 @@ export function createHomeScreenMethods16() {
         return null;
       }
       const preferred = this.resolvePreferredNodeForRow(rowNodes);
-      const track = rowNodes[0]?.closest?.(".home-track, .home-grid-track");
+      const track = rowNodes.find(node => node.isConnected)?.closest?.(".home-track, .home-grid-track");
       if (!track) {
         return preferred || rowNodes[0] || null;
       }
       const metrics = this.getTrackViewportMetrics(track);
       const visibleNodes = rowNodes
+        .filter(node => node.isConnected)
         .map((node) => {
           const left = Number(node.offsetLeft || 0);
           const right = left + Number(node.offsetWidth || 0);
@@ -220,7 +221,9 @@ export function createHomeScreenMethods16() {
       const visibleCenter = visibleTop + Math.max(0, (visibleBottom - visibleTop) / 2);
       const bestRow = this.navModel.rows
         .map((rowNodes) => {
-          const anchor = this.getMainFocusAnchor(rowNodes[0]);
+          const mounted = rowNodes.find(node => node.isConnected);
+          if (!mounted) return null;
+          const anchor = this.getMainFocusAnchor(mounted);
           if (!anchor) {
             return null;
           }
@@ -252,7 +255,7 @@ export function createHomeScreenMethods16() {
           currentMain.classList.remove("focused");
         }
         this.setFocusedNode(target, { suppressDelegatedFocus: true });
-        logHomePerf("syncMainFocusToViewport", {
+        if (HOME_PERF_DEBUG) logHomePerf("syncMainFocusToViewport", {
           ms: Number((homePerfNow() - syncStart).toFixed(2)),
           rowKey: String(this.getNodeRowKey(target) || ""),
           itemIndex: Number(target.dataset?.navCol || 0)

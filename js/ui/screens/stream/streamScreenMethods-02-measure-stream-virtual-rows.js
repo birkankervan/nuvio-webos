@@ -184,7 +184,8 @@ export function createStreamScreenMethods02() {
         return;
       }
       this.debridPreparationScheduled = true;
-      setTimeout(() => {
+      this.debridPreparationTimer = setTimeout(() => {
+        this.debridPreparationTimer = null;
         this.debridPreparationScheduled = false;
         if (!this.container || Router.getCurrent() !== "stream" || token !== this.loadToken) {
           return;
@@ -218,7 +219,7 @@ export function createStreamScreenMethods02() {
                   }
                 : stream
             );
-            this.requestRender();
+            this.requestRender({ delayMs: 120 });
           }
         });
       }, 0);

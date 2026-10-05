@@ -1,9 +1,30 @@
 import * as internals from "./homeScreenContext.js";
 
 export function createHomeScreenMethods10() {
-  const { MODERN_HOME_CONSTANTS, getTvRuntimePerformanceProfile, shouldEnrichModernHero, preloadHeroAssets, buildHeroIdentity } = internals;
+  const { Router, getTvRuntimePerformanceProfile, MODERN_HOME_CONSTANTS, shouldEnrichModernHero, preloadHeroAssets, buildHeroIdentity } = internals;
 
   return {
+    scheduleDetailScreenPrefetch() {
+      if (this.detailScreenPrefetchComplete || !getTvRuntimePerformanceProfile().isTvRuntime || !Router.routes?.detail?.load) return;
+      if (this.detailScreenPrefetchTimer) clearTimeout(this.detailScreenPrefetchTimer);
+      if (this.detailScreenPrefetchIdle) globalThis.cancelIdleCallback?.(this.detailScreenPrefetchIdle);
+      this.detailScreenPrefetchIdle = 0;
+      const loadToken = this.homeLoadToken;
+      this.detailScreenPrefetchTimer = setTimeout(() => {
+        this.detailScreenPrefetchTimer = null;
+        const preload = () => {
+          this.detailScreenPrefetchIdle = 0;
+          if (loadToken !== this.homeLoadToken || Router.getCurrent() !== "home") return;
+          void Router.routes.detail.load?.().then(() => { this.detailScreenPrefetchComplete = true; })
+            .catch(error => console.warn("Detail screen preload failed", error));
+        };
+        if (globalThis.requestIdleCallback) {
+          this.detailScreenPrefetchIdle = requestIdleCallback(preload);
+        } else {
+          preload();
+        }
+      }, 1500);
+    },
     scheduleModernHeroUpdate(node, { deferUntilVerticalSettle = false, immediate = false } = {}) {
       if (this.layoutMode !== "modern") {
         return;
@@ -31,10 +52,8 @@ export function createHomeScreenMethods10() {
       if (isRapidNav || immediate) {
         this.container?.querySelector(".home-modern-hero-card")?.classList.add("is-hero-focus-pending");
       }
-      const canPreloadHeroDuringVerticalScroll =
-        deferUntilVerticalSettle && getTvRuntimePerformanceProfile().isTvRuntime && !this.isPerformanceConstrained();
       const waitForVerticalSettle = (callback) => {
-        if (deferUntilVerticalSettle && !canPreloadHeroDuringVerticalScroll && this.isModernVerticalScrollActive()) {
+        if (deferUntilVerticalSettle && this.isModernVerticalScrollActive()) {
           this.heroBackdropPreloadTimer = setTimeout(
             () => waitForVerticalSettle(callback),
             MODERN_HOME_CONSTANTS.verticalScrollSettlePollMs

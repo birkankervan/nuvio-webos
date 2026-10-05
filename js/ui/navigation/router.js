@@ -1,30 +1,13 @@
+import { createLazyRoute } from "./lazyRoute.js";
 import { HomeScreen } from "../screens/home/homeScreen.js";
-import { PlayerScreen } from "../screens/player/playerScreen.js";
 import { AccountScreen } from "../screens/account/accountScreen.js";
 import { AuthQrSignInScreen } from "../screens/account/authQrSignInScreen.js";
 import { AuthSignInScreen } from "../screens/account/authSignInScreen.js";
 import { ServerConnectionScreen } from "../screens/account/serverConnectionScreen.js";
 import { SyncCodeScreen } from "../screens/account/syncCodeScreen.js";
 import { ProfileSelectionScreen } from "../../core/profile/profileSelectionScreen.js";
-import { MetaDetailsScreen } from "../screens/detail/metaDetailsScreen.js";
-import { LibraryScreen } from "../screens/library/libraryScreen.js";
-import { SearchScreen } from "../screens/search/searchScreen.js";
-import { DiscoverScreen } from "../screens/search/discoverScreen.js";
-import { SettingsScreen } from "../screens/settings/settingsScreen.js";
-import { ConsoleDebugScreen } from "../screens/debug/consoleDebugScreen.js";
-import { TraktScreen } from "../screens/trakt/traktScreen.js";
-import { SupportersContributorsScreen } from "../screens/supporters/supportersContributorsScreen.js";
 import { ExperienceModeSelectionScreen } from "../screens/onboarding/experienceModeSelectionScreen.js";
 import { EssentialAddonSetupScreen } from "../screens/onboarding/essentialAddonSetupScreen.js";
-import { LicensesAttributionsScreen } from "../screens/settings/licensesAttributionsScreen.js";
-import { PluginScreen } from "../screens/plugin/pluginScreen.js";
-import { PluginsScreen } from "../screens/plugin/pluginsScreen.js";
-import { CatalogOrderScreen } from "../screens/plugin/catalogOrderScreen.js";
-import { StreamScreen } from "../screens/stream/streamScreen.js";
-import { CastDetailScreen } from "../screens/cast/castDetailScreen.js";
-import { CatalogSeeAllScreen } from "../screens/catalog/catalogSeeAllScreen.js";
-import { TmdbEntityBrowseScreen } from "../screens/tmdb/tmdbEntityBrowseScreen.js";
-import { FolderDetailScreen } from "../screens/collection/folderDetailScreen.js";
 import { Platform } from "../../platform/index.js";
 import { TizenCapabilities } from "../../platform/tizen/tizenCapabilities.js";
 import { RouteStateStore } from "./routeStateStore.js";
@@ -38,32 +21,14 @@ import { createRouterMethods03 } from "./routerMethods-03-back.js";
 export {
   Router,
   HomeScreen,
-  PlayerScreen,
   AccountScreen,
   AuthQrSignInScreen,
   AuthSignInScreen,
   ServerConnectionScreen,
   SyncCodeScreen,
   ProfileSelectionScreen,
-  MetaDetailsScreen,
-  LibraryScreen,
-  SearchScreen,
-  DiscoverScreen,
-  SettingsScreen,
-  ConsoleDebugScreen,
-  TraktScreen,
-  SupportersContributorsScreen,
   ExperienceModeSelectionScreen,
   EssentialAddonSetupScreen,
-  LicensesAttributionsScreen,
-  PluginScreen,
-  PluginsScreen,
-  CatalogOrderScreen,
-  StreamScreen,
-  CastDetailScreen,
-  CatalogSeeAllScreen,
-  TmdbEntityBrowseScreen,
-  FolderDetailScreen,
   Platform,
   TizenCapabilities,
   RouteStateStore,
@@ -163,7 +128,7 @@ Object.assign(Router, {
   pendingPostPlayNavigation: null,
   routes: {
     home: HomeScreen,
-    player: PlayerScreen,
+    player: createLazyRoute(() => import("../screens/player/playerScreen.js"), "PlayerScreen"),
     account: AccountScreen,
     authQrSignIn: AuthQrSignInScreen,
     authSignIn: AuthSignInScreen,
@@ -172,23 +137,23 @@ Object.assign(Router, {
     profileSelection: ProfileSelectionScreen,
     experienceModeSelection: ExperienceModeSelectionScreen,
     essentialAddonSetup: EssentialAddonSetupScreen,
-    detail: MetaDetailsScreen,
-    library: LibraryScreen,
-    search: SearchScreen,
-    discover: DiscoverScreen,
-    settings: SettingsScreen,
-    debugConsole: ConsoleDebugScreen,
-    trakt: TraktScreen,
-    supportersContributors: SupportersContributorsScreen,
-    licensesAttributions: LicensesAttributionsScreen,
-    plugin: PluginScreen,
-    plugins: PluginsScreen,
-    catalogOrder: CatalogOrderScreen,
-    stream: StreamScreen,
-    castDetail: CastDetailScreen,
-    catalogSeeAll: CatalogSeeAllScreen,
-    tmdbEntityBrowse: TmdbEntityBrowseScreen,
-    folderDetail: FolderDetailScreen
+    detail: createLazyRoute(() => import("../screens/detail/metaDetailsScreen.js"), "MetaDetailsScreen"),
+    library: createLazyRoute(() => import("../screens/library/libraryScreen.js"), "LibraryScreen"),
+    search: createLazyRoute(() => import("../screens/search/searchScreen.js"), "SearchScreen"),
+    discover: createLazyRoute(() => import("../screens/search/discoverScreen.js"), "DiscoverScreen"),
+    settings: createLazyRoute(() => import("../screens/settings/settingsScreen.js"), "SettingsScreen"),
+    debugConsole: createLazyRoute(() => import("../screens/debug/consoleDebugScreen.js"), "ConsoleDebugScreen"),
+    trakt: createLazyRoute(() => import("../screens/trakt/traktScreen.js"), "TraktScreen"),
+    supportersContributors: createLazyRoute(() => import("../screens/supporters/supportersContributorsScreen.js"), "SupportersContributorsScreen"),
+    licensesAttributions: createLazyRoute(() => import("../screens/settings/licensesAttributionsScreen.js"), "LicensesAttributionsScreen"),
+    plugin: createLazyRoute(() => import("../screens/plugin/pluginScreen.js"), "PluginScreen"),
+    plugins: createLazyRoute(() => import("../screens/plugin/pluginsScreen.js"), "PluginsScreen"),
+    catalogOrder: createLazyRoute(() => import("../screens/plugin/catalogOrderScreen.js"), "CatalogOrderScreen"),
+    stream: createLazyRoute(() => import("../screens/stream/streamScreen.js"), "StreamScreen"),
+    castDetail: createLazyRoute(() => import("../screens/cast/castDetailScreen.js"), "CastDetailScreen"),
+    catalogSeeAll: createLazyRoute(() => import("../screens/catalog/catalogSeeAllScreen.js"), "CatalogSeeAllScreen"),
+    tmdbEntityBrowse: createLazyRoute(() => import("../screens/tmdb/tmdbEntityBrowseScreen.js"), "TmdbEntityBrowseScreen"),
+    folderDetail: createLazyRoute(() => import("../screens/collection/folderDetailScreen.js"), "FolderDetailScreen")
   },
   ...createRouterMethods01(),
   ...createRouterMethods02(),

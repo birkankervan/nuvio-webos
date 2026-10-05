@@ -8,6 +8,11 @@ export function createStreamScreenMethods11() {
     cleanup() {
       this.streamLoadAbortController?.abort?.();
       this.streamLoadAbortController = null;
+      if (this.streamChunkTimer) clearTimeout(this.streamChunkTimer);
+      this.streamChunkTimer = null;
+      if (this.debridPreparationTimer) clearTimeout(this.debridPreparationTimer);
+      this.debridPreparationTimer = null;
+      this.debridPreparationScheduled = false;
       streamRepository.setLocalPluginSearchPaused(true);
       this.cancelAutoPlayCountdown();
       this.cancelAutoPlaySelectionWait();
@@ -36,6 +41,12 @@ export function createStreamScreenMethods11() {
       this.streamFocusDomCache = null;
       this.focusedElement = null;
       this.streamLastNavigationRepeatAt = 0;
+      this.streams = [];
+      this.sourceChips = [];
+      this._filteredStreamsCache = null;
+      this.addonLogoLookup = {};
+      this.params = null;
+      this.streamVirtualHeights?.clear?.();
       ScreenUtils.hide(this.container);
     }
   };

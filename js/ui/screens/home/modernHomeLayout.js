@@ -52,7 +52,8 @@ export function renderModernHomeLayout({
   shouldDeferRowImages,
   watchedTitleIds = null,
   escapeHtml,
-  escapeAttribute
+  escapeAttribute,
+  virtualRowsMarkup = null
 } = {}) {
   const catalogSeeAllMap = new Map();
   const sectionsMarkup = [];
@@ -85,6 +86,7 @@ export function renderModernHomeLayout({
       });
     }
 
+    if (virtualRowsMarkup !== null) return;
     const maxItems = Math.max(1, Number(rowItemLimit || 15));
     const focusedItemLimit =
       focusedRowKey === rowKey && Number.isFinite(focusedItemIndex)
@@ -150,7 +152,7 @@ export function renderModernHomeLayout({
         }
         <div class="home-modern-rows-viewport">
           <div class="home-modern-rows-scroll">
-            ${renderContinueWatchingSection(continueWatchingItems, {
+            ${virtualRowsMarkup !== null ? virtualRowsMarkup : `${renderContinueWatchingSection(continueWatchingItems, {
               rowKey: "continue_watching",
               loading: continueWatchingLoading,
               loadingCount: continueWatchingLoadingCount,
@@ -171,7 +173,7 @@ export function renderModernHomeLayout({
             })}
             <div class="home-modern-catalogs">
               ${sectionsMarkup.join("")}
-            </div>
+            </div>`}
           </div>
         </div>
       </section>

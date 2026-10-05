@@ -613,6 +613,25 @@ async function buildBundle() {
   ) {
     throw new Error("Application bundle must not contain core-js modules.");
   }
+  // webOS 5+ supports modules/dynamic import; keep the IIFE for older Tizen.
+  const modern = await build({
+    entryPoints: { "app.module": path.join(rootDir, "js/app.js") },
+    outdir: distDir,
+    chunkNames: "chunks/[name]-[hash]",
+    bundle: true,
+    splitting: true,
+    format: "esm",
+    minify: !debugBundle,
+    sourcemap: debugBundle,
+    target: [`chrome${compatibilityPolicy.webOsChromiumVersion}`],
+    metafile: true,
+    define: {
+      "process.env.NODE_ENV": '"production"',
+      __NUVIO_APP_VERSION__: JSON.stringify(version)
+    }
+  });
+  await mkdir(path.join(rootDir, ".cache"), { recursive: true });
+  await writeFile(path.join(rootDir, ".cache", "module-build-meta.json"), JSON.stringify(modern.metafile));
   console.log("bundle build complete");
 }
 async function runBuild() {

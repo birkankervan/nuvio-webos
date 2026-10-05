@@ -195,6 +195,20 @@ export function createPlayerScreenMethods73() {
         } catch (_) {}
         this.uiRefs = null;
         this.lastUiTickState = null;
+        this.streamCandidates = [];
+        this.episodePanelStreams = [];
+        this.episodes = [];
+        this.subtitles = [];
+        this.embeddedSubtitleTracks = [];
+        this.embeddedAudioTracks = [];
+        this.manifestAudioTracks = [];
+        this.manifestSubtitleTracks = [];
+        this.manifestVariants = [];
+        this.subtitleAutoSyncCues = [];
+        this.subtitleOptionFocusMemory?.clear?.();
+        this.trackDialogCache = null;
+        this.postPlayRecommendationController = null;
+        this.pauseOverlayMeta = null;
       }
     }
   };

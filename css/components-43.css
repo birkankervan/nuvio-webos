@@ -330,6 +330,15 @@
   animation: detailLoadingShimmer 2.2s ease-in-out infinite;
 }
 
+.tv-runtime .detail-loading-block {
+  animation: none;
+  background: #252b35;
+}
+
+.tv-runtime .detail-loading-shell {
+  contain: layout paint;
+}
+
 .detail-loading-poster {
   width: min(62vw, 560px);
   height: 210px;

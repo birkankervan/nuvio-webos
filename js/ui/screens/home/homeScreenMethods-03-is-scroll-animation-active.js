@@ -315,18 +315,16 @@ export function createHomeScreenMethods03() {
         // the existing vertical and constrained-runtime throttles.
         return 48;
       }
-      if (!Platform.isBrowser()) {
-        return direction === "up" || direction === "down"
-          ? MODERN_HOME_CONSTANTS.verticalKeyRepeatThrottleMs
-          : MODERN_HOME_CONSTANTS.keyRepeatThrottleMs;
-      }
+      const baseline = !Platform.isBrowser() && (direction === "up" || direction === "down")
+        ? MODERN_HOME_CONSTANTS.verticalKeyRepeatThrottleMs
+        : MODERN_HOME_CONSTANTS.keyRepeatThrottleMs;
       if (this.isLegacyTvRuntime()) {
-        return Math.max(MODERN_HOME_CONSTANTS.keyRepeatThrottleMs, 120);
+        return Math.max(baseline, 120);
       }
       if (this.isPerformanceConstrained()) {
-        return Math.max(MODERN_HOME_CONSTANTS.keyRepeatThrottleMs, 100);
+        return Math.max(baseline, 100);
       }
-      return MODERN_HOME_CONSTANTS.keyRepeatThrottleMs;
+      return baseline;
     }
   };
 }

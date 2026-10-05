@@ -270,13 +270,13 @@ export function createHomeScreenMethods24() {
         entry.isFocusedImage = isCurrentFocusedImage(entry.image);
         entry.priority = entry.row === anchorRow ? (entry.isFocusedImage ? 0 : 1) : 2;
       });
+      const pendingByImage = new Map(pending.map((entry) => [entry.image, entry]));
       queued.forEach((entry) => {
         if (!(entry?.image instanceof HTMLImageElement) || !entry.image.isConnected || !entry.image.dataset.src) {
           return;
         }
-        const existingIndex = pending.findIndex((candidate) => candidate.image === entry.image);
-        if (existingIndex >= 0) {
-          const existing = pending[existingIndex];
+        const existing = pendingByImage.get(entry.image);
+        if (existing) {
           existing.src = entry.src;
           existing.row = entry.row;
           existing.isFocusedRow = entry.isFocusedRow;
@@ -285,7 +285,9 @@ export function createHomeScreenMethods24() {
           existing.order = nextOrder();
           return;
         }
-        pending.push({ ...entry, order: nextOrder() });
+        const added = { ...entry, order: nextOrder() };
+        pending.push(added);
+        pendingByImage.set(entry.image, added);
       });
       pending.sort((left, right) => left.priority - right.priority || left.order - right.order);
       if (!pending.length || this.homeLazyImageCommitRaf) {

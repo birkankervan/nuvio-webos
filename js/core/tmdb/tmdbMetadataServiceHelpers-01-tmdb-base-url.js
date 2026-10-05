@@ -5,6 +5,7 @@ import { TMDB_API_KEY } from "../../config.js";
 import { tmdbShowReleaseInfo, tmdbYearPart } from "../util/tmdbReleaseRange.js";
 
 import { sortCollectionPartsByReleaseDate } from "./tmdbCollectionOrdering.js";
+import { BoundedCache } from "../util/boundedCache.js";
 
 export const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
@@ -74,13 +75,13 @@ export const TMDB_LANGUAGE_DEFAULT_REGIONS = Object.freeze({
   zh: "CN"
 });
 
-export const entityHeaderCache = new Map();
+export const entityHeaderCache = new BoundedCache(40);
 
-export const entityRailCache = new Map();
+export const entityRailCache = new BoundedCache(80);
 
-export const entityBrowseCache = new Map();
+export const entityBrowseCache = new BoundedCache(20);
 
-export const moreLikeThisCache = new Map();
+export const moreLikeThisCache = new BoundedCache(40);
 
 export function resolveType(contentType) {
   const normalized = String(contentType || "").toLowerCase();

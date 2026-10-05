@@ -2,14 +2,15 @@ import { TmdbSettingsStore } from "../../data/local/tmdbSettingsStore.js";
 import { TMDB_API_KEY } from "../../config.js";
 import { PluginServiceClient } from "../../platform/pluginServiceClient.js";
 import { Platform } from "../../platform/index.js";
+import { BoundedCache } from "../util/boundedCache.js";
 
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 const TMDB_SERVICE_FETCH_TIMEOUT_MS = 10000;
 const TMDB_DIRECT_FETCH_TIMEOUT_MS = 60_000;
 const TMDB_SERVICE_MAX_RESPONSE_BYTES = 512 * 1024;
-const imdbToTmdbCache = new Map();
+const imdbToTmdbCache = new BoundedCache(120);
 const imdbToTmdbInFlight = new Map();
-const tmdbToImdbCache = new Map();
+const tmdbToImdbCache = new BoundedCache(120);
 const tmdbToImdbInFlight = new Map();
 
 async function fetchJson(url, { signal = null } = {}) {

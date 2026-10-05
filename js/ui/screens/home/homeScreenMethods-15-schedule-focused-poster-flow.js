@@ -202,7 +202,7 @@ export function createHomeScreenMethods15() {
           return false;
         }
         const target =
-          this.lastMainFocus && this.isMainNode(this.lastMainFocus) ? this.lastMainFocus : this.navModel?.rows?.[0]?.[0] || null;
+          this.homeDataWindow?.target() || (this.lastMainFocus && this.isMainNode(this.lastMainFocus) ? this.lastMainFocus : this.navModel?.rows?.[0]?.[0] || null);
         this.sidebarExpanded = false;
         setModernSidebarExpanded(this.container, false);
         this.scheduleModernSidebarPillAutoCollapse({ restart: true });
@@ -210,7 +210,7 @@ export function createHomeScreenMethods15() {
         return this.focusNode(current, target, "right") || true;
       }
       const current = this.getCurrentFocusedNode() || this.container?.querySelector(".home-sidebar .focusable.focused") || null;
-      const target = this.lastMainFocus && this.isMainNode(this.lastMainFocus) ? this.lastMainFocus : this.navModel?.rows?.[0]?.[0] || null;
+      const target = this.homeDataWindow?.target() || (this.lastMainFocus && this.isMainNode(this.lastMainFocus) ? this.lastMainFocus : this.navModel?.rows?.[0]?.[0] || null);
       return this.focusNode(current, target, "right") || true;
     },
     onSidebarReselect() {

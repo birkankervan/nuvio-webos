@@ -1,7 +1,7 @@
 import * as internals from "./homeScreenContext.js";
 
 export function createHomeScreenMethods14() {
-  const { limitTextToWordCount, applyTrailerAudioPreferences } = internals;
+  const { Router, limitTextToWordCount, applyTrailerAudioPreferences } = internals;
 
   return {
     async activateFocusedPosterFlow(node, flowToken = Number(this.focusedPosterFlowToken || 0)) {
@@ -217,17 +217,19 @@ export function createHomeScreenMethods14() {
         return;
       }
       this.homeTruncationObserversBound = true;
+      const token = this.homeLoadToken;
       if (globalThis?.document?.fonts?.ready) {
         document.fonts.ready
           .then(() => {
-            this.scheduleHomeTruncationUpdate();
+            if (token === this.homeLoadToken && Router.getCurrent() === "home") this.scheduleHomeTruncationUpdate();
           })
           .catch(() => {});
       }
       if (typeof window !== "undefined") {
-        window.addEventListener("resize", () => {
-          this.scheduleHomeTruncationUpdate();
-        });
+        this.boundHomeTruncationResizeHandler = () => {
+          if (Router.getCurrent() === "home") this.scheduleHomeTruncationUpdate();
+        };
+        window.addEventListener("resize", this.boundHomeTruncationResizeHandler);
       }
     }
   };

@@ -18,6 +18,7 @@ export function createHomeScreenMethods06() {
       if (!focusState?.layoutMode) {
         return null;
       }
+      if (this.homeDataWindow && focusState.focusKind !== "hero") return this.getDataHomeHeroSource(focusState);
       if (focusState.focusKind === "hero") {
         return this.heroItem || this.heroCandidates?.[0] || null;
       }
@@ -193,7 +194,7 @@ export function createHomeScreenMethods06() {
       );
       return {
         mainScrollTop: Number(viewport.scrollTop || 0),
-        trackStates
+        trackStates: { ...trackStates, ...this.homeDataWindow?.captureTrackStates() }
       };
     },
     restoreHoldMenuScrollState() {
@@ -201,6 +202,10 @@ export function createHomeScreenMethods06() {
       const viewport = this.getHomeViewport();
       if (!state || !viewport) {
         return false;
+      }
+      if (this.homeDataWindow) {
+        this.homeDataWindow.target({ ...this.homeDataWindow.focus, ...state }, { restoreScroll: true });
+        return true;
       }
       Object.entries(state.trackStates || {}).forEach(([rowKey, scrollLeft]) => {
         const track = this.container?.querySelector(`[data-track-row-key="${rowKey}"]`);
@@ -221,6 +226,7 @@ export function createHomeScreenMethods06() {
       const rowKey = String(this.pendingContinueWatchingFocusRowKey || "continue_watching");
       const cards = this.getNavigationRowNodes(rowKey);
       const target =
+        (this.homeDataWindow ? this.getDataHomeTarget(rowKey, Number(this.pendingContinueWatchingFocusIndex || 0)) : null) ||
         cards[Math.max(0, Math.min(cards.length - 1, Number(this.pendingContinueWatchingFocusIndex || 0)))] ||
         cards[cards.length - 1] ||
         null;
@@ -243,6 +249,11 @@ export function createHomeScreenMethods06() {
       }
       const rowKey = String(pending.rowKey || "");
       const itemId = String(pending.itemId || "");
+      if (this.homeDataWindow) {
+        const row = this.homeDataWindow.rowByKey.get(rowKey)?.row;
+        const logicalIndex = row?.items.findIndex(item => item.itemId === itemId || (!itemId && item.itemIndex === Number(pending.index || 0)));
+        return row ? this.getDataHomeTarget(rowKey, logicalIndex >= 0 ? logicalIndex : 0, itemId ? { itemId } : null) : null;
+      }
       const rowSection = rowKey
         ? Array.from(this.container?.querySelectorAll("[data-row-key]") || []).find(
             (node) => String(node.dataset.rowKey || "") === rowKey

@@ -188,7 +188,7 @@ export function createHomeScreenMethods22() {
               if (!this.heroItem) {
                 this.heroItem = this.pickInitialHero();
               }
-              this.requestBackgroundRender();
+              this.requestBackgroundRender({ dirtyRows: [updatedRow.homeCatalogKey], hero: true });
               return updatedRow;
             })
           );

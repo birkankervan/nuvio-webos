@@ -59,7 +59,7 @@ export function createHomeScreenMethods01() {
       if (focused) {
         const track = focused.closest(".home-track, .home-grid-track");
         if (track) {
-          itemIndex = Array.from(track.querySelectorAll(".home-content-card.focusable")).indexOf(focused);
+          itemIndex = Number(focused.dataset.navCol ?? (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-content-card.focusable"))).indexOf(focused));
         }
       }
 
@@ -78,7 +78,7 @@ export function createHomeScreenMethods01() {
         itemIndex,
         itemIdentity: getHomeFocusIdentity(focused),
         focusKind,
-        trackStates
+        trackStates: { ...trackStates, ...this.homeRowVirtualizer?.captureTrackStates(), ...this.homeDataWindow?.captureTrackStates() }
       };
     },
     captureCurrentContentFocusState() {
@@ -116,7 +116,7 @@ export function createHomeScreenMethods01() {
       );
       const section = node.closest("[data-row-key]") || null;
       const track = node.closest(".home-track, .home-grid-track");
-      const itemIndex = track ? Array.from(track.querySelectorAll(".home-content-card.focusable")).indexOf(node) : -1;
+      const itemIndex = track ? Number(node.dataset.navCol ?? (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-content-card.focusable"))).indexOf(node)) : -1;
       const focusKind = node.classList.contains("home-hero-card")
         ? "hero"
         : node.dataset?.action === "resumeProgress"
@@ -132,7 +132,7 @@ export function createHomeScreenMethods01() {
         itemIndex,
         itemIdentity: getHomeFocusIdentity(node),
         focusKind,
-        trackStates
+        trackStates: { ...trackStates, ...this.homeRowVirtualizer?.captureTrackStates(), ...this.homeDataWindow?.captureTrackStates() }
       };
     },
     rememberReturnFocusForNode(node) {
@@ -155,7 +155,8 @@ export function createHomeScreenMethods01() {
       const targetRowKey = String(rowKey || this.getNodeRowKey(currentCard) || "continue_watching").trim() || "continue_watching";
       const cards = this.getNavigationRowNodes(targetRowKey);
       const preferredIndex = Number(index);
-      const target = Number.isFinite(preferredIndex) ? cards[Math.max(0, Math.min(cards.length - 1, preferredIndex))] || null : currentCard;
+      const target = this.homeDataWindow && Number.isFinite(preferredIndex) ? this.getDataHomeTarget(targetRowKey, preferredIndex)
+        : Number.isFinite(preferredIndex) ? cards[Math.max(0, Math.min(cards.length - 1, preferredIndex))] || null : currentCard;
       if (target instanceof HTMLElement) {
         this.rememberReturnFocusForNode(target);
         return;
@@ -184,6 +185,7 @@ export function createHomeScreenMethods01() {
       } catch (_) {}
     },
     applyReturnFocusStateNow(focusState) {
+      if (this.homeDataWindow) return this.restoreDataHomeFocus(focusState);
       if (!focusState?.layoutMode || focusState.layoutMode !== this.layoutMode || !this.container) {
         return false;
       }

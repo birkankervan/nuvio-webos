@@ -140,7 +140,7 @@ export function startHomeContinueWatchingLoad(context) {
         }
         this.continueWatchingLoading = true;
         if (!previousLoadingState) {
-          this.requestBackgroundRender();
+          this.requestBackgroundRender({ continueWatching: true, hero: true });
         }
         return;
       }
@@ -168,7 +168,7 @@ export function startHomeContinueWatchingLoad(context) {
           this.forceInitialContinueWatchingFocus = true;
         }
         if (previousLoadingState !== this.continueWatchingLoading || previousDisplaySignature !== immediateDisplaySignature) {
-          this.requestBackgroundRender();
+          this.requestBackgroundRender({ continueWatching: true, hero: true });
         }
       }
 
@@ -195,7 +195,7 @@ export function startHomeContinueWatchingLoad(context) {
           // until the sync completion refresh can publish the real row.
           this.continueWatchingLoading = true;
           if (!previousLoadingState) {
-            this.requestBackgroundRender();
+            this.requestBackgroundRender({ continueWatching: true, hero: true });
           }
           return;
         }
@@ -203,7 +203,7 @@ export function startHomeContinueWatchingLoad(context) {
         this.continueWatchingDisplay = [];
         this.clearContinueWatchingSnapshot();
         if (previousLoadingState || previousDisplaySignature) {
-          this.requestBackgroundRender();
+          this.requestBackgroundRender({ continueWatching: true, hero: true });
         }
         this.maybeStartPendingHomeBackgroundRefresh();
         return;
@@ -271,14 +271,14 @@ export function startHomeContinueWatchingLoad(context) {
           previousDisplaySignature !== nextDisplaySignature ||
           (!preserveHomeReturnState && previousHeroIdentity !== nextHeroIdentity)
         ) {
-          this.requestBackgroundRender();
+          this.requestBackgroundRender({ continueWatching: true, hero: true });
         }
         this.maybeStartPendingHomeBackgroundRefresh();
       } catch (error) {
         console.warn("Continue watching async enrichment failed", error);
         this.continueWatchingLoading = false;
         if (!suppressContinueWatchingLoading && previousLoadingState) {
-          this.requestBackgroundRender();
+          this.requestBackgroundRender({ continueWatching: true, hero: true });
         }
         this.maybeStartPendingHomeBackgroundRefresh();
       }
@@ -289,7 +289,7 @@ export function startHomeContinueWatchingLoad(context) {
       }
       this.continueWatchingLoading = false;
       if (!suppressContinueWatchingLoading) {
-        this.requestBackgroundRender();
+        this.requestBackgroundRender({ continueWatching: true, hero: true });
       }
       this.maybeStartPendingHomeBackgroundRefresh();
     });

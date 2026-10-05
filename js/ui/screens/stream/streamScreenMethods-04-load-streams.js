@@ -28,7 +28,12 @@ export function createStreamScreenMethods04() {
       this.streamLoadAbortController?.abort?.();
       const loadAbortController = typeof AbortController === "function" ? new AbortController() : null;
       this.streamLoadAbortController = loadAbortController;
-      const token = this.loadToken;
+      const token = this.loadToken = (this.loadToken || 0) + 1;
+      if (this.streamChunkTimer) clearTimeout(this.streamChunkTimer);
+      this.streamChunkTimer = null;
+      if (this.debridPreparationTimer) clearTimeout(this.debridPreparationTimer);
+      this.debridPreparationTimer = null;
+      this.debridPreparationScheduled = false;
       const itemType = normalizeType(this.params?.itemType);
       const videoId = String(this.params?.videoId || this.params?.itemId || "");
       const preserveExistingResults = Boolean(preserveResults && this.streams.length);
@@ -50,7 +55,7 @@ export function createStreamScreenMethods04() {
       if (!this.hasRenderedStreamRouteShell) {
         this.requestRender();
       }
-      const pendingChunkTasks = new Set();
+      let pendingChunkGroups = [];
       const badgeSettings = StreamBadgeSettingsStore.snapshot();
       const showAddonLogo = badgeSettings.showAddonLogo === true;
       if (showAddonLogo) {
@@ -133,6 +138,7 @@ export function createStreamScreenMethods04() {
         this.sourceChips = this.sourceChips.map((chip) => (successSet.has(chip.name) ? { ...chip, status: "success" } : chip));
         entries.forEach((entry) => {
           if (!known.has(entry.name)) {
+            known.add(entry.name);
             const orderIndex = Number.isFinite(entry.orderIndex) ? entry.orderIndex : Number.MAX_SAFE_INTEGER;
             this.sourceChips.push({
               name: entry.name,
@@ -147,7 +153,7 @@ export function createStreamScreenMethods04() {
           .sort((left, right) => Number(left.orderIndex ?? Number.MAX_SAFE_INTEGER) - Number(right.orderIndex ?? Number.MAX_SAFE_INTEGER));
       };
 
-      const displayChunkGroups = async (groups = []) => {
+      const displayChunkGroups = (groups = []) => {
         if (token !== this.loadToken) {
           return;
         }
@@ -192,16 +198,24 @@ export function createStreamScreenMethods04() {
         this.maybeAutoPlayStream();
       };
 
+      const flushChunkGroups = () => {
+        if (token !== this.loadToken) {
+          pendingChunkGroups = [];
+          return;
+        }
+        if (this.streamChunkTimer) clearTimeout(this.streamChunkTimer);
+        this.streamChunkTimer = null;
+        const groups = pendingChunkGroups;
+        pendingChunkGroups = [];
+        if (groups.length && token === this.loadToken) displayChunkGroups(groups);
+      };
       const queueChunkGroups = (groups = []) => {
-        const task = displayChunkGroups(groups)
-          .catch((error) => {
-            console.warn("Stream chunk prerender failed", error);
-          })
-          .finally(() => {
-            pendingChunkTasks.delete(task);
-          });
-        pendingChunkTasks.add(task);
-        return task;
+        pendingChunkGroups.push(...groups);
+        if (this.loading) {
+          flushChunkGroups();
+        } else if (!this.streamChunkTimer) {
+          this.streamChunkTimer = setTimeout(flushChunkGroups, 120);
+        }
       };
 
       const options = {
@@ -232,7 +246,7 @@ export function createStreamScreenMethods04() {
           return;
         }
         const loadedStreams = mergeStreamItems([], this.applyAddonLogos(flattenStreams(streamResult)));
-        await Promise.allSettled(Array.from(pendingChunkTasks));
+        flushChunkGroups();
         if (token !== this.loadToken) {
           return;
         }
@@ -287,6 +301,7 @@ export function createStreamScreenMethods04() {
         this.maybeAutoResumeStream({ allLoaded: true });
         this.maybeAutoPlayStream({ allLoaded: true });
       } catch (error) {
+        flushChunkGroups();
         if (token !== this.loadToken) {
           return;
         }

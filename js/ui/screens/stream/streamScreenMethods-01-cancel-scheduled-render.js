@@ -1,5 +1,7 @@
 /* eslint-disable no-unused-vars */
+import { getTvRuntimePerformanceProfile } from "../../../platform/tvRuntimePerformance.js";
 import * as internals from "./streamScreen.js";
+import { registerHomeDomNodes as registerGeneratedDomNodes } from "../../components/keyedDomUpdate.js";
 
 export function createStreamScreenMethods01() {
   const {
@@ -75,7 +77,8 @@ export function createStreamScreenMethods01() {
       // Keep ordinary-sized Tizen lists on the stable eager path. The Android
       // LazyColumn equivalent is still used for genuinely long lists, where a
       // full DOM would make every D-pad layout pass scale with result count.
-      return Array.isArray(streams) && streams.length > STREAM_VIRTUALIZATION_THRESHOLD;
+      const threshold = getTvRuntimePerformanceProfile().isTvRuntime ? 24 : STREAM_VIRTUALIZATION_THRESHOLD;
+      return Array.isArray(streams) && streams.length > threshold;
     },
     getStreamVirtualKeys(streams = []) {
       if (this.streamVirtualKeyCache?.streams === streams) {
@@ -297,6 +300,7 @@ export function createStreamScreenMethods01() {
           }
         );
       }).join("");
+      registerGeneratedDomNodes(Array.from(windowNode.childNodes));
       const topSpacer = track.querySelector('[data-stream-virtual-spacer="top"]');
       const bottomSpacer = track.querySelector('[data-stream-virtual-spacer="bottom"]');
       if (topSpacer) {

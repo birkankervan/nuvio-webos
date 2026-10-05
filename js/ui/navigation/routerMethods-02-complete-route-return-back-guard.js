@@ -94,11 +94,23 @@ export function createRouterMethods02() {
       const targetParams = params || {};
       const routeReturnBackGuardNavigationId = this.beginRouteReturnBackGuard(options?.isBackNavigation);
 
-      const Screen = this.routes[routeName];
+      let Screen = this.routes[routeName];
 
       if (!Screen) {
         console.error("Route not found:", routeName);
         return;
+      }
+
+      const requestId = this.navigationRequestId = (this.navigationRequestId || 0) + 1;
+      if (Screen.load) {
+        try {
+          Screen = await Screen.load();
+        } catch (error) {
+          console.error("Failed to load screen", routeName, error);
+          return;
+        }
+        if (requestId !== this.navigationRequestId) return;
+        this.routes[routeName] = Screen;
       }
 
       const bootGuard = globalThis.NuvioBootGuard;

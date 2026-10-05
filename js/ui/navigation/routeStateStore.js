@@ -1,9 +1,14 @@
 const stateMap = new Map();
+export const MAX_ROUTE_STATE_ENTRIES = 12;
 
 export const RouteStateStore = {
   get(key) {
     if (!key) return null;
-    return stateMap.has(key) ? stateMap.get(key) : null;
+    if (!stateMap.has(key)) return null;
+    const value = stateMap.get(key);
+    stateMap.delete(key);
+    stateMap.set(key, value);
+    return value;
   },
 
   set(key, value) {
@@ -12,7 +17,9 @@ export const RouteStateStore = {
       stateMap.delete(key);
       return;
     }
+    stateMap.delete(key);
     stateMap.set(key, value);
+    while (stateMap.size > MAX_ROUTE_STATE_ENTRIES) stateMap.delete(stateMap.keys().next().value);
   },
 
   clear(key) {

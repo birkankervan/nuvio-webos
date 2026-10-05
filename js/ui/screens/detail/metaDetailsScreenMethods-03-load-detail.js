@@ -175,6 +175,10 @@ export function createMetaDetailsScreenMethods03() {
       }
       this.render(meta);
       this.isLoadingDetail = false;
+      // Let the base detail paint before cached enrichment results and optional
+      // sections compete for the same main thread in this turn.
+      await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      if (token !== this.detailLoadToken) return;
       void this.refreshLibraryMembership(token);
       this.maybeAutoOpenContinueWatchingStream();
       this.maybePlayOnLoad(token);
@@ -210,6 +214,7 @@ export function createMetaDetailsScreenMethods03() {
         this.trailerSource = resolveTrailerSource(this.meta);
         if (!this.castItems.length) {
           const fallbackCast = await withTimeout(this.fetchTmdbCastFallback(this.meta), 3200, []);
+          if (token !== this.detailLoadToken) return;
           if (Array.isArray(fallbackCast) && fallbackCast.length) {
             this.castItems = fallbackCast;
           }

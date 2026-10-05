@@ -184,6 +184,8 @@ async function syncBuild(targetDir) {
   ]);
 
   await cp(path.join(distDir, "app.bundle.js"), path.join(targetDir, "app.bundle.js"));
+  await cp(path.join(distDir, "app.module.js"), path.join(targetDir, "app.module.js"));
+  await syncFolder(targetDir, "chunks");
   await cp(path.join(distDir, "core-js.bundle.js"), path.join(targetDir, "core-js.bundle.js"));
   await cp(path.join(distDir, "boot-guard.js"), path.join(targetDir, "boot-guard.js"));
   await cp(path.join(distDir, "youtube-proxy.html"), path.join(targetDir, "youtube-proxy.html"));
@@ -235,7 +237,7 @@ function buildWebOsIndexHtml({ webOsScriptPath = "" } = {}) {
   <script src="assets/libs/qrcode-generator.js"></script>
 ${webOsScriptTag}  <script>
     window.NuvioBootGuard.runCompatibilityGate(${compatibilityOptions}, function startNuvioApp() {
-      window.NuvioBootGuard.loadScript("app.bundle.js");
+      window.NuvioBootGuard.loadScript("assets/runtime/load-app.js");
     });
   </script>
 </body>

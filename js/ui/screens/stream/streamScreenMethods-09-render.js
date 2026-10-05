@@ -1,4 +1,5 @@
 /* eslint-disable no-unused-vars */
+import { updateKeyedDom } from "../../components/keyedDomUpdate.js";
 import * as internals from "./streamScreen.js";
 
 export function createStreamScreenMethods09() {
@@ -160,10 +161,14 @@ export function createStreamScreenMethods09() {
       const markupUnchanged = shellMounted && this.renderedMarkup === nextMarkup;
 
       if (!markupUnchanged) {
-        this.container.innerHTML = nextMarkup;
+        updateKeyedDom(this.container, nextMarkup, {
+          incremental: shellMounted,
+          focusedNode: this.focusedElement,
+          shellSelector: ".stream-route-shell"
+        });
         this.renderedMarkup = nextMarkup;
         this.streamFocusDomCache = null;
-        this.focusedElement = null;
+        if (!this.focusedElement?.isConnected) this.focusedElement = null;
       }
 
       this.renderedStreamListStable = stableStreamList;

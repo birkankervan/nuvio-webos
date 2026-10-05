@@ -88,6 +88,7 @@ export function createHomeScreenMethods04() {
     watchProgressRepository,
     watchedItemsRepository,
     LayoutPreferences,
+    getTvRuntimePerformanceProfile,
     getContinueWatchingNextUpSeedOptions,
     buildCatalogOrderKey,
     catalogShouldShowOnHome,
@@ -188,27 +189,37 @@ export function createHomeScreenMethods04() {
           });
           return;
         }
-        this.render();
+        this.render({ backgroundDataUpdate: true });
       });
     },
-    requestBackgroundRender() {
+    requestBackgroundRender(change = null) {
+      const pending = this.pendingHomeDataChanges || (this.pendingHomeDataChanges = {
+        dirtyRows: new Set(), dirtyItems: new Set(), invalidateMountedCatalogCards: false,
+        continueWatching: false, hero: false, full: false
+      });
+      if (!change || change.full) pending.full = true;
+      for (const key of change?.dirtyRows || []) pending.dirtyRows.add(String(key));
+      for (const key of change?.dirtyItems || []) pending.dirtyItems.add(String(key));
+      pending.invalidateMountedCatalogCards ||= Boolean(change?.invalidateMountedCatalogCards);
+      pending.continueWatching ||= Boolean(change?.continueWatching);
+      pending.hero ||= Boolean(change?.hero);
       this.requestRender({ delayMs: this.getBackgroundRenderDelay() });
     },
     shouldDeferHomeRenderForInput() {
       if (this.layoutMode === "modern" && this.hasUserInteractedSinceHomePaint && this.shouldSuspendModernViewportFocusSync()) {
         return true;
       }
-      // Tizen fast path: on constrained/legacy runtimes a full innerHTML
-      // render mid-navigation steals frames and invalidates the nav model.
-      // Defer background renders until 800ms after the last D-pad press on
-      // every layout, not just modern.
+      // Background DOM updates compete with D-pad work on modern TVs too.
+      // Let input settle on every TV layout; weaker runtimes need more time.
       try {
         const constrained =
           (typeof this.isPerformanceConstrained === "function" && this.isPerformanceConstrained()) ||
           (typeof this.isLegacyTvRuntime === "function" && this.isLegacyTvRuntime()) ||
           globalThis?.document?.body?.classList?.contains("legacy-tizen") ||
           globalThis?.document?.documentElement?.classList?.contains("legacy-tizen");
-        if (constrained && Date.now() - Number(this.lastHomeInputAt || 0) < 800) {
+        const inputSettleMs = constrained ? 800 : getTvRuntimePerformanceProfile().isTvRuntime ? 250 : 0;
+        const lastInputAt = Number(this.lastHomeInputAt || 0);
+        if (lastInputAt > 0 && Date.now() - lastInputAt < inputSettleMs) {
           return true;
         }
       } catch (_) {}

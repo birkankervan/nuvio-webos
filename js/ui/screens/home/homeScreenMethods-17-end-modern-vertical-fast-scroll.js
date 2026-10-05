@@ -109,7 +109,9 @@ export function createHomeScreenMethods17() {
       const mainRect = main.getBoundingClientRect();
       const visibleRows = this.navModel.rows
         .map((rowNodes) => {
-          const anchor = this.getMainFocusAnchor(rowNodes[0]);
+          const mounted = rowNodes.find(node => node.isConnected);
+          if (!mounted) return null;
+          const anchor = this.getMainFocusAnchor(mounted);
           if (!anchor) {
             return null;
           }

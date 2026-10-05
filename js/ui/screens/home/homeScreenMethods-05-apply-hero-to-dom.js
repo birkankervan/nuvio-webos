@@ -1,4 +1,5 @@
 import * as internals from "./homeScreenContext.js";
+import { registerHomeDomNodes } from "./homeDomUpdate.js";
 
 export function createHomeScreenMethods05() {
   const {
@@ -80,6 +81,7 @@ export function createHomeScreenMethods05() {
             `<img class="home-hero-logo home-hero-logo-transition-enter" src="${escapeAttribute(display.logo)}" alt="${escapeAttribute(display.title || "logo")}" decoding="async" fetchpriority="high" />`
           );
           const insertedLogo = brandNode.querySelector(".home-hero-logo");
+          registerHomeDomNodes([insertedLogo]);
           requestAnimationFrame(() => {
             insertedLogo?.classList?.add("is-visible");
             setTimeout(() => insertedLogo?.classList?.remove("home-hero-logo-transition-enter", "is-visible"), heroCrossfadeMs);
@@ -92,6 +94,7 @@ export function createHomeScreenMethods05() {
       const titleNode = heroNode.querySelector(".home-hero-title-text");
       if (titleNode) {
         titleNode.textContent = display.title || "Untitled";
+        registerHomeDomNodes(Array.from(titleNode.childNodes));
         titleNode.classList.toggle("is-hidden", Boolean(display.logo));
       }
 
@@ -99,12 +102,14 @@ export function createHomeScreenMethods05() {
         const primaryNode = heroNode.querySelector(".home-modern-hero-meta-line");
         if (primaryNode) {
           primaryNode.innerHTML = renderModernHeroPrimary(display);
+          registerHomeDomNodes(Array.from(primaryNode.childNodes));
           primaryNode.classList.toggle("is-empty", !display.leadingMeta.length && !display.trailingMeta.length && !display.showImdbPrimary);
         }
 
         const secondaryNode = heroNode.querySelector(".home-modern-hero-secondary");
         if (secondaryNode) {
           secondaryNode.innerHTML = renderModernHeroSecondary(display);
+          registerHomeDomNodes(Array.from(secondaryNode.childNodes));
           secondaryNode.classList.toggle(
             "is-empty",
             !display.secondaryHighlightText && !display.badges.length && !display.showImdbSecondary && !display.languageText
@@ -114,18 +119,21 @@ export function createHomeScreenMethods05() {
         const primaryNode = heroNode.querySelector(".home-hero-meta-primary");
         if (primaryNode) {
           primaryNode.innerHTML = renderMetaTokens(display.metaPrimary);
+          registerHomeDomNodes(Array.from(primaryNode.childNodes));
           primaryNode.classList.toggle("is-empty", !display.metaPrimary.length);
         }
 
         const secondaryNode = heroNode.querySelector(".home-hero-meta-secondary");
         if (secondaryNode) {
           secondaryNode.innerHTML = renderMetaTokens(display.metaSecondary);
+          registerHomeDomNodes(Array.from(secondaryNode.childNodes));
           secondaryNode.classList.toggle("is-empty", !display.metaSecondary.length);
         }
 
         const chipNode = heroNode.querySelector(".home-hero-chip-row");
         if (chipNode) {
           chipNode.innerHTML = display.chips.map((chip) => `<span class="home-hero-chip">${escapeHtml(chip)}</span>`).join("");
+          registerHomeDomNodes(Array.from(chipNode.childNodes));
           chipNode.classList.toggle("is-empty", !display.chips.length);
         }
       }
@@ -133,6 +141,7 @@ export function createHomeScreenMethods05() {
       const descriptionNode = heroNode.querySelector(".home-hero-description");
       if (descriptionNode) {
         descriptionNode.textContent = display.description || " ";
+        registerHomeDomNodes(Array.from(descriptionNode.childNodes));
         descriptionNode.classList.toggle("is-empty", !display.description);
       }
       this.scheduleHomeTruncationUpdate({ scope: heroNode });
@@ -141,6 +150,7 @@ export function createHomeScreenMethods05() {
       const indicators = heroNode.querySelector(".home-hero-indicators");
       if (indicators) {
         indicators.innerHTML = buildHeroIndicators(this.heroCandidates, hero);
+        registerHomeDomNodes(Array.from(indicators.childNodes));
       }
     },
     setSidebarExpanded(expanded) {
@@ -191,6 +201,8 @@ export function createHomeScreenMethods05() {
       return Array.from(this.container?.querySelectorAll("[data-track-row-key]") || []);
     },
     getNavigationRowSection(rowKey = "") {
+      if (this.homeDataWindow) return this.navModel?.rowSectionByKey?.get(rowKey) || null;
+      this.homeRowVirtualizer?.mount(rowKey);
       const key = String(rowKey || "").trim();
       if (!key) {
         return null;
@@ -206,6 +218,7 @@ export function createHomeScreenMethods05() {
       );
     },
     getNavigationRowNodes(rowKey = "") {
+      this.homeRowVirtualizer?.mount(rowKey);
       const key = String(rowKey || "").trim();
       if (!key) {
         return [];
@@ -213,13 +226,14 @@ export function createHomeScreenMethods05() {
       const cached =
         this.navModel?.domVersion === Number(this.navigationDomVersion || 0) ? this.navModel?.rowNodesByRowKey?.get(key) : null;
       if (Array.isArray(cached) && cached.length) {
-        return cached.filter((node) => node?.isConnected);
+        return cached;
       }
       const rowSection = this.getNavigationRowSection(key);
       const track = rowSection?.querySelector?.(".home-track, .home-grid-track") || null;
       return Array.from(track?.querySelectorAll(".home-content-card.focusable") || []);
     },
     rememberMainRowFocus(node) {
+      this.homeDataWindow?.remember(node);
       if (!this.isMainNode(node)) {
         return;
       }
@@ -239,6 +253,7 @@ export function createHomeScreenMethods05() {
       const rowKey = this.getNodeRowKey(rowNodes[0]);
       const storedIndex = rowKey ? Number(this.lastFocusedItemIndexByRowKey?.[rowKey]) : Number.NaN;
       const preferredIndex = Number.isFinite(storedIndex) ? storedIndex : 0;
+      if (this.homeDataWindow && rowKey) return this.getDataHomeTarget(rowKey, preferredIndex);
       return rowNodes[Math.max(0, Math.min(rowNodes.length - 1, preferredIndex))] || rowNodes[0];
     },
     focusWithoutAutoScroll(target, { suppressDelegatedFocus = false } = {}) {
@@ -257,8 +272,10 @@ export function createHomeScreenMethods05() {
     },
     setCurrentFocusedNode(node = null) {
       this.currentFocusedNode = node instanceof HTMLElement ? node : null;
+      if (this.currentFocusedNode) this.homeDataWindow?.remember(this.currentFocusedNode);
     },
     setFocusedNode(target, { suppressDelegatedFocus = false } = {}) {
+      if (target) this.homeRowVirtualizer?.mount(target);
       if (this.homeHoldFocusLocked) {
         return target instanceof HTMLElement ? target : null;
       }

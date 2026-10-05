@@ -1,5 +1,7 @@
 import * as internals from "./homeScreenContext.js";
 import { hasMountedHomeDom, updateHomeDom } from "./homeDomUpdate.js";
+import { HomeRowVirtualizer } from "./homeRowVirtualizer.js";
+import { getTvRuntimePerformanceProfile } from "../../../platform/tvRuntimePerformance.js";
 
 export function createHomeScreenMethods23() {
   const {
@@ -37,7 +39,28 @@ export function createHomeScreenMethods23() {
   } = internals;
 
   return {
-    render() {
+    setupHomeRowVirtualization() {
+      this.homeRowVirtualizer?.destroy();
+      this.homeRowVirtualizer = null;
+      if (this.layoutMode === "modern" && this.homeDataWindow) return;
+      const viewport = this.getHomeViewport();
+      if (viewport && this.layoutMode !== "grid" && getTvRuntimePerformanceProfile().isTvRuntime) {
+        this.homeRowVirtualizer = new HomeRowVirtualizer(viewport);
+        this.homeRowVirtualizer.onChange = () => this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
+        this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
+      }
+    },
+    render(options = {}) {
+      const dataChanges = options?.backgroundDataUpdate ? this.pendingHomeDataChanges : null;
+      this.pendingHomeDataChanges = null;
+      if (this.commitModernHomeDataUpdate(dataChanges)) return;
+      this.homeRowVirtualizer?.destroy();
+      this.homeRowVirtualizer = null;
+      this.cancelDataHomePagination();
+      if (this.layoutMode !== "modern" || this.isInitialHomeLoading) {
+        this.homeDataWindow?.destroy();
+        this.homeDataWindow = null;
+      }
       const renderStart = HOME_PERF_DEBUG ? homePerfNow() : 0;
       this.cancelScheduledRender();
       const liveFocusedNode = this.getCurrentFocusedNode();
@@ -171,7 +194,12 @@ export function createHomeScreenMethods23() {
         mainContentMarkup = renderHomeLoadingState();
         this.catalogSeeAllMap = new Map();
       } else if (this.layoutMode === "modern") {
+        const dataWindow = this.createDataHomeWindow(continueWatchingRows, effectiveContinueWatchingLoadingCount, retainedFocusState);
+        const virtualRowsMarkup = dataWindow.markup({ offset: Number(retainedFocusState?.mainScrollTop || 0),
+          width: this.container.clientWidth || globalThis.innerWidth || 1280,
+          height: this.getHomeViewport()?.clientHeight || 560 });
         modernLayoutPayload = renderModernHomeLayout({
+          virtualRowsMarkup,
           rows: this.rows,
           heroItem,
           heroCandidates: this.heroCandidates,
@@ -339,6 +367,7 @@ export function createHomeScreenMethods23() {
       });
       this.scheduleModernSidebarPillAutoCollapse();
 
+      if (this.homeDataWindow) this.attachDataHomeWindow();
       this.buildNavigationModel();
       this.bindHomeViewportEvents();
       this.setupContinueWatchingProgressiveRendering();
@@ -384,6 +413,7 @@ export function createHomeScreenMethods23() {
           const pendingRowKey = String(this.pendingContinueWatchingFocusRowKey || "continue_watching");
           const cards = this.getNavigationRowNodes(pendingRowKey);
           const target =
+            (this.homeDataWindow ? this.getDataHomeTarget(pendingRowKey, Number(this.pendingContinueWatchingFocusIndex || 0)) : null) ||
             cards[Math.max(0, Math.min(cards.length - 1, Number(this.pendingContinueWatchingFocusIndex || 0)))] ||
             cards[cards.length - 1] ||
             null;
@@ -473,10 +503,13 @@ export function createHomeScreenMethods23() {
       }
       this.homeRouteEnterPending = false;
       this.renderedLayoutMode = this.layoutMode;
+      this.renderedDataHomeSettingsKey = this.getDataHomeRenderSettingsKey();
       this.ensureHomeTruncationObservers();
       this.scheduleHomeTruncationUpdate();
       this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
       this.scheduleReturnFocusRestore();
+      this.setupHomeRowVirtualization();
+      this.scheduleDetailScreenPrefetch();
       const mountedRows = Number(this.navModel?.rows?.length || 0);
       const mountedCards = Number((this.navModel?.rows || []).reduce((total, rowNodes) => total + rowNodes.length, 0));
       logHomePerf("render", {

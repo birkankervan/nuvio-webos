@@ -36,6 +36,9 @@ export function createHomeScreenMethods21() {
     async loadData({ background = false, preserveReturnState = false, refreshManifests = true } = {}) {
       const loadStart = HOME_PERF_DEBUG ? homePerfNow() : 0;
       const token = this.homeLoadToken;
+      const previousLoadedProfileId = String(this.loadedProfileId || "");
+      const previousHomeRowOrder = (this.rows || []).map((row) => String(row?.homeCatalogKey || "")).filter(Boolean);
+      const previousHomeRowKeys = new Set(previousHomeRowOrder);
       const preserveHomeReturnState = Boolean(background && preserveReturnState);
       const preservedHeroItem = preserveHomeReturnState ? this.heroItem : null;
       const preservedHeroIdentity = preserveHomeReturnState ? buildHeroIdentity(this.heroItem) : "";
@@ -53,8 +56,11 @@ export function createHomeScreenMethods21() {
           return;
         }
         this.watchedItems = Array.isArray(watchedItems) ? watchedItems : [];
-        this.watchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
-        this.requestBackgroundRender();
+        const nextWatchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
+        const watchedTitlesChanged = nextWatchedTitleIds.size !== this.watchedTitleIds?.size ||
+          [...nextWatchedTitleIds].some((id) => !this.watchedTitleIds?.has(id));
+        this.watchedTitleIds = nextWatchedTitleIds;
+        if (watchedTitlesChanged) this.requestBackgroundRender({ invalidateMountedCatalogCards: true });
         void this.refreshWatchedTitleState({ token });
       });
 
@@ -193,6 +199,14 @@ export function createHomeScreenMethods21() {
         background
       });
       this.rows = this.sortAndFilterRows(nextInitialRows, this.collections);
+      const dataHomeDirtyRows = new Set(initialRows.map((row) => String(row?.homeCatalogKey || "")).filter(Boolean));
+      const currentHomeRowOrder = (this.rows || []).map((row) => String(row?.homeCatalogKey || "")).filter(Boolean);
+      const currentHomeRowKeys = new Set(currentHomeRowOrder);
+      previousHomeRowKeys.forEach((key) => { if (!currentHomeRowKeys.has(key)) dataHomeDirtyRows.add(key); });
+      const previousRowIndex = new Map(previousHomeRowOrder.map((key, index) => [key, index]));
+      currentHomeRowOrder.forEach((key, index) => { if (previousRowIndex.has(key) && previousRowIndex.get(key) !== index) dataHomeDirtyRows.add(key); });
+      if (background) (this.rows || []).filter((row) => row?.rowKind === "collection")
+        .forEach((row) => dataHomeDirtyRows.add(String(row.homeCatalogKey || "")));
       if (preserveContinueWatching) {
         this.continueWatchingLoading = false;
       } else if (
@@ -235,10 +249,15 @@ export function createHomeScreenMethods21() {
         this.heroItem = this.pickInitialHero();
       }
       this.loadedProfileId = String(ProfileManager.getActiveProfileId() || "");
+      const profileChanged = Boolean(previousLoadedProfileId && previousLoadedProfileId !== this.loadedProfileId);
       this.loadedWatchProgressSourceKey = watchProgressRepository.getContinueWatchingSourceKey();
       this.releaseInitialHomeLoading();
       this.hasLoadedOnce = true;
-      this.render();
+      if (background) {
+        this.requestBackgroundRender({ dirtyRows: dataHomeDirtyRows, continueWatching: preserveContinueWatching, hero: true, full: profileChanged });
+      } else {
+        this.render();
+      }
       this.maybeStartPendingHomeBackgroundRefresh();
       logHomePerf("loadData", {
         phase: "first-render",
@@ -278,7 +297,7 @@ export function createHomeScreenMethods21() {
               this.heroItem = this.pickInitialHero();
             }
             void this.refreshWatchedTitleState({ token });
-            this.requestBackgroundRender();
+            this.requestBackgroundRender({ dirtyRows: [row.homeCatalogKey], hero: true });
           }
         })
           .then((extraRows) => {
@@ -295,7 +314,7 @@ export function createHomeScreenMethods21() {
               this.heroItem = this.pickInitialHero();
             }
             void this.refreshWatchedTitleState({ token });
-            this.requestBackgroundRender();
+            this.requestBackgroundRender({ dirtyRows: extraRows.map((row) => String(row?.homeCatalogKey || "")).filter(Boolean), hero: true });
             this.retryPendingCatalogRows();
           })
           .catch((error) => {

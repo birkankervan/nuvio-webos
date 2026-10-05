@@ -170,7 +170,7 @@ function buildWebOsIndexHtml({ webOsScriptPath = "" } = {}) {
   <script src="assets/libs/qrcode-generator.js"></script>
 ${webOsScriptTag}  <script>
     window.NuvioBootGuard.runCompatibilityGate(${compatibilityOptions}, function startNuvioApp() {
-      window.NuvioBootGuard.loadScript("app.bundle.js");
+      window.NuvioBootGuard.loadScript("assets/runtime/load-app.js");
     });
   </script>
 </body>

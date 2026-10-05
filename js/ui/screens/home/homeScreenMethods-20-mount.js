@@ -127,12 +127,13 @@ export function createHomeScreenMethods20() {
         setModernSidebarPillIconOnly(this.container, this.pillIconOnly);
         this.scheduleModernSidebarPillAutoCollapse();
         this.homeLoadToken = (this.homeLoadToken || 0) + 1;
-        if (shouldRepaintPreservedHome) {
+        if (shouldRepaintPreservedHome || (this.layoutMode === "modern" && !this.homeDataWindow)) {
           // The TV DOM was kept alive while the order screen was open. Repaint
           // only when its visible catalog sequence no longer matches the local
           // preference; unchanged returns keep the low-cost preserved path.
           this.render();
         }
+        this.homeRowVirtualizer?.restore();
         this.bindHomeViewportEvents();
         this.setupContinueWatchingProgressiveRendering();
         if (this.layoutMode === "modern") {
@@ -156,6 +157,7 @@ export function createHomeScreenMethods20() {
         this.scheduleHomeTruncationUpdate();
         this.scheduleHomeLazyImageHydration();
         this.scheduleReturnFocusRestore();
+        this.setupHomeRowVirtualization();
         this.ensureStartupSyncSubscription();
         this.requestHomeBackgroundRefresh({
           preserveReturnState: true,
@@ -287,8 +289,11 @@ export function createHomeScreenMethods20() {
         return;
       }
       this.watchedItems = Array.isArray(projectedItems) ? projectedItems : baseWatchedItems;
-      this.watchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
-      this.requestBackgroundRender();
+      const nextWatchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
+      const watchedTitlesChanged = nextWatchedTitleIds.size !== this.watchedTitleIds?.size ||
+        [...nextWatchedTitleIds].some((id) => !this.watchedTitleIds?.has(id));
+      this.watchedTitleIds = nextWatchedTitleIds;
+      if (watchedTitlesChanged) this.requestBackgroundRender({ invalidateMountedCatalogCards: true });
     }
   };
 }

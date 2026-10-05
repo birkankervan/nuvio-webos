@@ -11,6 +11,7 @@ export function createHomeScreenMethods18() {
       if (!current || !target || current === target) {
         return false;
       }
+      this.homeRowVirtualizer?.mount(target);
       this.refreshPendingHomeTrailerCleanup();
       const focusStart = HOME_PERF_DEBUG ? homePerfNow() : 0;
       const scrollAdjustments = this.getExpandedPosterScrollAdjustments(current, target, direction);
@@ -68,7 +69,7 @@ export function createHomeScreenMethods18() {
         this.clearFocusedPosterFlowState();
         this.collapseFocusedPoster();
       }
-      logHomePerf("focusNode", {
+      if (HOME_PERF_DEBUG) logHomePerf("focusNode", {
         ms: Number((homePerfNow() - focusStart).toFixed(2)),
         direction: direction || "",
         layoutMode: this.layoutMode,
@@ -78,6 +79,8 @@ export function createHomeScreenMethods18() {
       return true;
     },
     buildNavigationModel() {
+      if (this.homeDataWindow) { this.buildDataHomeNavigation(); return; }
+      this.homeRowVirtualizer?.restore();
       const sidebar = this.layoutPrefs?.modernSidebar
         ? Array.from(this.container?.querySelectorAll(".modern-sidebar-panel .focusable") || [])
         : Array.from(this.container?.querySelectorAll(".home-sidebar .focusable") || []);
@@ -195,6 +198,7 @@ export function createHomeScreenMethods18() {
         rowSectionByKey,
         rowNodesByRowKey
       };
+      this.homeRowVirtualizer?.refresh();
       if (!this.lastMainFocus || !this.container?.contains(this.lastMainFocus) || !this.isMainNode(this.lastMainFocus)) {
         this.lastMainFocus = rows[0]?.[0] || null;
       }

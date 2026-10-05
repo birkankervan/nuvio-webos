@@ -3,6 +3,7 @@ import * as internals from "./metaDetailsScreenContext.js";
 
 export function createMetaDetailsScreenMethods08() {
   const {
+    Router,
     ScreenUtils,
     LayoutPreferences,
     showHomeRatings,
@@ -227,9 +228,16 @@ export function createMetaDetailsScreenMethods08() {
       if (this._sectionsUpdateRaf) {
         return;
       }
-      const raf = typeof requestAnimationFrame === "function" ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
-      this._sectionsUpdateRaf = raf(() => {
+      const token = this.detailLoadToken;
+      const useAnimationFrame = typeof requestAnimationFrame === "function";
+      const raf = useAnimationFrame ? requestAnimationFrame : (cb) => setTimeout(cb, 16);
+      this._sectionsUpdateCancel = useAnimationFrame ? cancelAnimationFrame : clearTimeout;
+      const frame = raf(() => {
+        if (token !== this.detailLoadToken || Router.getCurrent() !== "detail" || this._sectionsUpdateRaf !== frame) {
+          return;
+        }
         this._sectionsUpdateRaf = null;
+        this._sectionsUpdateCancel = null;
         const pendingMeta = this._pendingSectionsMeta;
         const pendingFocus = this._pendingSectionsFocusRestore || null;
         this._pendingSectionsMeta = null;
@@ -238,6 +246,7 @@ export function createMetaDetailsScreenMethods08() {
           this._renderDetailSectionsNow(pendingMeta, pendingFocus);
         }
       });
+      this._sectionsUpdateRaf = frame;
     },
     _renderDetailSectionsNow(meta, focusRestoreOverride = null) {
       if (!this.container || !this.container.querySelector(".series-detail-shell")) {

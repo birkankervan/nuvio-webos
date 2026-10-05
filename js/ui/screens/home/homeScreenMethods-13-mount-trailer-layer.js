@@ -152,6 +152,10 @@ export function createHomeScreenMethods13() {
       }
     },
     collapseFocusedPoster(node = this.expandedPosterNode, options = {}) {
+      if (this.homeDataWindow && (node?.classList?.contains("is-expanded") || this.expandedPosterNode)) {
+        this.homeDataWindow.animateExpansionUntil = Date.now() + 220;
+        this.homeDataWindow.requestSync();
+      }
       // Avoid overlapping flex-size transitions that leave stale poster layers on
       // constrained TV generations and low-end devices.
       const instant = Boolean(options?.instant || this.isPerformanceConstrained());
@@ -222,6 +226,10 @@ export function createHomeScreenMethods13() {
         this.collapseFocusedPoster(this.expandedPosterNode, { excludeNode: node });
       }
       node.classList.add("is-expanded");
+      if (this.homeDataWindow) {
+        this.homeDataWindow.animateExpansionUntil = Date.now() + 220;
+        this.homeDataWindow.requestSync();
+      }
       this.hydrateFocusedPosterAssets(node);
       this.expandedPosterNode = node;
       requestAnimationFrame(() => {

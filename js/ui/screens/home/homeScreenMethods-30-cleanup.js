@@ -5,6 +5,18 @@ export function createHomeScreenMethods30() {
 
   return {
     cleanup() {
+      this.pendingHomeDataChanges = null;
+      if (this.detailScreenPrefetchTimer) clearTimeout(this.detailScreenPrefetchTimer);
+      if (this.detailScreenPrefetchIdle) globalThis.cancelIdleCallback?.(this.detailScreenPrefetchIdle);
+      this.detailScreenPrefetchTimer = null;
+      this.detailScreenPrefetchIdle = 0;
+      this.homeRowVirtualizer?.destroy();
+      this.homeRowVirtualizer = null;
+      if (this.boundHomeTruncationResizeHandler) {
+        window.removeEventListener("resize", this.boundHomeTruncationResizeHandler);
+        this.boundHomeTruncationResizeHandler = null;
+      }
+      this.homeTruncationObserversBound = false;
       if (this.unsubscribeStartupSyncPullCompleted) {
         this.unsubscribeStartupSyncPullCompleted();
         this.unsubscribeStartupSyncPullCompleted = null;
@@ -31,6 +43,12 @@ export function createHomeScreenMethods30() {
       this.posterHoldMenu = null;
       this.posterListPicker = null;
       this.persistCurrentFocusState();
+      this.cancelDataHomePagination();
+      this.homeDataWindow?.destroy();
+      this.homeDataWindow = null;
+      this.navModel = null;
+      this.currentFocusedNode = null;
+      this.lastMainFocus = null;
       this.homeLoadToken = (this.homeLoadToken || 0) + 1;
       this.cancelInitialHomeLoadTimeout();
       this._trackPaginationInFlight?.clear();

@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./streamScreen.js";
+import { registerHomeDomNodes as registerGeneratedDomNodes } from "../../components/keyedDomUpdate.js";
 
 export function createStreamScreenMethods08() {
   const {
@@ -148,6 +149,7 @@ export function createStreamScreenMethods08() {
       const markupChanged = track.innerHTML !== markup;
       if (markupChanged) {
         track.innerHTML = markup;
+        registerGeneratedDomNodes(Array.from(track.childNodes));
         this.renderedMarkup = null;
         this._filteredStreamsCache = null;
         this.streamFocusDomCache = null;

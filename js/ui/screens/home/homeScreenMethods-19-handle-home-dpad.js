@@ -42,6 +42,7 @@ export function createHomeScreenMethods19() {
       // shouldDeferHomeRenderForInput). One timestamp covers first presses
       // and repeats on every layout.
       this.lastHomeInputAt = Date.now();
+      this.scheduleDetailScreenPrefetch();
 
       const inputMeta = {
         repeat: Boolean(event?.repeat)
@@ -91,6 +92,17 @@ export function createHomeScreenMethods19() {
         return true;
       }
 
+      if (this.homeDataWindow) {
+        this.homeDataWindow.remember(current);
+        const { result, target } = this.homeDataWindow.move(direction);
+        if (target) return this.focusNode(current, target, direction, inputMeta) || true;
+        if (result?.boundary === "left") {
+          this.lastMainFocus = current;
+          return this.openSidebar() || true;
+        }
+        if (result?.boundary === "right") this.scheduleDataHomePagination(this.getNodeRowKey(current));
+        return true;
+      }
       const row = Number(current.dataset.navRow || 0);
       const col = Number(current.dataset.navCol || 0);
       const rowNodes = nav.rows[row] || [];
@@ -285,6 +297,8 @@ export function createHomeScreenMethods19() {
           }
           this.homeViewportScrollFrame = requestAnimationFrame(() => {
             this.homeViewportScrollFrame = 0;
+            this.homeRowVirtualizer?.sync();
+            this.homeDataWindow?.sync();
             if (this.shouldSuspendModernViewportFocusSync()) {
               return;
             }

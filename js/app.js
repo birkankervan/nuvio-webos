@@ -16,7 +16,6 @@ import { ProviderCredentialSyncService } from "./core/profile/providerCredential
 import { ThemeManager } from "./ui/theme/themeManager.js";
 import { renderAppShell } from "./bootstrap/renderAppShell.js";
 import { renderAddonRemotePage } from "./bootstrap/renderAddonRemotePage.js";
-import { preloadStreamBadgeImages } from "./ui/screens/stream/streamScreen.js";
 import { warmStreamingLibs } from "./runtime/loadStreamingLibs.js";
 import { Platform } from "./platform/index.js";
 import { TizenCapabilities } from "./platform/tizen/tizenCapabilities.js";
@@ -171,6 +170,7 @@ function isLowEndDevice() {
 
 function applyPerformanceMode() {
   const tvRuntime = getTvRuntimePerformanceProfile();
+  document.documentElement.classList.toggle("tv-runtime", tvRuntime.isTvRuntime);
   const constrained = tvRuntime.isPerformanceConstrained || isLowEndDevice();
   const webOsMajorVersion = Platform.isWebOS() ? Number(Platform.getWebOsMajorVersion() || 0) : 0;
   const legacyWebOs = Platform.isWebOS() && tvRuntime.isLegacyTvRuntime;
@@ -255,9 +255,6 @@ async function enterWithLastProfile({ restoreWebOsRoute = false } = {}) {
       console.warn("Profile member access refresh failed", error);
     });
     I18n.apply();
-    void preloadStreamBadgeImages().catch((error) => {
-      console.warn("Stream badge image prerender failed", error);
-    });
   }
   const experienceRoute = activeProfile ? await resolveExperienceRoute(activeProfile.id) : "home";
   void StartupSyncService.requestSyncNow({

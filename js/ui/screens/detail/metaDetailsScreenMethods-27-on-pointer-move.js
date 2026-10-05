@@ -85,6 +85,13 @@ export function createMetaDetailsScreenMethods27() {
     },
     cleanup() {
       this.detailLoadToken = (this.detailLoadToken || 0) + 1;
+      if (this._sectionsUpdateRaf) {
+        this._sectionsUpdateCancel?.(this._sectionsUpdateRaf);
+      }
+      this._sectionsUpdateRaf = null;
+      this._sectionsUpdateCancel = null;
+      this._pendingSectionsMeta = null;
+      this._pendingSectionsFocusRestore = null;
       this.cancelTraktCommentsRequest();
       if (this.seasonSwitchTimer) {
         clearTimeout(this.seasonSwitchTimer);
@@ -147,6 +154,19 @@ export function createMetaDetailsScreenMethods27() {
         window.removeEventListener("message", this.trailerProxyMessageHandler);
         this.trailerProxyMessageHandler = null;
       }
+      this.streamChooserLoadToken = (this.streamChooserLoadToken || 0) + 1;
+      this.meta = null;
+      this.episodes = [];
+      this.streamItems = [];
+      this.collectionItems = [];
+      this.commentsItems = [];
+      this.pendingEpisodeSelection = null;
+      this.pendingMovieSelection = null;
+      this.pendingFocusRestore = null;
+      this.episodeMarqueeTitle = null;
+      this.trailerUiRefs = null;
+      this._railWindows = {};
+      this.episodeProgressMap?.clear?.();
       ScreenUtils.hide(this.container);
     }
   };

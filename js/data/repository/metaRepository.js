@@ -1,6 +1,7 @@
 import { safeApiCall } from "../../core/network/safeApiCall.js";
 import { addonRepository } from "./addonRepository.js";
 import { MetaApi } from "../remote/api/metaApi.js";
+import { BoundedCache } from "../../core/util/boundedCache.js";
 
 const INSTALLED_ADDONS_WAIT_MS = 750;
 
@@ -22,7 +23,7 @@ function firstNonBlank(...values) {
 
 class MetaRepository {
   constructor() {
-    this.metaCache = new Map();
+    this.metaCache = new BoundedCache(120);
     this.inFlightMeta = new Map();
     this.inFlightMetaAll = new Map();
   }
@@ -226,9 +227,9 @@ class MetaRepository {
       );
     for (const candidateType of candidateTypes) {
       const suffix = `:${candidateType}:${normalizedId}`;
-      for (const [cacheKey, meta] of this.metaCache.entries()) {
+      for (const cacheKey of this.metaCache.keys()) {
         if (cacheKey.endsWith(suffix)) {
-          return meta;
+          return this.metaCache.get(cacheKey);
         }
       }
     }
