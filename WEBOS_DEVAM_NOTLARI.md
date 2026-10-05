@@ -1148,3 +1148,13 @@ gönderilmeyecek. Upstream origin korunur; yeni personal remote kullanılacak.
 Root commit/push sahibi; ajan tamamlandı. Sonraki: bu kaynak ve MD snapshotını
 commit et, personal/main pushla, remote SHA ve public görünürlüğü doğrula.
 Geniş TV-01 ve LOAD-04..06 açık; yayın performans kabulü sayılmaz.
+
+### GITHUB-01 teslim — 6 Ekim 2026
+
+https://github.com/birkankervan/nuvio-webos public repo oluşturuldu. Kaynak
+commit 88a46ca (101 dosya) personal/main dalına başarıyla pushlandı. Main artık
+personal/main izler; origin NuvioMedia/NuvioTVSmart olarak korunur.
+42/42 Node + lint geçti; yayın kontrol ajanı tamam, aktif kaynak ajanı yok.
+Ignored yerel ayarlar/paketler gönderilmedi. Bu teslim yeni runtime build veya
+TV-01 performans kabulü değildir. Sonraki: bu MD teslim checkpointini commit/push
+ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açık.

@@ -6,7 +6,7 @@ runtime entegre → TV doğrulandı. Saf helper/test sonucu runtime tamamlandı 
 
 | ID | İş | Sahip | Durum | Bağımlılık | Dosya / kanıt | Sonraki adım |
 | --- | --- | --- | --- | --- | --- | --- |
-| GITHUB-01 | Kullanıcının public GitHub reposuna yayın | root; publish_review salt okunur | yerel doğrulandı; push sırada | Kullanıcı yetkisi | birkankervan/nuvio-webos; 42 Node + lint; 101 dosya yayın kontrolü | Commit/push ve remote SHA doğrula |
+| GITHUB-01 | Kullanıcının public GitHub reposuna yayın | root; publish_review salt okunur | GitHub yayımlandı | Kullanıcı yetkisi | birkankervan/nuvio-webos; 42 Node + lint; 101 dosya yayın kontrolü | Kaynak commit 88a46ca main dalına gönderildi; takip checkpointini yayınla |
 | DOC-01 | Aktif plan, sahiplik ve checkpoint | root | yerel doğrulandı | Yok | Bu dosya, plan, devam notları | Ajan sonuçlarıyla güncelle |
 | SRC-01 | Kaynak şeridinde tekrarlı düğmeler | load_review; root TV kabulü | TV doğrulandı | Yok | stream methods01/04/08; streamPerformance.test.mjs; scripts/stream-chips-dom-check.js | Düzeltme TV'ye kuruldu; gerçek akışta tekrar 0 |
 | WIN-01 | Veri tabanlı saf pencere hesabı | window_model | yerel doğrulandı | Yok | homeVirtualWindow.js/test, WEBOS_SANALLASTIRMA_AJAN.md | 4 test/600 geometri; runtime renderer tüketimi bekliyor |
@@ -463,3 +463,13 @@ gönderilmeyecek. Upstream origin korunur; yeni personal remote kullanılacak.
 Root commit/push sahibi; ajan tamamlandı. Sonraki: bu kaynak ve MD snapshotını
 commit et, personal/main pushla, remote SHA ve public görünürlüğü doğrula.
 Geniş TV-01 ve LOAD-04..06 açık; yayın performans kabulü sayılmaz.
+
+### GITHUB-01 teslim — 6 Ekim 2026
+
+https://github.com/birkankervan/nuvio-webos public repo oluşturuldu. Kaynak
+commit 88a46ca (101 dosya) personal/main dalına başarıyla pushlandı. Main artık
+personal/main izler; origin NuvioMedia/NuvioTVSmart olarak korunur.
+42/42 Node + lint geçti; yayın kontrol ajanı tamam, aktif kaynak ajanı yok.
+Ignored yerel ayarlar/paketler gönderilmedi. Bu teslim yeni runtime build veya
+TV-01 performans kabulü değildir. Sonraki: bu MD teslim checkpointini commit/push
+ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açık.
