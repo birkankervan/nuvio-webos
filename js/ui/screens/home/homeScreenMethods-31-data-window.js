@@ -58,7 +58,8 @@ export function createHomeScreenMethods31() {
         this.homeLazyImageHydrationIndex = null;
         if (this.pendingHomeLazyImageAnchor && !this.pendingHomeLazyImageAnchor.isConnected) this.pendingHomeLazyImageAnchor = null;
         this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
-        this.scheduleHomeTruncationUpdate();
+        // No truncation here: modern cards hide their copy and the hero, the only
+        // modern truncation target, schedules its own scoped pass.
       };
       renderer.onTrackScroll = rowKey => this.scheduleDataHomePagination(rowKey);
       renderer.attach(this.getHomeViewport());

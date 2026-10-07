@@ -9,7 +9,6 @@ export function createHomeScreenMethods20() {
     LayoutPreferences,
     CollectionsStore,
     ProfileManager,
-    Platform,
     buildWatchedTitleIdSet,
     getSidebarProfileState,
     setModernSidebarPillIconOnly,
@@ -23,6 +22,22 @@ export function createHomeScreenMethods20() {
   } = internals;
 
   return {
+    // Suspended in cleanup together with its DOM. Resume schedules a sync, and a
+    // successful focus restore in mount syncs immediately.
+    resumePreservedDataWindow() {
+      const dataWindow = this.homeDataWindow;
+      if (
+        this.layoutMode !== "modern" ||
+        !dataWindow?.content?.isConnected ||
+        dataWindow.viewport !== this.getHomeViewport() ||
+        this.renderedDataHomeSettingsKey !== this.getDataHomeRenderSettingsKey()
+      ) {
+        return false;
+      }
+      dataWindow.resume();
+      this.buildDataHomeNavigation();
+      return true;
+    },
     async mount(params = {}, navigationContext = {}) {
       const mountStart = HOME_PERF_DEBUG ? homePerfNow() : 0;
       const isBackNavigation = Boolean(navigationContext?.isBackNavigation);
@@ -97,7 +112,11 @@ export function createHomeScreenMethods20() {
       const isHomeRouteReturn = Boolean(navigationContext?.isBackNavigation || (previousRoute && previousRoute !== "home"));
       let shouldRepaintPreservedHome = false;
       if (isHomeRouteReturn && this.hasLoadedOnce && Array.isArray(this.rows) && this.rows.length) {
-        const renderedCatalogRowKeys = getRenderedHomeCatalogRowKeys(this.container);
+        // The data window mounts only visible rows, so its logical rows are the
+        // rendered catalog sequence; the DOM query only fits fully rendered layouts.
+        const renderedCatalogRowKeys = this.homeDataWindow?.rows
+          ? this.homeDataWindow.rows.filter(row => row.kind !== "continue").map(row => row.rowKey)
+          : getRenderedHomeCatalogRowKeys(this.container);
         this.collections = CollectionsStore.get();
         this.rows = this.sortAndFilterRows(this.rows, this.collections);
         shouldRepaintPreservedHome = Boolean(
@@ -105,13 +124,9 @@ export function createHomeScreenMethods20() {
         );
       }
       const canResumePreservedTvHome = Boolean(
-        (Platform.isTizen() || Platform.isWebOS()) &&
         isHomeRouteReturn &&
         this.homeDomPreserved &&
-        this.hasLoadedOnce &&
-        Array.isArray(this.rows) &&
-        this.rows.length &&
-        this.container?.childNodes?.length &&
+        this.canPreserveRenderedTvHome() &&
         String(this.renderedLayoutMode || "") === String(this.layoutMode || "")
       );
       if (canResumePreservedTvHome) {
@@ -127,7 +142,8 @@ export function createHomeScreenMethods20() {
         setModernSidebarPillIconOnly(this.container, this.pillIconOnly);
         this.scheduleModernSidebarPillAutoCollapse();
         this.homeLoadToken = (this.homeLoadToken || 0) + 1;
-        if (shouldRepaintPreservedHome || (this.layoutMode === "modern" && !this.homeDataWindow)) {
+        const resumedDataWindow = !shouldRepaintPreservedHome && this.resumePreservedDataWindow();
+        if (!resumedDataWindow && (shouldRepaintPreservedHome || this.layoutMode === "modern")) {
           // The TV DOM was kept alive while the order screen was open. Repaint
           // only when its visible catalog sequence no longer matches the local
           // preference; unchanged returns keep the low-cost preserved path.
@@ -173,6 +189,11 @@ export function createHomeScreenMethods20() {
           mode: "resume"
         });
         return;
+      }
+      if (this.homeDataWindow?.suspended) {
+        // Not resuming the preserved DOM: keep the previous cold-render semantics.
+        this.homeDataWindow.destroy();
+        this.homeDataWindow = null;
       }
       this.homeDomPreserved = false;
       this.container.classList.remove("home-dom-preserved");

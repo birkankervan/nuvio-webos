@@ -36,15 +36,16 @@ function signature(node) {
   return node.nodeType === 1 ? node.outerHTML : node.textContent;
 }
 
-function snapshot(source) {
+function snapshot(source, withMarkup = true) {
   // Shallow nodes cannot retain entire detached markup trees through parentNode.
-  return { node: source.cloneNode(false), markup: signature(source) };
+  // A null markup only disables updateNode's unchanged-markup shortcut.
+  return { node: source.cloneNode(false), markup: withMarkup ? signature(source) : null };
 }
 
-function remember(node, source) {
-  sourceByNode.set(node, snapshot(source));
+function remember(node, source, withMarkup = true) {
+  sourceByNode.set(node, snapshot(source, withMarkup));
   const liveChildren = children(node);
-  children(source).forEach((child, index) => remember(liveChildren[index], child));
+  children(source).forEach((child, index) => remember(liveChildren[index], child, withMarkup));
 }
 
 export function registerHomeDomNodes(nodes) {
@@ -109,7 +110,7 @@ function updateAttributes(node, previous, next) {
 
 function updateNode(node, source, protectedNode) {
   const previous = sourceByNode.get(node);
-  if (previous.markup === signature(source)) return;
+  if (previous.markup !== null && previous.markup === signature(source)) return;
   if (node.nodeType === 1) {
     updateAttributes(node, previous.node, source);
     updateChildren(node, source, protectedNode);
@@ -175,6 +176,49 @@ function updateChildren(parent, source, protectedNode) {
       after = node;
     }
   }
+}
+
+function parseElement(document, markup) {
+  const source = document.createElement("div");
+  source.innerHTML = markup;
+  return source.firstElementChild;
+}
+
+/**
+ * Call after changing an element's children outside updateKeyedDom. Its stored
+ * markup, and that of its registered ancestors, no longer describes the DOM, so
+ * a later update must not take the unchanged-markup shortcut on them.
+ */
+export function invalidateKeyedMarkup(element) {
+  for (let node = element; node && sourceByNode.has(node); node = node.parentNode) {
+    sourceByNode.get(node).markup = null;
+  }
+}
+
+/** Change a keyed attribute on a registered node and its stored snapshot alike. */
+export function setKeyedAttribute(node, name, value) {
+  node.setAttribute(name, value);
+  sourceByNode.get(node)?.node.setAttribute(name, value);
+}
+
+/** Re-render one registered element from its own markup; only that markup is parsed. */
+export function patchKeyedNode(node, markup, { focusedNode = null } = {}) {
+  const next = sourceByNode.has(node) ? parseElement(node.ownerDocument, markup) : null;
+  if (!next) return false;
+  updateNode(node, next, focusedNode);
+  invalidateKeyedMarkup(node.parentNode);
+  return true;
+}
+
+/**
+ * Parse one element and register it so later keyed updates can reuse it. Its
+ * subtree is registered without serialized markup: serializing every new node
+ * costs more than the one full diff a later change to it would need.
+ */
+export function createKeyedNode(document, markup) {
+  const node = parseElement(document, markup);
+  if (node) remember(node, node, false);
+  return node;
 }
 
 export function updateKeyedDom(container, markup, { incremental = false, focusedNode = null, shellSelector = ".home-shell" } = {}) {

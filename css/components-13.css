@@ -213,6 +213,8 @@
 }
 
 .home-screen-shell {
+  /* Focus ring fade on Home cards; short on purpose (TV frame budget, user choice). */
+  --home-focus-ring-duration: 60ms;
   --home-sidebar-width: var(--legacy-sidebar-rail-width);
   --home-content-start: 48px;
   --home-row-gap: 16px;

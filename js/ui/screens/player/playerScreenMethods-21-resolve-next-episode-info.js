@@ -233,20 +233,24 @@ export function createPlayerScreenMethods21() {
       } catch (_) {
         // Route cleanup will make a second best-effort stop if native teardown throws.
       }
+      // A live IPTV channel has no detail or sources page; Back returns to the list.
+      const shouldReturnToIptv = !forceDetail && Boolean(this.params?.playIptv);
       const shouldReturnToLibrary = !forceDetail && this.params?.returnToLibraryOnBack === true;
       const shouldReturnToHome = !forceDetail && this.params?.returnToHomeOnBack === true;
-      const shouldReturnToStream = !shouldReturnToLibrary && !shouldReturnToHome && !forceDetail && this.shouldReturnToStreamOnBack();
-      const targetRoute = shouldReturnToHome
-        ? "home"
-        : shouldReturnToLibrary
-          ? "library"
-          : shouldReturnToStream
-            ? "stream"
-            : this.params?.itemId
-              ? "detail"
-              : "home";
+      const shouldReturnToStream = !shouldReturnToIptv && !shouldReturnToLibrary && !shouldReturnToHome && !forceDetail && this.shouldReturnToStreamOnBack();
+      const targetRoute = shouldReturnToIptv
+        ? "iptv"
+        : shouldReturnToHome
+          ? "home"
+          : shouldReturnToLibrary
+            ? "library"
+            : shouldReturnToStream
+              ? "stream"
+              : this.params?.itemId
+                ? "detail"
+                : "home";
       const targetParams =
-        targetRoute === "library"
+        targetRoute === "library" || targetRoute === "iptv"
           ? {}
           : targetRoute === "stream"
             ? streamParams

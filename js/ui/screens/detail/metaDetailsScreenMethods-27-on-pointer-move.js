@@ -86,13 +86,17 @@ export function createMetaDetailsScreenMethods27() {
     cleanup() {
       this.detailLoadToken = (this.detailLoadToken || 0) + 1;
       if (this._sectionsUpdateRaf) {
-        this._sectionsUpdateCancel?.(this._sectionsUpdateRaf);
+        // Detached call: cancelAnimationFrame throws "Illegal invocation" when
+        // invoked as a method of the screen object.
+        const cancelSectionsUpdate = this._sectionsUpdateCancel;
+        cancelSectionsUpdate?.(this._sectionsUpdateRaf);
       }
       this._sectionsUpdateRaf = null;
       this._sectionsUpdateCancel = null;
       this._pendingSectionsMeta = null;
       this._pendingSectionsFocusRestore = null;
       this.cancelTraktCommentsRequest();
+      this.cancelCanonicalDetailIdRequest?.();
       if (this.seasonSwitchTimer) {
         clearTimeout(this.seasonSwitchTimer);
         this.seasonSwitchTimer = null;

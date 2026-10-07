@@ -119,9 +119,9 @@
   background-color: transparent;
   overflow: hidden;
   transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    background-color 140ms ease;
+    border-color var(--home-focus-ring-duration) ease,
+    box-shadow var(--home-focus-ring-duration) ease,
+    background-color var(--home-focus-ring-duration) ease;
 }
 
 .home-screen-shell .home-poster-card.focused .home-poster-frame {
@@ -368,9 +368,9 @@
   background-position: center;
   background-size: cover;
   transition:
-    border-color 140ms ease,
-    box-shadow 140ms ease,
-    background-color 140ms ease;
+    border-color var(--home-focus-ring-duration) ease,
+    box-shadow var(--home-focus-ring-duration) ease,
+    background-color var(--home-focus-ring-duration) ease;
 }
 
 .home-screen-shell .home-continue-bg {

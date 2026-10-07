@@ -2,7 +2,7 @@ import { HomeRowMetrics } from "./homeRowMetrics.js";
 import { calculateHomeVirtualWindow } from "./homeVirtualWindow.js";
 import { resolveHomeLogicalFocus, moveHomeLogicalFocus } from "./homeLogicalFocus.js";
 import { getHomeFocusIdentity } from "./homeFocusPolicy.js";
-import { updateKeyedDom } from "../../components/keyedDomUpdate.js";
+import { updateKeyedDom, patchKeyedNode, createKeyedNode, invalidateKeyedMarkup, setKeyedAttribute } from "../../components/keyedDomUpdate.js";
 
 const indices = ranges => ranges.flatMap(({ start, end }) => Array.from({ length: end - start }, (_, index) => start + index));
 const number = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -167,23 +167,25 @@ export class HomeDataWindow {
     // Keep the old live focused card for the brief handoff to a newly mounted
     // target. It is released after the focus commit, never an entire prefix.
     if (focusedRowKey === row.rowKey) visible.add(focusedItemIndex);
-    const cards = [...visible].sort((a, b) => a - b).map(index => {
+    const cardParts = [...visible].sort((a, b) => a - b).map(index => {
       const item = row.items[index];
-      if (!item) return "";
+      if (!item) return null;
       const baseLeft = variable ? variable.getRowMetrics(String(index))?.offset || 0 : index * (dimension.width + this.gap);
       const left = baseLeft + (index > rowExpandedIndex && rowExpandedIndex >= 0 ? expandedExtra : 0);
       const markup = this.renderCardMarkup(row, item, index, rowIndex);
       // The renderer produces an article. Absolute coordinates preserve the
       // full scroll extent without offscreen element/spacer allocations.
-      return markup.replace(/<article\b/, `<article data-window-index="${index}" style="position:absolute;left:${left}px;top:0"`);
-    }).join("");
+      return { key: String(index), itemId: String(item.itemId || ""),
+        html: markup.replace(/<article\b/, `<article data-window-index="${index}" style="position:absolute;left:${left}px;top:0"`) };
+    }).filter(Boolean);
     const skeletons = row.loadingItems.map((item, index) => index < Math.ceil(viewportExtent / (dimension.width + this.gap)) + 1
       ? this.renderCardMarkup(row, item, -1, rowIndex).replace(/<article\b/, `<article style="position:absolute;left:${index * (dimension.width + this.gap)}px;top:0"`) : "").join("");
     const extent = Math.max(window.totalExtent + expandedExtra, row.loadingItems.length * (dimension.width + this.gap) - this.gap, 0);
     // Section metrics include a potentially wrapped header. Feeding them back
     // into track height would grow that height on every measurement pass.
     const height = Math.max(this.trackHeights.get(row.rowKey) || 0, dimension.height);
-    return { cards: cards + skeletons, extent, height: Math.max(1, height), offset: window.offset };
+    return { cards: cardParts.map(part => part.html).join("") + skeletons, cardParts: skeletons ? null : cardParts,
+      extent, height: Math.max(1, height), offset: window.offset };
   }
 
   renderCardMarkup(row, item, index, rowIndex) {
@@ -205,9 +207,22 @@ export class HomeDataWindow {
     return markup;
   }
 
+  verticalWindow(offset, height) {
+    return this.metrics.getWindow({ offset, viewportExtent: height, overscan: 160, focusedRowKey: this.focus?.rowKey || "" });
+  }
+
+  /** What scroll alone can change in markup(): mounted rows and their horizontal offsets. */
+  scrollWindowKey(window, width) {
+    return `${width}|${indices(window.ranges).map(index => {
+      const rowKey = this.rows[index]?.rowKey;
+      return `${index}:${this.trackStates.get(rowKey) || 0}`;
+    }).join(",")}`;
+  }
+
   markup({ offset = 0, width = this.width, height = this.height } = {}) {
     this.renderedCardKeys = new Set();
-    const window = this.metrics.getWindow({ offset, viewportExtent: height, overscan: 160, focusedRowKey: this.focus?.rowKey || "" });
+    const window = this.verticalWindow(offset, height);
+    this.lastScrollWindowKey = this.scrollWindowKey(window, width);
     const visible = new Set(indices(window.ranges));
     const focusedNode = this.viewport?.querySelector(".focusable.focused") || null;
     const focusedRowKey = focusedNode?.dataset.navRowKey || "";
@@ -221,20 +236,91 @@ export class HomeDataWindow {
     const expandedWidth = expandedNode && expandedRow && expandedIndex >= 0 && visible.has(expandedRow.index)
       ? expandedNode.offsetWidth : 0;
     const context = { focusedRowKey, focusedItemIndex, expandedRowKey, expandedIndex, expandedWidth };
-    const markup = [...visible].sort((a, b) => a - b).map(rowIndex => {
+    const rowParts = [...visible].sort((a, b) => a - b).map(rowIndex => {
       const row = this.rows[rowIndex];
       const geometry = this.metrics.getRowMetrics(row.rowKey);
       const track = this.rowWindow(row, rowIndex, width, context);
       const continueClass = row.kind === "continue" ? `home-row-continue home-row-continue-${row.cardStyle}` : "home-modern-row";
       const key = this.escapeAttribute(row.rowKey);
-      return `<section class="home-row ${continueClass}" data-row-key="${key}" data-row-index="${rowIndex}" style="position:absolute;top:${geometry.offset}px;left:0;width:100%;margin:0">
+      const shell = `<section class="home-row ${continueClass}" data-row-key="${key}" data-row-index="${rowIndex}" style="position:absolute;top:${geometry.offset}px;left:0;width:100%;margin:0">
         <div class="home-row-head"><h2 class="home-row-title">${this.renderTitle(row)}</h2></div>
         <div class="home-track${row.kind === "continue" ? " home-track-continue" : ""}" data-track-row-key="${key}" style="display:block;position:relative;gap:0;overflow-anchor:none">
-          <div class="home-data-track" style="position:relative;width:${track.extent}px;height:${track.height}px">${track.cards}</div>
-        </div></section>`;
-    }).join("");
+          <div class="home-data-track" style="position:relative;width:${track.extent}px;height:${track.height}px">`;
+      return { rowKey: row.rowKey, shell, cards: track.cardParts, html: `${shell}${track.cards}</div>
+        </div></section>` };
+    });
     for (const key of this.cardMarkupCache.keys()) if (!this.renderedCardKeys.has(key)) this.cardMarkupCache.delete(key);
-    return `<div class="home-data-window" style="position:relative;height:${window.totalExtent}px;flex-shrink:0;overflow-anchor:none">${markup}</div>`;
+    // Per-row parts let sync parse only the rows that changed.
+    this.lastWindowParts = { height: window.totalExtent, rows: rowParts };
+    return `<div class="home-data-window" style="position:relative;height:${window.totalExtent}px;flex-shrink:0;overflow-anchor:none">${rowParts.map(part => part.html).join("")}</div>`;
+  }
+
+  /** Patch mounted rows in place; false when the shell must be rebuilt by the full keyed update. */
+  patchWindowRows(parts, focusedNode) {
+    const shell = this.content.firstElementChild;
+    if (!this.rowPartsByKey || !shell?.classList.contains("home-data-window")) return false;
+    const liveRows = new Map(Array.from(shell.children, node => [node.dataset.rowKey, node]));
+    const wanted = new Set(parts.rows.map(part => part.rowKey));
+    // Rows leaving the window; an entering row reuses one so its scrolling track
+    // keeps its compositing layers instead of building new ones.
+    const departed = [...liveRows].filter(([rowKey]) => !wanted.has(rowKey)).map(([, node]) => node);
+    for (const part of parts.rows) {
+      const node = liveRows.get(part.rowKey);
+      const previous = this.rowPartsByKey.get(part.rowKey);
+      if (previous?.html === part.html && node) continue;
+      this.touchedRowKeys.add(part.rowKey);
+      if (!node) {
+        const reused = departed.pop();
+        if (!reused) shell.appendChild(createKeyedNode(shell.ownerDocument, part.html));
+        else if (!this.reuseRowNode(reused, part, focusedNode)) return false;
+      } else if (!(previous?.shell === part.shell && this.patchRowCards(node, previous, part, focusedNode)) &&
+          !patchKeyedNode(node, part.html, { focusedNode })) {
+        return false;
+      }
+    }
+    // Same as the full keyed update: rows left out of the window are removed even
+    // when focused; Home's commit path restores a disconnected focus.
+    departed.forEach(node => node.remove());
+    shell.style.height = `${parts.height}px`;
+    invalidateKeyedMarkup(shell);
+    return true;
+  }
+
+  /** Turn a departed row section into an entering row; its track elements stay alive. */
+  reuseRowNode(node, part, focusedNode) {
+    const track = node.querySelector(".home-track");
+    // Keyed matching pairs tracks by row key: retag first so the track is kept.
+    if (track) setKeyedAttribute(track, "data-track-row-key", part.rowKey);
+    if (!patchKeyedNode(node, part.html, { focusedNode })) return false;
+    // A kept track still shows the old row's horizontal position.
+    if (track) track.scrollLeft = this.trackStates.get(part.rowKey) || 0;
+    return true;
+  }
+
+  /** Same row shell: parse only entering or changed cards. Skeleton rows use the row patch. */
+  patchRowCards(node, previous, part, focusedNode) {
+    const track = node.querySelector(".home-data-track");
+    if (!track || !part.cards || !previous.cards) return false;
+    const previousByKey = new Map(previous.cards.map(card => [card.key, card]));
+    const liveCards = new Map(Array.from(track.children, card => [card.dataset.windowIndex, card]));
+    for (const { key, itemId, html } of part.cards) {
+      let card = liveCards.get(key);
+      liveCards.delete(key);
+      // A different item at this index must not inherit the old card's runtime
+      // state (focus, expansion, trailer); like the full keyed update, replace it.
+      const before = previousByKey.get(key);
+      if (card && before?.itemId !== itemId) {
+        card.remove();
+        card = null;
+      }
+      if (!card) track.appendChild(createKeyedNode(track.ownerDocument, html));
+      else if (before?.html !== html && !patchKeyedNode(card, html, { focusedNode })) return false;
+    }
+    // Absolute positions make DOM order irrelevant. rowWindow keeps the focused
+    // index in the window, so a card left out here is gone from the data.
+    liveCards.forEach(card => card.remove());
+    invalidateKeyedMarkup(track);
+    return true;
   }
 
   attach(viewport) {
@@ -249,9 +335,19 @@ export class HomeDataWindow {
     this.sync();
   }
 
-  sync() {
-    if (!this.content?.isConnected) return;
-    this.captureTrackStates();
+  /** scrollFrame: a scroll-driven frame; explicit callers always re-measure. */
+  sync({ scrollFrame = false } = {}) {
+    if (this.suspended || !this.content?.isConnected) return;
+    const expansionAnimating = Date.now() < Number(this.animateExpansionUntil || 0);
+    if (scrollFrame && !this.pendingScrollAnchor && !expansionAnimating) {
+      // Track scroll handlers keep trackStates current, so a scroll frame needs
+      // no scrollLeft reads; most spring frames leave the window unchanged.
+      const width = this.viewport.clientWidth || this.width;
+      const window = this.verticalWindow(this.viewport.scrollTop, this.viewport.clientHeight || this.height);
+      if (this.scrollWindowKey(window, width) === this.lastScrollWindowKey) return;
+    } else {
+      this.captureTrackStates();
+    }
     const pendingAnchor = this.pendingScrollAnchor;
     const pendingRow = pendingAnchor && this.metrics.getRowMetrics(pendingAnchor.rowKey);
     const maxScrollTop = Math.max(0, this.metrics.totalExtent - (this.viewport.clientHeight || this.height));
@@ -259,9 +355,16 @@ export class HomeDataWindow {
       ? Math.min(maxScrollTop, Math.max(0, pendingRow.offset + pendingAnchor.offset)) : this.viewport.scrollTop;
     const markup = this.markup({ offset: intendedScrollTop, width: this.viewport.clientWidth || this.width,
       height: this.viewport.clientHeight || this.height });
-    if (markup !== this.lastMarkup) {
-      updateKeyedDom(this.content, markup, { incremental: true, shellSelector: ".home-data-window",
-        focusedNode: this.viewport.querySelector(".focusable.focused") });
+    const markupChanged = markup !== this.lastMarkup;
+    if (markupChanged) {
+      const focusedNode = this.viewport.querySelector(".focusable.focused");
+      const parts = this.lastWindowParts;
+      this.touchedRowKeys = new Set();
+      if (!this.patchWindowRows(parts, focusedNode)) {
+        this.touchedRowKeys = null; // full update: every row may have changed
+        updateKeyedDom(this.content, markup, { incremental: true, shellSelector: ".home-data-window", focusedNode });
+      }
+      this.rowPartsByKey = new Map(parts.rows.map(part => [part.rowKey, part]));
       this.lastMarkup = markup;
       this.bindTracks();
       this.indexMountedNodes();
@@ -271,8 +374,13 @@ export class HomeDataWindow {
       this.pendingScrollAnchor = null;
       if (pendingRow) this.viewport.scrollTop = intendedScrollTop;
     }
+    // A scroll frame measures only rows it mounted or patched; explicit syncs
+    // re-measure everything (CSS-only size changes keep identical markup).
+    if (scrollFrame && !markupChanged && !expansionAnimating) return;
+    const measureOnly = scrollFrame && !expansionAnimating ? this.touchedRowKeys : null;
     let changed = false;
     this.content.querySelectorAll(".home-row[data-row-key]").forEach(node => {
+      if (measureOnly && !measureOnly.has(node.dataset.rowKey)) return;
       const row = this.rowByKey.get(node.dataset.rowKey)?.row;
       const card = node.querySelector(".home-content-card:not(.is-expanded)");
       if (row && row.kind !== "collection" && card?.offsetWidth && card?.offsetHeight) {
@@ -295,7 +403,7 @@ export class HomeDataWindow {
       }
       changed = this.metrics.setMeasuredHeight(node.dataset.rowKey, node.getBoundingClientRect().height) || changed;
     });
-    if (changed || Date.now() < Number(this.animateExpansionUntil || 0)) this.requestSync();
+    if (changed || expansionAnimating) this.requestSync();
   }
 
   bindTracks() {
@@ -304,11 +412,13 @@ export class HomeDataWindow {
     }
     this.content.querySelectorAll(".home-track").forEach(track => {
       if (this.trackHandlers.has(track)) return;
-      track.scrollLeft = this.trackStates.get(track.dataset.trackRowKey) || 0;
+      // A new track starts at 0; writing 0 would still force a layout.
+      const left = this.trackStates.get(track.dataset.trackRowKey) || 0;
+      if (left) track.scrollLeft = left;
       const handler = () => {
-        if (!track.isConnected || !this.rowByKey.has(track.dataset.trackRowKey)) return;
+        if (this.suspended || !track.isConnected || !this.rowByKey.has(track.dataset.trackRowKey)) return;
         this.trackStates.set(track.dataset.trackRowKey, track.scrollLeft);
-        this.requestSync(); this.onTrackScroll?.(track.dataset.trackRowKey);
+        this.requestSync({ scrollFrame: true }); this.onTrackScroll?.(track.dataset.trackRowKey);
       };
       track.addEventListener("scroll", handler, { passive: true });
       this.trackHandlers.set(track, handler);
@@ -328,9 +438,16 @@ export class HomeDataWindow {
     });
   }
 
-  requestSync() {
+  requestSync({ scrollFrame = false } = {}) {
+    // One frame serves all requests; any non-scroll request keeps it measuring.
+    this.frameMeasures ||= !scrollFrame;
     if (this.frame) return;
-    this.frame = requestAnimationFrame(() => { this.frame = 0; this.sync(); });
+    this.frame = requestAnimationFrame(() => {
+      const measures = this.frameMeasures;
+      this.frame = 0;
+      this.frameMeasures = false;
+      this.sync({ scrollFrame: !measures });
+    });
   }
 
   remember(node) {
@@ -360,6 +477,21 @@ export class HomeDataWindow {
     return { result, target: this.target(result) };
   }
 
+  /** Preserved hidden Home: keep rows, measurements and DOM; display:none must not be measured. */
+  suspend() {
+    if (this.frame) cancelAnimationFrame(this.frame);
+    this.frame = 0;
+    this.frameMeasures = false;
+    this.suspended = true;
+  }
+
+  resume() {
+    this.suspended = false;
+    // An anchor computed while hidden read scrollTop 0; the restore path owns scroll.
+    this.pendingScrollAnchor = null;
+    this.requestSync();
+  }
+
   destroy() {
     if (this.frame) cancelAnimationFrame(this.frame);
     this.trackHandlers.forEach((handler, track) => track.removeEventListener("scroll", handler));
@@ -383,6 +515,10 @@ export class HomeDataWindow {
     this.metrics.setRows([]);
     this.focus = null;
     this.lastMarkup = null;
+    this.lastWindowParts = null;
+    this.lastScrollWindowKey = null;
+    this.touchedRowKeys = null;
+    this.rowPartsByKey = null;
     this.renderCard = null;
     this.renderTitle = null;
   }

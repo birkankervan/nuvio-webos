@@ -4,6 +4,15 @@ export function createHomeScreenMethods30() {
   const { ScreenUtils, Platform } = internals;
 
   return {
+    canPreserveRenderedTvHome() {
+      return Boolean(
+        (Platform.isTizen() || Platform.isWebOS()) &&
+        this.hasLoadedOnce &&
+        Array.isArray(this.rows) &&
+        this.rows.length &&
+        this.container?.childNodes?.length
+      );
+    },
     cleanup() {
       this.pendingHomeDataChanges = null;
       if (this.detailScreenPrefetchTimer) clearTimeout(this.detailScreenPrefetchTimer);
@@ -44,8 +53,15 @@ export function createHomeScreenMethods30() {
       this.posterListPicker = null;
       this.persistCurrentFocusState();
       this.cancelDataHomePagination();
-      this.homeDataWindow?.destroy();
-      this.homeDataWindow = null;
+      const preserveRenderedTvHome = this.canPreserveRenderedTvHome();
+      if (preserveRenderedTvHome && this.homeDataWindow) {
+        // The preserved DOM is this renderer's output; keep it so a Back return
+        // resumes instead of re-rendering the whole Home.
+        this.homeDataWindow.suspend();
+      } else {
+        this.homeDataWindow?.destroy();
+        this.homeDataWindow = null;
+      }
       this.navModel = null;
       this.currentFocusedNode = null;
       this.lastMainFocus = null;
@@ -118,13 +134,6 @@ export function createHomeScreenMethods30() {
       }
       this.cachedModernPortraitPosterMetrics = null;
       this.cachedModernLandscapePosterMetrics = null;
-      const preserveRenderedTvHome = Boolean(
-        (Platform.isTizen() || Platform.isWebOS()) &&
-        this.hasLoadedOnce &&
-        Array.isArray(this.rows) &&
-        this.rows.length &&
-        this.container?.childNodes?.length
-      );
       if (preserveRenderedTvHome) {
         // Keep the rendered TV Home alive while another screen is shown. Rebuilding
         // a large catalog after display:none forces a full parse/layout/paint on

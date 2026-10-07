@@ -13,6 +13,7 @@ import { TizenCapabilities } from "../../platform/tizen/tizenCapabilities.js";
 import { RouteStateStore } from "./routeStateStore.js";
 import { Router } from "./routerState.js";
 import { LocalStore } from "../../core/storage/localStore.js";
+import { IPTV_ENABLED } from "../../config.js";
 
 import { createRouterMethods01 } from "./routerMethods-01-get-route-state-key.js";
 import { createRouterMethods02 } from "./routerMethods-02-complete-route-return-back-guard.js";
@@ -138,6 +139,7 @@ Object.assign(Router, {
     experienceModeSelection: ExperienceModeSelectionScreen,
     essentialAddonSetup: EssentialAddonSetupScreen,
     detail: createLazyRoute(() => import("../screens/detail/metaDetailsScreen.js"), "MetaDetailsScreen"),
+    ...(IPTV_ENABLED ? { iptv: createLazyRoute(() => import("../screens/iptv/iptvScreen.js"), "IptvScreen") } : {}),
     library: createLazyRoute(() => import("../screens/library/libraryScreen.js"), "LibraryScreen"),
     search: createLazyRoute(() => import("../screens/search/searchScreen.js"), "SearchScreen"),
     discover: createLazyRoute(() => import("../screens/search/discoverScreen.js"), "DiscoverScreen"),

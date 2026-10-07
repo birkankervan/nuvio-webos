@@ -5,9 +5,9 @@
   border-radius: var(--home-poster-radius);
   transition:
     height 180ms ease-out,
-    border-color 120ms ease,
-    box-shadow 120ms ease,
-    background-color 120ms ease;
+    border-color var(--home-focus-ring-duration) ease,
+    box-shadow var(--home-focus-ring-duration) ease,
+    background-color var(--home-focus-ring-duration) ease;
 }
 
 .home-screen-shell.home-layout-modern .home-poster-card.focused .home-poster-frame {

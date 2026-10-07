@@ -24,6 +24,10 @@ export function createPlayerControllerMethods20() {
       if (!active?.itemId) {
         return;
       }
+      // Live channels have no position to resume: no progress, watched or CW.
+      if (this.isLivePlaybackItemType(active.itemType)) {
+        return false;
+      }
 
       if (String(active.itemType || "").toLowerCase() === "cloud") {
         return this.flushCloudLibraryProgress(positionMs, durationMs, clear, active);

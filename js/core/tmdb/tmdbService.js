@@ -156,7 +156,8 @@ export const TmdbService = {
     }
   },
 
-  async tmdbToImdb(tmdbId, type = "movie") {
+  async tmdbToImdb(tmdbId, type = "movie", options = {}) {
+    const signal = options?.signal || null;
     const apiKey = String(TMDB_API_KEY || "").trim();
     const numericId = String(tmdbId || "").trim();
     if (!apiKey || !/^\d+$/.test(numericId)) {
@@ -168,13 +169,15 @@ export const TmdbService = {
     if (tmdbToImdbCache.has(key)) {
       return tmdbToImdbCache.get(key);
     }
-    if (tmdbToImdbInFlight.has(key)) {
+    // A caller-owned signal must not cancel a shared request for other
+    // consumers, so signalled lookups run on their own and never join one.
+    if (!signal && tmdbToImdbInFlight.has(key)) {
       return tmdbToImdbInFlight.get(key);
     }
 
     const url = `${TMDB_BASE_URL}/${contentType}/${encodeURIComponent(numericId)}/external_ids?api_key=${encodeURIComponent(apiKey)}`;
     const request = (async () => {
-      const data = await fetchJson(url);
+      const data = await fetchJson(url, { signal });
       if (!data) return null;
       const imdbId = String(data?.imdb_id || "").trim();
       if (!/^tt\d+$/i.test(imdbId)) {
@@ -184,6 +187,9 @@ export const TmdbService = {
       imdbToTmdbCache.set(lookupKey(imdbId, contentType), numericId);
       return imdbId;
     })();
+    if (signal) {
+      return request;
+    }
     tmdbToImdbInFlight.set(key, request);
     try {
       return await request;

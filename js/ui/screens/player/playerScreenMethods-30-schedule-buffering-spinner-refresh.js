@@ -39,6 +39,14 @@ export function createPlayerScreenMethods30() {
       );
     },
     enableStartupAudioGate({ allowNativePlayback = false, maxWaitMs = 0 } = {}) {
+      if (PlayerController.isLivePlaybackItemType?.(this.params?.itemType)) {
+        // Live TS/HLS may never report audio tracks on webOS; a gate waiting for
+        // a track preference would keep the channel paused behind the loading
+        // logo (black screen). Live channels start without the gate.
+        this.startupAudioGateActive = false;
+        PlayerController.setStartupAudioGate?.(false, { resume: true });
+        return;
+      }
       this.startupAudioGateActive = true;
       this.startupAudioGateAllowsNativePlayback = Boolean(allowNativePlayback);
       const boundedWaitMs = Math.max(0, Number(maxWaitMs || 0));

@@ -212,7 +212,7 @@ export function createMetaDetailsScreenMethods04() {
       this.commentsRequestController?.abort();
       this.commentsRequestController = null;
     },
-    async loadTraktComments({ force: _force = false, append = false } = {}) {
+    async loadTraktComments({ force = false, append = false } = {}) {
       if (!TraktSettingsStore.get().showMetaComments || !TraktAuthService.isAuthenticated() || !this.supportsTraktComments(this.meta)) {
         this.cancelTraktCommentsRequest();
         this.commentsItems = [];
@@ -225,11 +225,19 @@ export function createMetaDetailsScreenMethods04() {
       }
       const page = append ? Number(this.commentsPage || 0) + 1 : 1;
       if (append && this.commentsPageCount > 0 && page > this.commentsPageCount) return;
-      this.cancelTraktCommentsRequest();
-      const requestToken = this.commentsRequestToken;
       const detailToken = this.detailLoadToken;
       const target = this.resolveTraktCommentsTarget(this.meta);
       const mode = this.commentsMode;
+      // Base and enrichment passes both ask for page 1; reuse a pending or
+      // loaded result for the same target. A changed target (enriched ids)
+      // still reloads, and explicit retry/mode switches pass force.
+      const firstPageKey = `${detailToken}|${mode}|${target?.path || ""}`;
+      if (!force && !append && firstPageKey === this.commentsFirstPageKey) {
+        return;
+      }
+      this.cancelTraktCommentsRequest();
+      const requestToken = this.commentsRequestToken;
+      if (!append) this.commentsFirstPageKey = firstPageKey;
       const controller = typeof AbortController === "function" ? new AbortController() : null;
       this.commentsRequestController = controller;
       const isCurrent = () =>
@@ -254,6 +262,7 @@ export function createMetaDetailsScreenMethods04() {
         this.commentsError = "";
       } catch (error) {
         if (!isCurrent()) return;
+        if (!append) this.commentsFirstPageKey = null;
         console.warn("Trakt comments load failed", error);
         this.commentsError = t("detail_comments_error", {}, "Could not load Trakt comments.");
       } finally {

@@ -1,5 +1,11 @@
 import * as internals from "./homeScreenContext.js";
 
+const lastTruncationByNode = new WeakMap();
+
+function rememberTruncation(node) {
+  lastTruncationByNode.set(node, { text: node.textContent, box: `${node.clientWidth}x${node.clientHeight}` });
+}
+
 export function createHomeScreenMethods14() {
   const { Router, limitTextToWordCount, applyTrailerAudioPreferences } = internals;
 
@@ -159,11 +165,19 @@ export function createHomeScreenMethods14() {
         if (!fullText) {
           return;
         }
+        // Our last result still in place, in the same box, is still correct;
+        // skip the reflow-heavy search below.
+        const box = `${node.clientWidth}x${node.clientHeight}`;
+        const last = lastTruncationByNode.get(node);
+        if (last && last.text === currentText && last.box === box) {
+          return;
+        }
         node.dataset.fullText = fullText;
         node.textContent = wordTrimmed ? `${fullText}...` : fullText;
         const fits = node.scrollWidth <= node.clientWidth + 1 && node.scrollHeight <= node.clientHeight + 1;
         if (fits) {
           node.classList.toggle("is-truncated", wordTrimmed);
+          rememberTruncation(node);
           return;
         }
 
@@ -183,6 +197,7 @@ export function createHomeScreenMethods14() {
         const finalText = `${fullText.slice(0, Math.max(0, low)).trimEnd()}${ellipsis}`;
         node.textContent = finalText;
         node.classList.add("is-truncated");
+        rememberTruncation(node);
       });
     },
     applyModernHeroDescriptionBounds(root = null) {

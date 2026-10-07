@@ -298,7 +298,7 @@ export function createHomeScreenMethods19() {
           this.homeViewportScrollFrame = requestAnimationFrame(() => {
             this.homeViewportScrollFrame = 0;
             this.homeRowVirtualizer?.sync();
-            this.homeDataWindow?.sync();
+            this.homeDataWindow?.sync({ scrollFrame: true });
             if (this.shouldSuspendModernViewportFocusSync()) {
               return;
             }

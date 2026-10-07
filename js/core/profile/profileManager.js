@@ -197,6 +197,10 @@ export const ProfileManager = {
       return false;
     }
     LocalStore.set(PROFILES_KEY, nextProfiles);
+    // IPTV credentials belong to the profile; loaded lazily to keep startup free of IPTV code.
+    import("../../data/local/iptvSourcesStore.js")
+      .then(({ IptvSourcesStore }) => IptvSourcesStore.clearProfile(normalizedId))
+      .catch((error) => console.warn("IPTV profile cleanup failed", error?.name || "error"));
     if (this.getActiveProfileId() === normalizedId) {
       LocalStore.set(ACTIVE_PROFILE_ID_KEY, "1");
     }

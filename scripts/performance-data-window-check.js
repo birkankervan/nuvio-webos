@@ -120,6 +120,47 @@ export async function run() {
     check(!root.querySelector('[data-item-id="row-0-appended"]'), "offscreen appended item received markup");
     assertMountedOnly();
 
+    // A small shift keeps the cards that stay visible in the same row.
+    const stayingCard = changedTrack.querySelector('[data-item-id="row-0-item-3"]');
+    changedTrack.scrollLeft = 2 * (212 + 24);
+    changedTrack.dispatchEvent(new Event("scroll"));
+    await frames();
+    check(Boolean(stayingCard) && changedTrack.querySelector('[data-item-id="row-0-item-3"]') === stayingCard,
+      "small horizontal shift replaced a card that stayed visible");
+    // A different item at the same index gets a fresh card, not the old node's state.
+    stayingCard.classList.add("is-expanded");
+    const swappedItems = renderer.rowByKey.get("row-0").row.items.map((item, index) => index === 3
+      ? { ...item, itemId: "row-0-swapped", source: { ...item.source, id: "row-0-swapped", name: "Swapped" } } : item);
+    renderer.setRows(renderer.rows.map(row => row.rowKey === "row-0" ? { ...row, items: swappedItems } : row), renderer.focus,
+      { dirtyItems: new Set(["row-0\u0000row-0-item-3"]) });
+    renderer.sync();
+    await frames();
+    const swappedCard = changedTrack.querySelector('[data-window-index="3"]');
+    check(!stayingCard.isConnected && swappedCard && swappedCard !== stayingCard && !swappedCard.classList.contains("is-expanded"),
+      "a swapped item reused the previous card node and its runtime state");
+    // Later checks mutate changedRows in place; hand those row objects back.
+    renderer.setRows(changedRows, renderer.focus, { dirtyRows: new Set(["row-0"]) });
+    renderer.sync();
+    await frames();
+
+    // A horizontal window shift re-renders only its own row: sibling row and
+    // card nodes keep identity, the focused card stays connected.
+    changedTrack.scrollLeft = 20 * (212 + 24);
+    changedTrack.dispatchEvent(new Event("scroll"));
+    await frames();
+    check(Boolean(changedTrack.querySelector('[data-item-id="row-0-item-22"]')), "horizontal shift did not mount the new window");
+    check(root.querySelector('[data-row-key="row-1"]') === unchangedRow, "horizontal shift replaced a sibling row node");
+    check(root.querySelector('[data-item-id="row-1-item-0"]') === unchangedCard, "horizontal shift replaced a sibling card node");
+    check(focusBeforeUpdate.isConnected && document.activeElement === focusBeforeUpdate, "horizontal shift lost the focused card");
+    assertMountedOnly();
+    changedTrack.scrollLeft = updateScrollLeft;
+    changedTrack.dispatchEvent(new Event("scroll"));
+    await frames();
+    // Like setFocusedNode, release the manual focus class once this scenario ends;
+    // retained card nodes would otherwise keep a stale second "focused" card.
+    focusBeforeUpdate.classList.remove("focused");
+    focusBeforeUpdate.blur();
+
     const rowZeroCalls = renderedByRow.get("row-0") || 0;
     changedRows[0].sourceRowIndex = 7;
     renderer.sync();
@@ -268,10 +309,17 @@ export async function run() {
       "Back requested scroll was overwritten by previous mounted track state");
     check(renderer.captureTrackStates()["row-17"] === savedTrackLeft, "Back numeric scroll snapshot was overwritten");
 
+    const tracksBeforeVertical = new Set(root.querySelectorAll(".home-track"));
     viewport.scrollTop = renderer.metrics.getRowMetrics("row-17").offset;
     renderer.sync();
     await frames();
     check(root.querySelector('[data-row-key="row-17"]'), "vertical scroll did not mount visible distant row");
+    const tracksAfterVertical = [...root.querySelectorAll(".home-track")];
+    check(tracksAfterVertical.some(track => tracksBeforeVertical.has(track)),
+      "entering rows built new tracks instead of reusing departed ones");
+    check(tracksAfterVertical.every(track => track.dataset.trackRowKey === track.closest(".home-row").dataset.rowKey &&
+      Math.abs(track.scrollLeft - (renderer.trackStates.get(track.dataset.trackRowKey) || 0)) <= 1),
+      "a reused track kept the previous row's key or horizontal position");
     check(!root.querySelector('[data-row-key="row-0"]'), "old offscreen row remains mounted after scroll");
     assertMountedOnly();
     const next = renderer.move("right");

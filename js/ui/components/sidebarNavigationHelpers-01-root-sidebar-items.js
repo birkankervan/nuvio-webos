@@ -12,6 +12,8 @@ import { I18n } from "../../i18n/index.js";
 
 import { getTvRuntimePerformanceProfile } from "../../platform/tvRuntimePerformance.js";
 
+import { IPTV_ENABLED } from "../../config.js";
+
 export const ROOT_SIDEBAR_ITEMS = [
   {
     action: "gotoHome",
@@ -30,6 +32,16 @@ export const ROOT_SIDEBAR_ITEMS = [
     viewBox: "0 0 20 20",
     iconMarkup:
       '<path fill-rule="evenodd" d="M4 9a5 5 0 1110 0A5 5 0 014 9zm5-7a7 7 0 104.2 12.6.999.999 0 00.093.107l3 3a1 1 0 001.414-1.414l-3-3a.999.999 0 00-.107-.093A7 7 0 009 2z"/>'
+  },
+  {
+    action: "gotoIptv",
+    route: "iptv",
+    labelKey: "sidebar.iptv",
+    label: "IPTV",
+    iconType: "svg",
+    viewBox: "0 0 24 24",
+    iconMarkup:
+      '<path d="M4 6.5h16c.83 0 1.5.67 1.5 1.5v9c0 .83-.67 1.5-1.5 1.5H4c-.83 0-1.5-.67-1.5-1.5V8c0-.83.67-1.5 1.5-1.5Zm0 1.5v9h16V8H4Zm4.47-5.53L12 6l3.53-3.53 1.06 1.06L13.12 7h-2.24L7.41 3.53l1.06-1.06ZM8 20h8v1.5H8V20Z"/>'
   },
   {
     action: "gotoLibrary",
@@ -59,11 +71,15 @@ export const DISCOVER_SIDEBAR_ITEM = {
   iconName: "explore"
 };
 
+const ENABLED_ROOT_SIDEBAR_ITEMS = IPTV_ENABLED ? ROOT_SIDEBAR_ITEMS : ROOT_SIDEBAR_ITEMS.filter((item) => item.route !== "iptv");
+
+// Home, Search, [Discover], IPTV, Library, Settings.
 export function sidebarItems(layout = {}) {
+  const items = ENABLED_ROOT_SIDEBAR_ITEMS;
   if (String(layout?.discoverLocation || "in_search") !== "in_sidebar") {
-    return ROOT_SIDEBAR_ITEMS;
+    return items;
   }
-  return [ROOT_SIDEBAR_ITEMS[0], ROOT_SIDEBAR_ITEMS[1], DISCOVER_SIDEBAR_ITEM, ...ROOT_SIDEBAR_ITEMS.slice(2)];
+  return [items[0], items[1], DISCOVER_SIDEBAR_ITEM, ...items.slice(2)];
 }
 
 export const sidebarAvatarCatalogPromises = new Map();

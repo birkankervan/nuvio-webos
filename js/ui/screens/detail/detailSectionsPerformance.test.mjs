@@ -19,7 +19,11 @@ test("detail section updates coalesce and departed callbacks cannot affect the n
   let route = "detail";
   try {
     globalThis.requestAnimationFrame = callback => { callbacks.set(++nextId, callback); return nextId; };
-    globalThis.cancelAnimationFrame = id => cancelled.push(id);
+    globalThis.cancelAnimationFrame = function (id) {
+      // Mirrors the browser: a native cancelAnimationFrame bound to another object throws.
+      if (this && this !== globalThis) throw new TypeError("Illegal invocation");
+      cancelled.push(id);
+    };
     Router.getCurrent = () => route;
     const ctx = {
       ...createMetaDetailsScreenMethods08(),

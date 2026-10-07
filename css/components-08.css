@@ -24,10 +24,6 @@
 
 /* Collapsible sidebar takes no space — no margin needed */
 
-.home-shell:has(.home-sidebar[data-collapsible="true"]) .home-main {
-  margin-left: 0;
-}
-
 .home-shell.has-collapsible-sidebar .home-main {
   margin-left: 0;
 }

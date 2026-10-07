@@ -168,10 +168,6 @@
   transition: opacity 350ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.home-shell:has(.root-sidebar-legacy.expanded)::before {
-  opacity: 1;
-}
-
 .home-shell.has-expanded-sidebar::before {
   opacity: 1;
 }

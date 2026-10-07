@@ -1,0 +1,375 @@
+/* IPTV screen. Tokens from base.css; focus language mirrors Library/Search
+   (border + elevated background, no outer glow, no transform on recycled nodes). */
+
+.home-main.iptv-main {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 36px 64px 28px 96px;
+  overflow: hidden;
+  color: var(--text-color);
+  background: var(--bg-color);
+}
+
+.tizen-tv .home-main.iptv-main {
+  height: 100%;
+}
+
+/* Header ------------------------------------------------------------------ */
+
+.iptv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  margin-bottom: 24px;
+}
+
+.iptv-title-block {
+  min-width: 0;
+}
+
+.iptv-title {
+  margin: 0;
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+
+.iptv-source-name {
+  margin-top: 8px;
+  font-size: 22px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.iptv-notice {
+  min-height: 24px;
+  margin-top: 4px;
+  font-size: 18px;
+  color: var(--error-color);
+}
+
+.iptv-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.iptv-search,
+.iptv-form-input {
+  height: 64px;
+  padding: 0 24px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 24px;
+  outline: none;
+}
+
+.iptv-search {
+  width: 420px;
+}
+
+.iptv-search::placeholder,
+.iptv-form-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.iptv-search.focused,
+.iptv-search:focus,
+.iptv-form-input.focused,
+.iptv-form-input:focus {
+  border-color: var(--focus-color);
+  background: var(--focus-bg);
+}
+
+.iptv-btn {
+  height: 64px;
+  padding: 0 28px;
+  border: 2px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--card-bg);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 22px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.iptv-btn.focused {
+  border-color: var(--focus-color);
+  background: var(--focus-bg);
+}
+
+.iptv-btn-primary {
+  background: var(--secondary-color);
+  color: var(--on-secondary);
+}
+
+.iptv-btn-primary.focused {
+  background: var(--secondary-variant);
+  border-color: var(--focus-color);
+}
+
+.iptv-btn.is-danger {
+  border-color: var(--error-color);
+  background: var(--error-bg);
+}
+
+.iptv-btn:disabled {
+  opacity: 0.6;
+}
+
+/* Body ---------------------------------------------------------------------- */
+
+.iptv-body {
+  display: flex;
+  flex: 1;
+  gap: 32px;
+  min-height: 0;
+}
+
+.iptv-categories {
+  flex: 0 0 340px;
+  min-height: 0;
+}
+
+.iptv-channels {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  padding-bottom: 36px;
+}
+
+.iptv-viewport {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+}
+
+.iptv-vlist-track {
+  will-change: transform;
+}
+
+/* Category rows ------------------------------------------------------------------ */
+
+.iptv-category {
+  padding: 5px 0;
+  box-sizing: border-box;
+}
+
+.iptv-category-box {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 24px;
+  border: 2px solid transparent;
+  border-radius: 14px;
+  color: var(--text-secondary);
+  font-size: 24px;
+  box-sizing: border-box;
+}
+
+.iptv-category-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.iptv-category.is-selected .iptv-category-box {
+  background: var(--card-bg);
+  color: var(--text-color);
+}
+
+.iptv-category.focused .iptv-category-box {
+  border-color: var(--focus-color);
+  background: var(--focus-bg);
+  color: var(--text-color);
+}
+
+/* Channel cards -------------------------------------------------------------------- */
+
+.iptv-card {
+  padding: 8px;
+  box-sizing: border-box;
+}
+
+.iptv-card-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: 100%;
+  padding: 0 20px;
+  border: 2px solid transparent;
+  border-radius: var(--tv-card-radius);
+  background: var(--card-bg);
+  box-sizing: border-box;
+}
+
+.iptv-card.focused .iptv-card-box {
+  border-color: var(--focus-color);
+  background: var(--focus-bg);
+}
+
+.iptv-card-logo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 96px;
+  width: 96px;
+  height: 96px;
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+
+.iptv-card-initial {
+  font-size: 40px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.iptv-card-img {
+  display: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.iptv-card.has-logo .iptv-card-img {
+  display: block;
+}
+
+.iptv-card.has-logo .iptv-card-initial {
+  display: none;
+}
+
+.iptv-card-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.iptv-card-name {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+
+.iptv-card-number {
+  margin-top: 6px;
+  font-size: 18px;
+  color: var(--text-tertiary);
+}
+
+.iptv-card-fav {
+  display: none;
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 26px;
+  line-height: 1;
+  color: var(--secondary-color);
+}
+
+.iptv-card.is-favorite .iptv-card-fav {
+  display: block;
+}
+
+/* Status / hint ----------------------------------------------------------------------- */
+
+.iptv-status {
+  position: absolute;
+  inset: 0 0 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background: rgb(var(--bg-color-rgb) / 0.88);
+  text-align: center;
+}
+
+.iptv-status[hidden] {
+  display: none;
+}
+
+.iptv-status-text {
+  max-width: 720px;
+  font-size: 26px;
+  color: var(--text-secondary);
+}
+
+.iptv-hint {
+  position: absolute;
+  right: 4px;
+  bottom: 0;
+  font-size: 18px;
+  color: var(--text-tertiary);
+}
+
+/* Account form ---------------------------------------------------------------------------- */
+
+.home-main.iptv-form-main {
+  align-items: center;
+  justify-content: center;
+}
+
+.iptv-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(680px, 100%);
+}
+
+.iptv-form-title {
+  margin: 0;
+  font-size: 44px;
+  font-weight: 600;
+}
+
+.iptv-form-hint {
+  margin: 0 0 12px;
+  font-size: 22px;
+  color: var(--text-secondary);
+}
+
+.iptv-form-label {
+  margin-top: 8px;
+  font-size: 20px;
+  color: var(--text-secondary);
+}
+
+.iptv-form-input {
+  width: 100%;
+}
+
+.iptv-form .iptv-btn {
+  align-self: flex-start;
+}
+
+.iptv-form-error {
+  min-height: 28px;
+  font-size: 20px;
+  color: var(--error-color);
+}
+
+.iptv-form-actions {
+  display: flex;
+  gap: 14px;
+}

@@ -34,6 +34,16 @@ export function createPlayerScreenMethods01() {
   } = internals;
 
   return {
+    async resolveIptvStreamUrl({ sourceId, channelId } = {}) {
+      try {
+        const { IptvRepository } = await import("../../../data/repository/iptvRepository.js");
+        return IptvRepository.resolveChannelPlaybackUrl(sourceId, channelId);
+      } catch (error) {
+        // Codes only: the URL carries credentials.
+        console.warn("IPTV stream resolve failed", error?.code || error?.name || "error");
+        return null;
+      }
+    },
     async mount(params = {}) {
       streamRepository.setLocalPluginSearchPaused(false);
       this.container = document.getElementById("player");
@@ -71,6 +81,12 @@ export function createPlayerScreenMethods01() {
         }
       }
       this.params = params;
+      if (params.playIptv) {
+        const streamUrl = await this.resolveIptvStreamUrl(params.playIptv);
+        if (this.playerMountToken !== mountToken || !this.playerRouteActive) return;
+        // Player memory only: the router keeps the id-only params it was given.
+        if (streamUrl) params = this.params = { ...params, streamUrl };
+      }
       this.trackPreferenceContentId = this.getTrackPreferenceContentId();
       this.subtitleDelayPreferenceVideoId = this.getSubtitleDelayPreferenceVideoId();
       this.rememberedAudioTrackPreference = TrackPreferencesStore.getAudio(this.trackPreferenceContentId);

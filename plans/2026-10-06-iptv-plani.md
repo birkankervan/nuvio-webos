@@ -27,7 +27,13 @@ hatasına çevrilmez.
 Sonra: M3U URL import (aynı kanal/ekran/player sözleşmesi); EPG şimdi/sonraki,
 ardından kısa günlük liste. EPG hatası liste ve oynatmayı bozmaz.
 
-Kapsam dışı (bilinçli): sağlayıcı VOD/dizi, kayıt, catch-up/timeshift, haftalık
+Canlı MVP'den sonra, M3U'dan önce (kullanıcı kararı 2026-10-07): sağlayıcı
+VOD ve dizi kataloğu (IPTV-10). Hesapta 23.972 film (mkv/mp4/avi) ve 4.684
+dizi var; webOS `<video>` mkv ve mp4 oynatıyor (mkv ilk oynatma 5,6-7,2 sn,
+mp4 0,5-1 sn). Mevcut Nuvio player (ses/altyazı seçimi) kullanılır; VOD'da
+kaldığı yerden devam vardır, canlıda yoktur.
+
+Kapsam dışı (bilinçli): kayıt, catch-up/timeshift, haftalık
 iki eksenli rehber, cloud sync. Aşağıdakiler MVP dışı ama sonraki sürüm adayıdır,
 gerekçe: önce temel liste/oynatma kararlılığı ölçülecek.
 - Player içinde CH+/CH- zapping ve kanal numarası girişi (kodda kanal tuşu desteği yok).
@@ -114,6 +120,29 @@ Sonuçlar bu plana ve panoya yazılmadan IPTV-02 dosya sınırı kilitlenmez.
 - **S3 Akış formatı:** aynı kanal için `.m3u8` ve `.ts` URL'leri mevcut player
   engine'lerinde (webOS native/HLS, Tizen AVPlay) ilk kare ve kararlılık.
   Varsayılan çıkış formatı bu sonuçla seçilir.
+
+### S1-S3 sonuçları — webOS (nuvio-lg-145, 2026-10-07)
+
+Gerçek kullanıcı test hesabıyla (bilgiler yalnız gitignore'lu `.env` içinde).
+Tizen cihazı henüz yok; Tizen sonuçları açık.
+
+- **S1:** uygulama `file:` origin'inden doğrudan `fetch` çalışıyor (CORS/mixed
+  content engeli yok, response type basic). Karar webOS: doğrudan fetch;
+  servis proxy'si gerekmiyor. Yanlış bilgi `auth:0` ile 200 döner.
+- **Hesap:** `max_connections` 1, `allowed_output_formats` m3u8+ts, timezone
+  Europe/Istanbul. Tek bağlantı limiti gerçek: kanal değişiminde eski oturum
+  kapanmadan yenisi açılmaz (1,5 sn arayla ardışık 6 açılış sorunsuz).
+- **S2:** 29 kategori, 1693 kanal, 488 KB, gövde ~230 ms, parse 5,6 ms; 1445
+  kanalda logo, 248'inde epg_channel_id. Çoğaltılmış listeyle parse: 10k
+  kanal 2,8 MB 55 ms, 20k 5,6 MB 91 ms, 50k 14 MB 262 ms; hafif normalize
+  2-8 ms. Karar: tek `get_live_streams` yüklemesi 50k kanal / 20 MiB'ye kadar
+  (yükleme ekranında tek seferlik iş), aşımda kategori bazlı yükleme.
+- **S3:** webOS `<video>` m3u8 ve ts'yi 1080p oynatıyor. İlk oynatma: ts
+  745-913 ms, m3u8 915-1418 ms (3 kanal). DÜZELTME (2026-10-07, 20 sn test):
+  webOS progressive canlı `.ts`'yi sonlu dosya gibi oynatıp ~4,8 sn sonra
+  `ended` veriyor (player canlıda yeniden başlatınca sonsuz döngü); `.m3u8`
+  20 sn kesintisiz. Karar: varsayılan `m3u8`, `ts` yalnız hesap HLS'e izin
+  vermiyorsa. 3 sn ilk kare hedefi karşılanıyor.
 
 ## Xtream sözleşmesi (IPTV-02)
 
@@ -222,7 +251,8 @@ ortak player/router/sidebar/build/i18n dosyalarında aynı anda tek edit sahibi.
 | IPTV-03R | Ortak entegrasyon | root: `router.js`, `sidebarNavigationHelpers-01-root-sidebar-items.js`, sidebar action/shell, i18n, `js/config.js` bayrağı, build wiring | IPTV-03 | Sidebar sıra testi (iki Discover modu), bayrak kapalı/açık, lazy route |
 | IPTV-04 | Player canlı entegrasyonu | player ajanı: `playerScreenMethods-01-mount.js`, controller methods-17/-20, scrobble start, test | IPTV-02/03 | Live progress/CW/scrobble çağrı sayısı 0; URL route/history/candidates/persist/diagnostic'te yok; VOD regresyonu |
 | IPTV-05 | Xtream MVP TV kabulü | root: test/lint/paket/install, webOS + Tizen | IPTV-03R, IPTV-04 | Kabul bölümündeki MVP maddeleri iki platformda |
-| IPTV-06 | M3U import | data ajanı parser/test; UI formu ayrı sahip | IPTV-05 | BOM/CRLF/EXTINF/kimlik/limit/iptal fixture + gerçek M3U TV kabulü |
+| IPTV-10 | Xtream VOD + dizi kataloğu ve oynatma | data + UI ajanları; player root review | IPTV-05 | Kategori/arama, mkv/mp4 oynatma, VOD resume, büyük liste stratejisi (24k film) |
+| IPTV-06 | M3U import | data ajanı parser/test; UI formu ayrı sahip | IPTV-10 | BOM/CRLF/EXTINF/kimlik/limit/iptal fixture + gerçek M3U TV kabulü |
 | IPTV-07 | EPG şimdi/sonraki + günlük liste | data ajanı XMLTV/API adapter/test; UI ayrı sahip | IPTV-06 | Eşleme, timezone/DST, bounded data, EPG'den bağımsız playback |
 | IPTV-08 | Tam regresyon | root | IPTV-07 | Xtream + M3U + EPG ve auth/profil/addon/VOD birlikte, iki platform |
 | IPTV-09 | QR/telefon kurulumu (ayrı) | service ajanı (spike sonrası dosya listesi); UI/bridge ayrı sahip | IPTV-05 | QR kabul maddeleri, gerçek telefon + iki platform |
@@ -261,8 +291,9 @@ kare sayılmaz.
 
 ## Açık kararlar ve tam sonraki adım
 
-- S1-S3 sonuçları: transport, liste tavanı, varsayılan akış formatı.
+- S1-S3 webOS kapandı (yukarıda). Tizen S1-S3 cihaz bulununca.
 - IPTV-09 spike: LAN listener iki platformda mümkün mü.
 
-Tam sonraki adım: TV-01 performans kabulünü kapatmak, ardından IPTV-S
-spike'larını webOS ve Tizen'de çalıştırıp sonuçları bu belgeye yazmak.
+Performans fazı kullanıcı kararıyla durduruldu (TV-01 kalan maddeleri IPTV
+sonrası). Tam sonraki adım: IPTV-02 Xtream veri/credential/transport
+katmanı (doğrudan fetch, ts varsayılan, 50k/20 MiB tavan).

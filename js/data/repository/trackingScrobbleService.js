@@ -12,16 +12,17 @@ export const TrackingScrobbleService = {
     return enabledProviders().length > 0;
   },
 
+  // A null context means "not scrobblable" (e.g. a live channel).
   start(context) {
-    enabledProviders().forEach((provider) => provider.start(context));
+    if (context) enabledProviders().forEach((provider) => provider.start(context));
   },
 
   pause(context) {
-    enabledProviders().forEach((provider) => provider.pause(context));
+    if (context) enabledProviders().forEach((provider) => provider.pause(context));
   },
 
   stop(context) {
-    enabledProviders().forEach((provider) => provider.stop(context));
+    if (context) enabledProviders().forEach((provider) => provider.stop(context));
   },
 
   cancel() {

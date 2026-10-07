@@ -16,7 +16,8 @@ export function createPlayerScreenMethods07() {
     buildLocalizedParentalWarnings,
     normalizePlayableImdbId,
     normalizePlayableTmdbId,
-    normalizePlayableTraktId
+    normalizePlayableTraktId,
+    PlayerController
   } = internals;
 
   return {
@@ -248,6 +249,8 @@ export function createPlayerScreenMethods07() {
       return options.find((option) => describe(option).language.split("-")[0] === targetBase) || null;
     },
     buildScrobbleContext() {
+      // Trakt/Simkl have nothing to scrobble for a live channel.
+      if (PlayerController.isLivePlaybackItemType(this.params?.itemType)) return null;
       const identity = this.buildPlaybackIdentityContext();
       const currentSec = this.getPlaybackCurrentSeconds();
       const durationSec = this.getPlaybackDurationSeconds();

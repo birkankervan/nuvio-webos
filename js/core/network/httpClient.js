@@ -101,10 +101,13 @@ function waitWithAbort(delayMs, signal) {
 
 async function fetchWithBackendRetry(url, fetchInit, method) {
   const safeRetry = isSafeBackendRetryRequest(url, method);
-  await waitWithAbort(Math.max(0, backendCooldownUntilMs - Date.now()), fetchInit.signal);
+  // The cooldown protects the Nuvio backend only; a third-party 429 (addon,
+  // IPTV provider) must neither start it nor wait for it.
+  const backendRequest = isSupabaseBackendRequest(url);
+  if (backendRequest) await waitWithAbort(Math.max(0, backendCooldownUntilMs - Date.now()), fetchInit.signal);
   let response =
     (await fetchViaWebOsSupabaseProxy(url, fetchInit)) || (await fetch(url, fetchInit));
-  recordBackendCooldown(response);
+  if (backendRequest) recordBackendCooldown(response);
 
   if (safeRetry && [429, 503].includes(Number(response?.status || 0))) {
     const headerDelay = retryAfterDelayMs(response?.headers?.get?.("retry-after"));

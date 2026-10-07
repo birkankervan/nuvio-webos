@@ -1,6 +1,9 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./metaDetailsScreenContext.js";
 
+// ponytail: fixed budget before the first detail paint; tune from TV cold/warm runs.
+const CANONICAL_ID_TIMEOUT_MS = 2500;
+
 export function createMetaDetailsScreenMethods03() {
   const {
     metaRepository,
@@ -183,7 +186,7 @@ export function createMetaDetailsScreenMethods03() {
       this.maybeAutoOpenContinueWatchingStream();
       this.maybePlayOnLoad(token);
       void this.refreshTrailerSource(meta, token);
-      void this.loadTraktComments({ force: true });
+      void this.loadTraktComments();
 
       // Match Android TV: recommendations are an independent detail-page job.
       // Starting them from the base meta keeps slower artwork/credits enrichment
@@ -225,7 +228,7 @@ export function createMetaDetailsScreenMethods03() {
         this.updateRenderedDetailSections(this.meta);
         void this.loadMdbListRatings(this.meta, token);
         void this.refreshTrailerSource(this.meta, token);
-        void this.loadTraktComments({ force: true });
+        void this.loadTraktComments();
 
         const tasks = [];
         const simklProgressSourceSelected = isSimklProgressSourceSelected();
@@ -278,22 +281,37 @@ export function createMetaDetailsScreenMethods03() {
       if (!/^tmdb:/i.test(rawItemId)) {
         return rawItemId;
       }
+      // Full enrichment stays in the background job; canonicalization only
+      // needs external_ids. Keep the optional TMDB feature gate it had before.
+      if (!TmdbSettingsStore.get().enabled) {
+        return rawItemId;
+      }
+      this.cancelCanonicalDetailIdRequest();
+      const controller = typeof AbortController === "function" ? new AbortController() : null;
+      this._canonicalIdAbort = controller;
+      const timeoutId = controller ? setTimeout(() => controller.abort(), CANONICAL_ID_TIMEOUT_MS) : null;
       try {
         const tmdbId = await TmdbService.ensureTmdbId(rawItemId, itemType);
         if (!tmdbId) {
           return rawItemId;
         }
-        const enrichment = await TmdbMetadataService.fetchEnrichment({
-          tmdbId,
-          contentType: itemType,
-          language: TmdbSettingsStore.get().language
-        });
-        const imdbId = String(enrichment?.imdbId || "").trim();
-        return imdbId || rawItemId;
+        // Same fallback as full enrichment's resolveType: non-tv types use movie.
+        const tmdbType = /^(series|tv|show|tvshow)$/i.test(String(itemType || "").trim()) ? "tv" : "movie";
+        const imdbId = await TmdbService.tmdbToImdb(tmdbId, tmdbType, { signal: controller?.signal || null });
+        return String(imdbId || "").trim() || rawItemId;
       } catch (error) {
-        console.warn("Detail TMDB canonical id resolve failed", error);
+        if (!controller?.signal.aborted) {
+          console.warn("Detail TMDB canonical id resolve failed", error);
+        }
         return rawItemId;
+      } finally {
+        if (timeoutId) clearTimeout(timeoutId);
+        if (this._canonicalIdAbort === controller) this._canonicalIdAbort = null;
       }
+    },
+    cancelCanonicalDetailIdRequest() {
+      this._canonicalIdAbort?.abort();
+      this._canonicalIdAbort = null;
     }
   };
 }
