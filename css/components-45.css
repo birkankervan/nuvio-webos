@@ -190,6 +190,7 @@
   height: 34px;
 }
 
+.legacy-webos .player-resolution-label,
 .legacy-webos .player-time-label {
   font-size: 24px;
 }

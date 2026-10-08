@@ -255,7 +255,7 @@ export function createPlayerScreenMethods19() {
     async hydratePauseOverlayMeta() {
       const itemId = String(this.params?.itemId || "").trim();
       const itemType = normalizeItemType(this.params?.itemType || "movie");
-      if (!itemId || this.isExternalFrameMode()) {
+      if (!itemId || this.isExternalFrameMode() || this.isLocalOnlyMedia()) {
         return;
       }
 

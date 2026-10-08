@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./playerController.js";
+import { IptvProgressStore } from "../../data/local/iptvProgressStore.js";
 
 export function createPlayerControllerMethods20() {
   const {
@@ -26,6 +27,16 @@ export function createPlayerControllerMethods20() {
       }
       // Live channels have no position to resume: no progress, watched or CW.
       if (this.isLivePlaybackItemType(active.itemType)) {
+        return false;
+      }
+
+      // IPTV VOD: local resume store only; itemId is the iptvProgress key.
+      if (this.isLocalOnlyProgressItemType(active.itemType)) {
+        IptvProgressStore.save(active.itemId, {
+          posMs: positionMs,
+          durMs: durationMs,
+          title: active.episodeTitle || active.title
+        });
         return false;
       }
 

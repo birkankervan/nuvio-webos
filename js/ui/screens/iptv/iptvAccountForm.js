@@ -14,6 +14,9 @@ function escapeAttr(value) {
   return String(value ?? "").replace(/[&"<>]/g, (c) => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" })[c]);
 }
 
+// English fallbacks keep the form working until the screen passes the i18n labels.
+const adultLabel = (labels, on) => `${labels.showAdult || "Show adult content"}: ${on ? labels.on || "On" : labels.off || "Off"}`;
+
 export function renderAccountFormMarkup(labels) {
   return `
     <section class="iptv-form" aria-labelledby="iptvFormTitle">
@@ -23,6 +26,7 @@ export function renderAccountFormMarkup(labels) {
       ${field("iptvUsername", escapeAttr(labels.username), "text", "")}
       ${field("iptvPassword", escapeAttr(labels.password), "password", "")}
       <button type="button" class="iptv-btn" data-iptv-form="1" data-action="togglePassword" aria-pressed="false">${escapeAttr(labels.show)}</button>
+      <button type="button" class="iptv-btn" data-iptv-form="1" data-action="toggleAdult" aria-pressed="false">${escapeAttr(adultLabel(labels, false))}</button>
       <div class="iptv-form-error" role="alert" aria-live="polite"></div>
       <div class="iptv-form-actions">
         <button type="button" class="iptv-btn iptv-btn-primary" data-iptv-form="1" data-action="saveAccount">${escapeAttr(labels.save)}</button>
@@ -34,10 +38,15 @@ export function renderAccountFormMarkup(labels) {
 // Controller over the rendered markup: vertical focus order + state helpers.
 export function createAccountForm(root, labels) {
   const nodes = Array.from(root.querySelectorAll("[data-iptv-form]"));
-  const [server, username, password, toggle] = nodes;
+  const [server, username, password, toggle, adultToggle] = nodes;
   const errorNode = root.querySelector(".iptv-form-error");
   let focusIndex = 0;
   let busy = false;
+  let showAdult = false;
+  const paintAdult = () => {
+    adultToggle.textContent = adultLabel(labels, showAdult);
+    adultToggle.setAttribute("aria-pressed", String(showAdult));
+  };
 
   const paint = () => nodes.forEach((node, i) => node.classList.toggle("focused", i === focusIndex));
 
@@ -47,8 +56,14 @@ export function createAccountForm(root, labels) {
       server.value = values.server || "";
       username.value = values.username || "";
       password.value = values.password || "";
+      showAdult = values.showAdult === true;
+      paintAdult();
     },
-    getValues: () => ({ server: server.value, username: username.value, password: password.value }),
+    getValues: () => ({ server: server.value, username: username.value, password: password.value, showAdult }),
+    toggleAdult() {
+      showAdult = !showAdult;
+      paintAdult();
+    },
     focus(index = focusIndex) {
       focusIndex = Math.max(0, Math.min(nodes.length - 1, index));
       paint();

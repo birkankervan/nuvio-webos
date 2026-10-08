@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./playerScreenContext.js";
 
+import { videoResolutionLabel } from "../../../core/player/videoResolutionLabel.js";
+
 export function createPlayerScreenMethods32() {
   const { PlayerController, deltaMsForKeyRepeat, calculateRemainingPlaybackMilliseconds, t, formatTime, formatClock, formatEndsAt, clamp } =
     internals;
@@ -104,6 +106,21 @@ export function createPlayerScreenMethods32() {
         if (uiState.timeLabelText !== nextTimeLabel) {
           timeLabel.textContent = nextTimeLabel;
           uiState.timeLabelText = nextTimeLabel;
+        }
+      }
+
+      const resolutionLabel = uiRefs.resolutionLabel;
+      if (resolutionLabel && this.controlsVisible) {
+        // AVPlay has no usable videoWidth; ask its stream info. Hidden when unknown.
+        // <video>.width is the element attribute (0), so read videoWidth explicitly.
+        const video = PlayerController.video;
+        const avSize = PlayerController.isUsingAvPlay?.() ? PlayerController.getAvPlayVideoDimensions?.() : null;
+        const nextResolution = avSize
+          ? videoResolutionLabel(avSize.width, avSize.height)
+          : videoResolutionLabel(video?.videoWidth, video?.videoHeight);
+        if (uiState.resolutionText !== nextResolution) {
+          resolutionLabel.textContent = nextResolution;
+          uiState.resolutionText = nextResolution;
         }
       }
 

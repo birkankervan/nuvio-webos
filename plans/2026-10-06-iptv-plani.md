@@ -124,7 +124,7 @@ Sonuçlar bu plana ve panoya yazılmadan IPTV-02 dosya sınırı kilitlenmez.
 ### S1-S3 sonuçları — webOS (nuvio-lg-145, 2026-10-07)
 
 Gerçek kullanıcı test hesabıyla (bilgiler yalnız gitignore'lu `.env` içinde).
-Tizen cihazı henüz yok; Tizen sonuçları açık.
+Tizen sonuçları aşağıda ayrı bölümde.
 
 - **S1:** uygulama `file:` origin'inden doğrudan `fetch` çalışıyor (CORS/mixed
   content engeli yok, response type basic). Karar webOS: doğrudan fetch;
@@ -143,6 +143,25 @@ Tizen cihazı henüz yok; Tizen sonuçları açık.
   `ended` veriyor (player canlıda yeniden başlatınca sonsuz döngü); `.m3u8`
   20 sn kesintisiz. Karar: varsayılan `m3u8`, `ts` yalnız hesap HLS'e izin
   vermiyorsa. 3 sn ilk kare hedefi karşılanıyor.
+
+### S1-S3 sonuçları — Tizen (Smart Monitor M8, Tizen 9.0, 2026-10-08)
+
+Aynı test hesabı; ölçüm uygulama WebView'ında (`file:` origin) CDP ile.
+
+- **S1:** doğrudan `fetch` çalışıyor (200, basic, CORS/mixed content engeli
+  yok). Hesap bilgileri webOS ile aynı; yanlış bilgi `auth:0` ile 200.
+  Karar Tizen: doğrudan fetch, servis proxy'si gerekmiyor.
+- **S2:** 1693 kanal 488 KB, gövde 290 ms, parse 9,9 ms. Çoğaltılmış: 20k
+  5,4 MB 131 ms, 50k 13,4 MB 311 ms (10k ilk koşu JIT gürültüsü 207 ms);
+  normalize 11-42 ms. `performance.memory` sabit, heap ölçümü güvenilmez.
+  Karar: webOS ile aynı 50k / 20 MiB tavan.
+- **S3 (`<video>` ile):** m3u8 ilk `playing` 1777-3705 ms, 20 sn kesintisiz
+  (ended/error/stalled yok). ts `playing` 911-980 ms ama `timeupdate` hiç
+  gelmiyor, currentTime 0'da kalıyor (sahte `ended` yok; donuk mu oynuyor mu
+  ayırt edilemedi). Karar: varsayılan m3u8 korunur. Uygulama player'ı
+  Tizen'de m3u8 için önce hls.js, sonra AVPlay dener; hls.js/AVPlay ilk kare
+  süresi IPTV-05'te uygulama player'ıyla ölçülecek (3,7 sn örnek 3 sn hedefini
+  `<video>` ile aştı).
 
 ## Xtream sözleşmesi (IPTV-02)
 
@@ -291,9 +310,11 @@ kare sayılmaz.
 
 ## Açık kararlar ve tam sonraki adım
 
-- S1-S3 webOS kapandı (yukarıda). Tizen S1-S3 cihaz bulununca.
+- S1-S3 webOS ve Tizen kapandı (yukarıda).
 - IPTV-09 spike: LAN listener iki platformda mümkün mü.
 
 Performans fazı kullanıcı kararıyla durduruldu (TV-01 kalan maddeleri IPTV
-sonrası). Tam sonraki adım: IPTV-02 Xtream veri/credential/transport
-katmanı (doğrudan fetch, ts varsayılan, 50k/20 MiB tavan).
+sonrası). IPTV-02/03/04 teslim edildi; varsayılan format m3u8 (ts yedek).
+Tam sonraki adım: IPTV-05 Tizen UI kabulü (kullanıcı IPTV hesabını formda
+kumandayla girer; ardından kanal ekranı, uygulama player'ı ile ilk kare,
+Back restore). Hesap girişi (Supabase) yok; yerel profille devam.

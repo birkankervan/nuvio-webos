@@ -60,7 +60,9 @@ export const tizenAdapter = {
       "MediaFastForward",
       "MediaRewind",
       "MediaTrackPrevious",
-      "MediaTrackNext"
+      "MediaTrackNext",
+      "ChannelUp",
+      "ChannelDown"
     ];
 
     if (typeof tvInputDevice.registerKeyBatch === "function") {

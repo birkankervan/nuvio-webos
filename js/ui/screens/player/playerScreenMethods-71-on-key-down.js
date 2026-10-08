@@ -5,6 +5,51 @@ export function createPlayerScreenMethods71() {
   const { Router, isBackEvent, isSelectKeyCode } = internals;
 
   return {
+    // CH+/CH-: debounced, last press wins. Router replace-navigate re-mounts the player
+    // (closing the old session first) so URL resolve and Back-to-list keep working.
+    zapIptvChannel(direction) {
+      this.iptvZapSteps = (this.iptvZapSteps || 0) + direction;
+      clearTimeout(this.iptvZapTimer);
+      this.iptvZapTimer = setTimeout(async () => {
+        const steps = this.iptvZapSteps;
+        this.iptvZapSteps = 0;
+        const { sourceId, channelId } = this.params?.playIptv || {};
+        if (!steps || !channelId) return;
+        try {
+          const [{ IptvRepository }, { neighborChannel }, { IptvSourcesStore }, { RouteStateStore }] = await Promise.all([
+            import("../../../data/repository/iptvRepository.js"),
+            import("../iptv/iptvZap.js"),
+            import("../../../data/local/iptvSourcesStore.js"),
+            import("../../navigation/routeStateStore.js")
+          ]);
+          const categoryId = this.params.iptvCategoryId ?? null;
+          const list = await IptvRepository.getChannels(sourceId, categoryId).catch(() => null);
+          let next = null;
+          for (let i = 0, id = channelId; i < Math.abs(steps); i += 1) {
+            next = neighborChannel(list, id, Math.sign(steps)) || next;
+            id = next?.id || id;
+          }
+          if (!next || next.id === channelId || !this.playerRouteActive) return;
+          IptvSourcesStore.setLastChannel(next.id);
+          const iptvState = RouteStateStore.get("route:iptv");
+          if (iptvState) RouteStateStore.set("route:iptv", { ...iptvState, channelId: next.id });
+          Router.navigate(
+            "player",
+            {
+              ...this.params,
+              streamUrl: undefined,
+              itemId: next.id,
+              playIptv: { sourceId, channelId: next.id },
+              title: next.name,
+              playerTitle: next.name
+            },
+            { replaceHistory: true }
+          );
+        } catch (_) {
+          // Zap is best effort; the current channel keeps playing.
+        }
+      }, 400);
+    },
     async onKeyDown(event) {
       const keyCode = Number(event?.keyCode || 0);
       const isBackKey = isBackEvent(event);
@@ -44,6 +89,11 @@ export function createPlayerScreenMethods71() {
           return;
         }
         this.handlePostPlayKey(event);
+        return;
+      }
+      if (this.params?.playIptv && this.params.itemType === "channel" && [33, 34, 427, 428].includes(keyCode)) {
+        event?.preventDefault?.();
+        this.zapIptvChannel(keyCode === 33 || keyCode === 427 ? 1 : -1);
         return;
       }
       if (this.nextEpisodeBackExitArmed) {

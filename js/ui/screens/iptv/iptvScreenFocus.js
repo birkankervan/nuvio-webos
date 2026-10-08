@@ -9,7 +9,7 @@ import {
   setModernSidebarExpanded,
   setModernSidebarPillIconOnly
 } from "../../components/sidebarNavigation.js";
-import { ZONE, moveFocus } from "./iptvNavigation.js";
+import { TAB_LIVE, ZONE, moveFocus } from "./iptvNavigation.js";
 
 const DIRECTIONS = { 37: "left", 38: "up", 39: "right", 40: "down" };
 const OK = 13;
@@ -97,9 +97,13 @@ export const iptvFocusMethods = {
   // ---- Back ---------------------------------------------------------------
   // Router calls this first; returning true consumes Back (see FocusEngine).
   consumeBackRequest() {
+    if (this.closeDetail()) {
+      this.applyFocus();
+      return true;
+    }
     const { zone } = this.focus;
     if (this.mode === "form") {
-      if (zone === ZONE.SIDEBAR) return false;
+      if (zone === ZONE.SIDEBAR) return this.leaveToHomeIfNoHistory();
       if (this.formCanCancel) {
         this.enterChannels(this.source);
         return true;
@@ -107,13 +111,21 @@ export const iptvFocusMethods = {
       this.focusSidebar();
       return true;
     }
-    if (zone === ZONE.SIDEBAR) return false; // top level: Router sends Back to Home.
+    if (zone === ZONE.SIDEBAR) return this.leaveToHomeIfNoHistory();
     if (zone === ZONE.GRID && this.entries.length) {
       this.focus.zone = ZONE.CATEGORIES;
       this.applyFocus();
     } else {
       this.focusSidebar();
     }
+    return true;
+  },
+
+  // Router sends Back to the previous route. A resumed/cold-started IPTV has none
+  // (history.back() is a dead end, which webOS may treat as leaving the app), so go Home.
+  leaveToHomeIfNoHistory() {
+    if (globalThis.history?.state?.previousRoute) return false;
+    activateLegacySidebarAction("gotoHome", "iptv");
     return true;
   },
 
@@ -129,6 +141,7 @@ export const iptvFocusMethods = {
 
   async onKeyDown(event) {
     const code = Number(event?.keyCode || 0);
+    if (this.detail) return this.onDetailKey(event);
     const direction = DIRECTIONS[code];
     if (this.layoutPrefs?.modernSidebar && !this.sidebarExpanded && direction) {
       if (code === 40 || code === 38) {
@@ -162,6 +175,11 @@ export const iptvFocusMethods = {
       return;
     }
     if (code !== OK) return;
+    if (this.focus.zone === ZONE.GRID && this.channels.length && this.tab !== TAB_LIVE) {
+      event.preventDefault?.();
+      if (!event.repeat) this.openItem(this.channels[this.focus.channel]);
+      return;
+    }
     if (this.focus.zone === ZONE.GRID && this.channels.length) {
       // OK plays on release; holding OK toggles the favorite instead.
       event.preventDefault?.();
@@ -240,7 +258,14 @@ export const iptvFocusMethods = {
 
   activateCategory(index) {
     const entry = this.entries[index];
-    if (!entry || entry.key === this.viewKey) return;
+    if (!entry) return;
+    if (this.tab !== TAB_LIVE && this.query) {
+      // Picking a category ends a (global) VOD search.
+      this.query = "";
+      this.searchInput.value = "";
+    } else if (entry.key === this.viewKey) {
+      return;
+    }
     return this.selectView(entry.key, { focusIndex: 0 });
   },
 
@@ -248,8 +273,10 @@ export const iptvFocusMethods = {
     switch (node?.dataset.action) {
       case "cycleSource":
         return this.switchSource();
+      case "tab":
+        return this.setTab(node.dataset.tab);
       case "refresh":
-        return this.loadCatalog({ force: true });
+        return this.tab === TAB_LIVE ? this.loadCatalog({ force: true }) : this.loadVodTab();
       case "editSource":
         return this.showForm({ source: this.source });
       case "addSource":
@@ -264,6 +291,8 @@ export const iptvFocusMethods = {
     switch (node?.dataset.action) {
       case "togglePassword":
         return this.form.togglePasswordVisibility();
+      case "toggleAdult":
+        return this.form.toggleAdult();
       case "saveAccount":
         return this.submitForm();
       case "cancelAccount":
@@ -274,6 +303,7 @@ export const iptvFocusMethods = {
 
   // ---- Magic Remote ------------------------------------------------------------
   onPointerFocus(target) {
+    if (this.detail) return this.onDetailPointer(target, false);
     if (this.mode === "form") {
       if (target.closest?.("[data-iptv-form]")) {
         this.focus.zone = FORM_ZONE;
@@ -283,7 +313,7 @@ export const iptvFocusMethods = {
     }
     const card = target.closest?.("[data-iptv-card]");
     const category = target.closest?.("[data-iptv-category]");
-    const header = this.headerNodes.indexOf(target.closest?.(".iptv-header [data-action], .iptv-search"));
+    const header = this.headerNodes.indexOf(target.closest?.(".iptv-header [data-action], .iptv-tab, .iptv-search"));
     if (card) this.focus = { ...this.focus, zone: ZONE.GRID, channel: Number(card.dataset.index) };
     else if (category) this.focus = { ...this.focus, zone: ZONE.CATEGORIES, category: Number(category.dataset.index) };
     else if (header >= 0) this.focus = { ...this.focus, zone: ZONE.HEADER, header };
@@ -292,6 +322,7 @@ export const iptvFocusMethods = {
   },
 
   onPointerActivate(target) {
+    if (this.detail) return this.onDetailPointer(target, true);
     if (isRootSidebarNode(target.closest?.(".focusable"))) return false; // sidebar has its own handler.
     if (this.mode === "form") {
       const node = target.closest?.("[data-iptv-form]");
@@ -301,7 +332,9 @@ export const iptvFocusMethods = {
     }
     const card = target.closest?.("[data-iptv-card]");
     if (card) {
-      this.playChannel(this.channels[Number(card.dataset.index)]);
+      const item = this.channels[Number(card.dataset.index)];
+      if (this.tab === TAB_LIVE) this.playChannel(item);
+      else this.openItem(item);
       return true;
     }
     const category = target.closest?.("[data-iptv-category]");
@@ -314,7 +347,7 @@ export const iptvFocusMethods = {
       this.statusRetry?.();
       return true;
     }
-    const header = target.closest?.(".iptv-header [data-action]");
+    const header = target.closest?.(".iptv-header [data-action], .iptv-tab");
     if (header) {
       this.runHeaderAction(header);
       return true;

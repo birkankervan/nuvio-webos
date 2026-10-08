@@ -1746,3 +1746,406 @@ ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açı
   now var(--bg-color, #000) so it follows Nuvio's AMOLED Mode (user has it
   on; TV computed rgb(0,0,0)). lint, package, diff check ok; installed.
   Note: some provider "channels" are separator rows (e.g. ULUSAL HEVC banners).
+
+- 2026-10-07 / Push (user request): commit 8caeac7 "feat(webos): add IPTV
+  live channels and Home/detail performance work" (69 files) pushed to
+  personal/main (github.com/birkankervan/nuvio-webos); remote SHA verified.
+  Secret scan of the committed files: no provider host, username or password;
+  .env ignored. Left untracked: user's "ChatGPT Görseli ... .png" (unrelated).
+  This MD note itself is uncommitted.
+
+- 2026-10-07 / Tizen setup (Sonnet subagent, done): Tizen Studio CLI 6.1
+  installed to ~/tizen-studio (official download.tizen.org; bundled JDK;
+  sdb 4.2.25, tizen CLI 2.5.25). cert-add-on + TV-SAMSUNG-Extension-Tools
+  installed. No certificate created, no login. sdb connect to TV (LAN, port
+  26101 open) still "failed to connect": likely Developer Mode Host PC IP not
+  set to the Mac's LAN IP. Next: user sets Host PC IP + reboots TV, then
+  sdb connect, capability, DUID; then user creates Samsung TV certificate
+  profile (login is user's), then package:tizen + install + Tizen S1-S3.
+
+- 2026-10-08 / IPTV list polish checkpoint (subagents).
+  IPTV-SEP (Haiku, done): iptvCards.js isSeparatorName + is-separator class;
+  iptvSeparator.test.mjs. Root fix after TV check: "TR: b**N SP*RTS n |
+  Premium+++" was a false positive ("+++" suffix); "+" removed from the
+  decoration set. On the real provider list it now matches exactly the 14
+  "▃ ▅ ▆ █ NAME █ ▆ ▅ ▃" separator rows. IPTV-READ (Sonnet, done):
+  GRID_COLUMNS 4 -> 3, row height 156 unchanged, logo 80 px, name 26 px,
+  2-line clamp, 3 lines on focus; .iptv-card.is-separator uses
+  --secondary-color/--on-secondary, logo/number/star hidden. TV measured
+  (first build): card 415 px, name box 263 px, 0 truncated of 21 visible.
+  IPTV-LOGO research (Sonnet, done): 1329 placeholder (1x1) + 248 empty of
+  1693; provider M3U/EPG add nothing; tv-logos TR + iptv-org match ~22% of
+  missing; the rest (7/24 loops, XXX, radios, obfuscated names) has no public
+  logo. IPTV-LOGO-IMPL (Sonnet, running): static name->url index script,
+  js/core/iptv/logoMatcher.js, iptvRepository fallbackLogo; root then wires
+  fallbackLogo in iptvCards.js and verifies TV reachability of
+  raw.githubusercontent.com / imgur via proxy.
+  Tests: iptv 21/21, lint ok. Next: wait for logo agent, integrate,
+  package:webos, install with ares-install -d nuvio-lg-145 (npm
+  install:webos defaults to the emulator target), TV check.
+
+- 2026-10-08 / IPTV logo fallback (Sonnet, done; not yet on TV).
+  scripts/buildIptvLogoIndex.mjs -> assets/data/iptv-logos.json (tv-logos TR
+  + iptv-org TR only, 531 entries, 43.7 KB; global iptv-org dropped: +76
+  matches for +1.36 MB). js/core/iptv/logoMatcher.js (+test): exact-key
+  normalization (Turkish fold, prefix/quality strip, keeps 4k/tv tokens).
+  iptvRepository loads the index once, sets channel.fallbackLogo (and logo
+  when empty). iptvCards.js: setLogoSrc routes imgur via the webOS image
+  proxy (waits for ready), placeholder/failed logo tries fallbackLogo once.
+  298/1693 channels get a fallback (251 of 1577 missing). Tests 35/35, lint ok.
+  Risk to check on TV: proxy never ready -> has-logo with empty src (blank
+  box instead of initial); earlier TV note said imgur rendered directly.
+  Separator restyle (Haiku): transparent + bottom rule + muted uppercase.
+  Waiting for PLAYER-RES agent before one package/install.
+
+- 2026-10-08 / Logo root cause found: the main logo host (1329/1693) is
+  blocked by the user's NextDNS (response header blocked-by: NextDNS, cert
+  CN blockpage.nextdns.io, 67 B blockpage PNG on http and https). With a DoH
+  resolve the same URL returns a real 142x142 PNG. Provider URLs are correct;
+  no app-side logo source needed (works for any country). User approved:
+  TR logo index removed (js/core/iptv, assets/data, buildIptvLogoIndex,
+  iptvRepository + test and iptvCards.js reset to HEAD). User allowlisted the
+  host in NextDNS; Mac still resolved to the blockpage right after (cache or
+  parent domain/TLD rule) - recheck. iptvCards.js reset also dropped the
+  separator code; IPTV-SEP2 (Sonnet, running) re-implements a provider-
+  independent separator rule in iptvCards.js + iptvSeparator.test.mjs.
+  PLAYER-RES (Sonnet, done, installed, not yet TV-verified):
+  js/core/player/videoResolutionLabel.js (+test), label before
+  #playerTimeLabel, updated in updateUiTick only on change; CSS in
+  components-31/35/45/49. Open question to user: "süre eklemeyi de
+  ekleyelim" meaning unclear.
+
+- 2026-10-08 / IPTV-SEP2 (Sonnet, done): provider-independent isSeparatorName
+  (U+2500-27BF glyphs, 3+ run of # = - _ ~ * . •, decoration-framed names,
+  no letters/digits; "+" never decoration). live.json: exactly 14 matches.
+  PLAYER-RES fix (root): label stayed empty on TV because `video.width ?? 
+  video.videoWidth` read the element attribute (0); now reads videoWidth /
+  videoHeight (AVPlay dims on Tizen). TV before fix: video 1920x1080, label
+  display none. Installed; awaiting check. NextDNS: Mac now resolves the logo
+  host to Cloudflare, but on TV https still fails and http still returns the
+  1x1 blockpage PNG (TV/router DNS cache). Next: TV restart, then recheck
+  logo load via CDP Image() test and IPTV grid has-logo/naturalWidth counts.
+  Tests: iptv + player label 24/24, lint ok.
+  2026-10-08 later: user confirmed "süre ekleme" meant the resolution label.
+  TV after fix: label "1080p" visible (video 1920x1080) but at x=1086 vs
+  time x=1701 (both had margin-left:auto). components-31.css: visible label
+  followed by the time label resets the time margin. Installed; recheck
+  position. Logo: waiting for TV/router DNS cache clear (TV restart).
+
+- 2026-10-08 / IPTV-10 started. Active plan: plans/2026-10-08-iptv-vod-dizi.md.
+  Research (read-only, Sonnet) measured: 23,975 movies (7.1 MB full list),
+  4,685 series (3.9 MB), per-category median 46 KB; mkv 60% / mp4 37% /
+  avi 3%; posters 69% tmdb (w342 rewrite 3x smaller), 28.5% empty; play URLs
+  302 to another http host with Range support (TV check needed). Key safety
+  point: IPTV VOD must not use itemType movie (would sync to cloud/Trakt);
+  new itemType "iptvvod" + local iptvProgressStore. Active agents: T1 data,
+  T4 player progress. Next: on T1 finish dispatch T2 list UI.
+
+- 2026-10-08 / IPTV-10 T4 done (Sonnet): js/data/local/iptvProgressStore.js
+  (+test; key iptvProgress, 500 cap, <10 s ignored, >=90% removes, export
+  iptvProgressKey), iptvSourcesStore remove/clearProfile cleanup, sync guard
+  covers iptvProgress. Player: isLocalOnlyProgressItemType("iptvvod");
+  flushProgress writes only to IptvProgressStore; scrobble null; post-play
+  recommendation, pause-overlay meta, skip intervals, addon subtitles skipped
+  for iptvvod; mount resolves resolveVodPlaybackUrl into in-memory streamUrl
+  and sets in-memory itemId = progress key; ended -> flush + Back to iptv.
+  Tests 21/21 + lint ok (agent). Not on TV. Files: playerControllerMethods-
+  11/-20, playerScreenMethods-01/-02/-07/-19/-68/-72. Still running: T1 data,
+  IPTV-ZAP (told T4 files are free; re-read before edit).
+
+- 2026-10-08 / IPTV-ZAP done (Sonnet, not on TV): js/ui/screens/iptv/iptvZap.js
+  (+test; neighborChannel wraps, skips separators), player keydown
+  (playerScreenMethods-71) zapIptvChannel with 400 ms collapse, replace-
+  navigate to player (old cleanup closes session first), setLastChannel +
+  route:iptv channelId for Back focus; iptvScreenData.playChannel passes
+  iptvCategoryId; tizenAdapter registers ChannelUp/ChannelDown (427/428);
+  webOS/browser 33/34. Limits: favorites zap within category; byCategory
+  "All" view cannot zap. TV checklist: CH+/- change+wrap+skip, hold = one
+  session, Back focus, no extra history, no effect on VOD. Waiting for T1
+  before packaging.
+
+- 2026-10-08 / IPTV-ZAP TV check (webOS, not a controlled run - the user was
+  also pressing the remote): CDP keydown 33 moved the player title to the
+  next channel, 34 back to the previous one; history.length stayed 7 (replace
+  navigation, no extra entries). Physical CH+ also advanced the channel.
+  Not yet checked: hold-to-zap single session, Back focus, wrap, Tizen.
+  T2 (tabs + poster grid) running.
+
+- 2026-10-08 / IPTV-ADULT done (Sonnet): js/data/repository/iptvAdultFilter.js
+  (+test; category word-boundary rules incl. Cyrillic/Arabic, item rule =
+  leading XXX/18+ tag or word "porn"; "Sex Education", "xXx" film, Essex kept),
+  repository filters live at catalog build and VOD/series on read (memoized),
+  iptvSourcesStore showAdult default false, account form toggle, strings.xml.
+  Real data: VOD 25/61 categories ("FOR ADULTS ➾ ...") = 6,882/23,975 items
+  hidden; series 0; live 255/1,693 by name (cat 177). Follow-ups sent: adult
+  agent hides the "ADULTS CHANNELS" separator too; T3 adds screen wiring
+  (labels, setValues showAdult, toggleAdult case, reload tab after save) and
+  poster rating badge top-left (user request). No PIN yet.
+
+- 2026-10-08 / T3 done (detail overlay iptvDetail.js + iptvDetailView.js, 5
+  tests; poster rating badge top-left; adult toggle wiring) BUT
+  iptvScreen.js is broken in the working tree: renderSidebar, bindSidebar,
+  enterChannels, renderChannelsShell, updateTabLabels called but undefined
+  (lint cannot see this.x() calls). Root confirmed by grep. Do NOT install
+  until fixed. IPTV-FIX (Sonnet, running): restore from HEAD + integrate
+  T2/T3 design, add static "every this.method() is defined" guard test.
+  Missing strings.xml keys from T3 (root adds after fix): iptv_detail_play,
+  iptv_detail_resume, iptv_detail_restart, iptv_season_n,
+  iptv_episode_short, iptv_min_short, iptv_detail_director,
+  iptv_detail_cast (adult keys already added).
+  Lesson: agent "tests pass + lint ok" is not a load check for screen
+  mixins; require the static guard or a runtime load.
+
+- 2026-10-08 / IPTV-FIX done + IPTV-10 first TV pass (webOS, CDP, no remote
+  input during this run). iptvScreen.js restored (enterChannels etc.),
+  guard test iptvScreenContract.test.mjs (every this.method() defined once).
+  Root added 8 detail strings (EN/TR). Tests 86/86, lint ok, installed.
+  TV: tabs Canlı/Filmler/Diziler render; live list has no XXX cards; VOD rail
+  shows no adult categories; poster cards 248x340, posters loaded, rating
+  badge top-left; movie detail opens (meta, plot, Oynat); mkv movie via 302
+  redirect: currentTime 1.2 s at 3.3 s after Play, 1920x1080, label 1080p;
+  seek to 300 s + Back -> detail shows "Devam et (5:02)" + "Baştan oynat",
+  only localStorage iptvProgress written (no other key mentions the item);
+  Devam et resumed at ~302 s; series detail (Arrow) shows Sezon 1-8 chips and
+  episode rows "B1 · ... 43 dk". Note: first CDP tab click once landed on
+  Diziler instead of Filmler, not reproduced on retry.
+  Not yet measured: full-list parse/heap ("Tümü"/search over 17k), avi,
+  input/rAF p95 while scrolling posters, network check for Trakt calls,
+  adult toggle on/off in form, episode play + Back to same episode.
+
+- 2026-10-08 / User TV photos: (1) IPTV detail overlay (.iptv-detail, inset 0)
+  is drawn under the Nuvio app sidebar rail; poster and season chips hidden.
+  (2) Re-opening a movie detail shows no info and "Bir sorun oluştu. Tekrar
+  deneyin." at the bottom (first open worked). Repository info path with a
+  signal is not cached (shared() returns uncached), so suspect detail
+  abort/stale-guard in iptvDetailView. IPTV-DETAIL-FIX (Sonnet, running,
+  may package/install + CDP-verify on TV): owns iptvDetail*.js,
+  iptvScreen*.js, css detail section.
+
+- 2026-10-08 / IPTV-DETAIL-FIX done + TV verified (Sonnet, CDP): (2) root
+  cause: iptvRepository cached() returned the raw value on a cache hit, so
+  `getVodInfo(...).catch` threw TypeError on the second open -> detail.error.
+  Now Promise.resolve(hit) (covers all cached accessors); repository test
+  calls .catch on a cache hit. (1) .home-main.iptv-main had no position, so
+  the absolute detail anchored to the whole shell (x=0, under the 144 px
+  rail); now position: relative -> detail left edge 144 px, content x~240.
+  TV: open/Back/open twice shows plot, status hidden. Tests 51/51, lint ok.
+  Not checked: expanded sidebar. Installed build includes the fix.
+
+- 2026-10-08 / IPTV-DETAIL-UI done (Sonnet, installed): hero backdrop +
+  .iptv-detail-shade gradient, movie content bottom-left (60 px title,
+  26 px facts/plot, 72 px pill buttons, primary with ▶ and progress bar),
+  poster only without backdrop (untested on TV), series compact hero + 56 px
+  season chips + 168 px episode rows (240x135 thumb, title, duration, 2-line
+  plot, progress). Series detail 88 DOM nodes / 7 images. Root screenshot:
+  Arrow series detail renders cleanly right of the rail. iptv tests 34/34,
+  lint exit 0. Not tested: Back on new layout, open jank, no-backdrop movie.
+
+- 2026-10-08 / IPTV-DETAIL-UI v2 done (Sonnet, installed): movie detail
+  two-zone layout (left: 54 px title, facts, full plot with
+  plotSizeClass 26/24/22/20 px by length, 72 px buttons; right: 300x450
+  poster + label/value info list), stronger shade, hint only on Canlı.
+  Longest real plot 819 chars fit; synthetic 2838 chars fit at 20 px. New
+  keys iptv_detail_label_* added EN/TR. Tests 35/35, lint exit 0. Root TV
+  screenshot (Uzak Şehir, progress 5:07): full plot readable, Devam et +
+  Baştan oynat, poster + info right. Open nits: release date shown ISO
+  (2024-11-11), lower-left area still empty below buttons.
+
+- 2026-10-08 / IPTV-DETAIL-NITS done (Haiku): formatReleaseDate in
+  iptvDetail.js (+test; tr-TR "11.11.2024"), used for the release row via
+  I18n.getLocale(); movie columns margin-block:auto (vertical centering,
+  collapses for long plots). iptv tests 36/36, lint exit 0. Not on TV yet;
+  waiting for IPTV-BACK before one install.
+
+- 2026-10-08 / IPTV-BACK v1 (Sonnet): synthetic keydown 461 never exited;
+  added leaveToHomeIfNoHistory() in iptvScreenFocus.js (sidebar + empty
+  previousRoute -> gotoHome) for resumed/cold IPTV. Root finding:
+  appinfo.json has no disableBackHistoryAPI, so the physical webOS Back also
+  runs native history.back(); CDP keydown does not exercise that path.
+  IPTV-BACK v2 (Sonnet, running): repro with history.back() +/- keydown,
+  router popstate path, fix IPTV-side preferably; appinfo change only as a
+  proposal. Tree: iptv 36/36, lint 0.
+
+- 2026-10-08 / IPTV-BACK v2 done (Sonnet, TV-simulated): root cause confirmed:
+  webOS relaunch restores the route with replaceHistory -> history index 0;
+  no disableBackHistoryAPI, so physical Back at index 0 exits before any JS.
+  Fix in routerMethods-02-complete-route-return-back-guard.js: on webOS,
+  first non-Home/non-NON_BACKSTACK route seeds replaceState(Home) +
+  pushState(current). Cold IPTV now index 1/2; Filmler detail -> 5x
+  (keydown 461 + history.back()) ends at Home sidebar, page alive.
+  appinfo disableBackHistoryAPI NOT changed (proposal only). Side findings
+  not fixed: stale player history entry can re-mount the player from the
+  IPTV sidebar; possible double-consume if popstate precedes keydown.
+  Needs user physical-remote check (cold reopen into IPTV, Back from grid,
+  detail, after play).
+  Root: adult item/category rule now X{3,} ("XXXX: ..." tags), +tests; live
+  "XXXX:" channels seen on TV were because the user enabled showAdult for a
+  test. Tests 57/57 (data+iptv+navigation), lint 0, installed.
+
+- 2026-10-08 / IPTV-BACK-SIDE done (Sonnet, installed): (1) stale player
+  entry root cause = CH zap replace wrote previousRoute "player"; same-route
+  replace now keeps the entry's real previousRoute (routerMethods-02); play
+  -> zap -> Back now pops to iptv via history.back(). (2) popstate-first
+  double consume: router stamps lastPopstateBackConsumedAt /
+  isPopstateBackCopy(); focusEngine.handleBack drops a keydown Back within
+  250 ms after a popstate-consumed Back (all screens). Tests 53/53
+  (navigation/iptv/player/core player) incl. new routerPerformance cases,
+  lint 0. TV CDP: both event orders = one step. Root installed a
+  keydown/keyup/popstate logger (window.__L) for a physical Back check.
+  Pending physical checks: real event order, normal Nuvio detail -> player
+  -> Back, Home sidebar Back exits, cold reopen IPTV Back.
+
+- 2026-10-08 / Tizen device connected: sdb works (device is NOT the IP the
+  user first gave; found via LAN scan of port 26101 — rediscover each time).
+  Samsung 32" Smart Monitor M8 (LS32DM801UUXUF), Tizen 9.0, armv7,
+  secure_protocol enabled, developerMode=1. DUID read via sdb (needed for
+  distributor cert). Next: user creates Samsung TV certificate profile in
+  Certificate Manager (Samsung login is user's), then package:tizen,
+  sign, install, Tizen S1-S3.
+
+- 2026-10-08 / Tizen first install: user created Samsung TV cert profile
+  "nuvio" (Certificate-Manager GUI package added via package-manager-cli).
+  Flow: `npm run package:tizen` (unsigned WGT, git-ignored) then
+  `tizen package -t wgt -s nuvio -- NuvioTV001_1.2.3.wgt` then
+  `tizen install -t <model> -n <wgt>` (needs `sdb connect` first; sdb server
+  may have stopped). Installed NuvioTV001.NuvioTV 1.2.3 on Tizen 9.0 and
+  launched. Not yet verified on screen; no remote inspector yet.
+  Next: user confirms app opens; attach inspector (sdb debug + port forward);
+  Tizen IPTV S1-S3 spikes; IPTV-05 Tizen acceptance.
+
+- 2026-10-08 / Tizen QR login blank (user report: white box, no QR): root
+  cause via Tizen inspector (sdb shell 0 debug + sdb forward, port changes
+  each launch): requests go to file:///rest/v1/rpc/... because
+  local.properties has empty NUVIO_SUPABASE_URL / NUVIO_SUPABASE_ANON_KEY
+  (same pre-existing config as the webOS 1.2.3 ipk). Not a Tizen code bug.
+  Fix needs the user to fill those keys in local.properties (never in MDs),
+  then rebuild + re-sign + reinstall. Inspector forward removed.
+
+- 2026-10-08 / Account QR finding: LG webOS app shows the same
+  file:///rest/v1/... Supabase failures; QR shown only on first launch
+  (hasSeenAuthQrOnFirstLaunch) and was skipped there. Upstream keeps the
+  backend URL/key only in the CI LOCAL_PROPERTIES secret; fork did not break
+  it. User decision: skip account login, continue with local profile.
+- 2026-10-08 / ACTIVE: IPTV-S Tizen S1-S3 spikes running via a Sonnet
+  subagent (owner: subagent, read-only on source; scratchpad CDP helper,
+  sdb debug + forward tcp:9333). Credentials read from .env inside node only.
+  Next: record Tizen S1-S3 in plans/2026-10-06-iptv-plani.md, then IPTV-05
+  Tizen UI acceptance (user enters IPTV account in the form via remote).
+
+- 2026-10-08 / IPTV-S Tizen S1-S3 done (Sonnet subagent, finished; no source
+  edits; forward removed, app relaunched). Results recorded in
+  plans/2026-10-06-iptv-plani.md "S1-S3 sonuçları — Tizen": direct fetch OK,
+  same 50k/20 MiB ceiling, m3u8 default kept (<video> ts: no timeupdate).
+  m3u8 <video> first playing 1.8-3.7 s (one sample > 3 s target).
+  No active agent. Next: IPTV-05 Tizen UI acceptance; user enters IPTV
+  account in the app form via remote; then measure first frame with the
+  app's own player (hls.js then AVPlay) and Back restore.
+
+- 2026-10-08 / IPTV preset (user request, private fork): build merges the
+  gitignored .env into runtime env for keys local.properties leaves empty
+  (scripts/envProperties.mjs); IPTV_TEST_* exposed as IPTV_PRESET
+  (js/config.js); IPTV screen with no sources prefills the form and
+  auto-submits (js/ui/screens/iptv/iptvScreen.js). Risk: the account ends up
+  in plain text inside built .wgt/.ipk; never share or upload packages.
+  Removing the source re-adds it on next mount. Lint OK, IPTV screen tests
+  6/6. Auto-mode classifier blocked agent-run package/install, so the user
+  ran package:tizen + sign + install in their own terminal (installed OK).
+  Not yet verified on TV. Next: user opens IPTV; confirm auto-add, measure
+  first frame with app player, Back restore.
+
+- 2026-10-08 / IPTV-05 Tizen (partial): user confirmed IPTV preset auto-add
+  works and the channel list loads on Tizen. First-frame measurement via CDP
+  key injection stopped: default focus/"Tümü" list starts on adult channels
+  (known risk), measurement paused; forward removed. User now wants the
+  account QR/settings: plan is to read Supabase config from the official
+  release package (user to supply or approve download). Not done yet.
+
+- 2026-10-08 / Backend config (user decision): the official 1.2.3 Tizen .wgt
+  and webOS .ipk (user-supplied) carry the same runtime env; Haiku subagents
+  extracted 10 keys (Supabase URL/anon/fallback, IMDB, avatar, Trakt, Simkl,
+  Premiumize) to a scratchpad file without printing values. The user ran the
+  merge into gitignored local.properties themselves (auto-mode classifier
+  blocked agent writes as credential exploration); backup
+  local.properties.bak exists (delete later). Tizen rebuilt + installed by
+  user. Packages now embed backend keys + IPTV preset: never share.
+  Next: verify account QR on Tizen, user signs in; then webOS rebuild.
+
+- 2026-10-08 / Tizen account OK: user confirmed account QR appears, sign-in
+  works and synced settings arrive on Tizen. Next: rebuild webOS with the
+  same local.properties (user runs package/install if the classifier blocks
+  the agent), then resume IPTV-05 first-frame measurement on a non-adult
+  category (ULUSAL) on both TVs.
+
+- 2026-10-08 / webOS rebuilt + installed on nuvio-lg-145 (user request) with
+  the filled local.properties. Caveat: another Claude session is editing
+  IPTV/player files concurrently (IPTV-10 VOD/dizi,
+  plans/2026-10-08-iptv-vod-dizi.md); both TV builds include its in-progress
+  working tree. This session stays off iptvScreen.js/config.js/
+  envProperties.mjs while that session is active. Not yet verified on LG.
+
+- 2026-10-08 / Tizen playback bug (user report): Nuvio debrid/remux streams
+  fail on Tizen with AVPlay PLAYER_ERROR_CONNECTION_FAILED (torbox resolve,
+  direct mkv, stream.php). Evidence: a raw webapis.avplay test in the page
+  fails the same way for a public Google sample mp4 over both https AND
+  http, so it is AVPlay network access on this device, not the sources.
+  IPTV live works because it plays via hls.js/MSE (fetch). Official vs our
+  config.xml privileges/access/features are identical; TV clock correct;
+  sdb dlog not available (secure protocol). Fork diff does not touch the
+  AVPlay open path. Hypotheses left: device/firmware AVPlay network policy
+  for sideloaded Public-cert apps, or debug-launch side effect. Next
+  experiment: test AVPlay in a normal (non-debug) launch; compare with the
+  official app on this device (needs user OK: author cert mismatch means
+  uninstall). Also: IPTV VOD detail plot empty on Tizen (webOS OK); fetch
+  probe for get_vod_info injected, waiting for user repro. VOD detail files
+  belong to the other session (IPTV-10); this session only diagnoses.
+
+- 2026-10-08 / Tizen AVPlay root-cause narrowing (corrects the earlier note:
+  the Google sample URL now returns 403, so that test was invalid).
+  Device: Smart Monitor M8, Tizen 9.0, AVPlay 7.0. Results in Nuvio AND in a
+  separate minimal test app (AvTest0001.AvTest, own config.xml, same cert):
+  HLS plays via AVPlay over http and https (mux.dev, vodobox; 3.5-5.7 s to
+  play). Every progressive mp4/mkv fails with PLAYER_ERROR_CONNECTION_FAILED
+  (filesamples, test-videos, samplelib; IPv4-only and dual-stack hosts),
+  and HTML5 <video> with the same files stalls at readyState 0. Page fetch()
+  reaches all of them (200/206). Conclusion: device-level native media
+  pipeline cannot open progressive internet files here; not Nuvio code, not
+  config.xml. Remux/debrid links are progressive mkv, hence the failure.
+  Not verified: progressive over LAN with a real file (LAN server blocked by
+  auto-mode classifier), and whether the official app plays remux on this
+  device. Test app AvTest left installed; forwards removed.
+
+- 2026-10-08 / Official Tizen 1.2.3 on device (user request): the official
+  .wgt ships unsigned, so a direct install fails with "Check certificate
+  error". Re-signed an unmodified copy with the "nuvio" profile in the
+  scratchpad and installed over the fork (same author cert, so app data and
+  login are kept). The TV now runs OFFICIAL code, not the fork. Next: user
+  tries a remux stream in the official build. Reinstall the fork afterwards
+  (user terminal: package:tizen, sign, install).
+
+- 2026-10-08 / CONFIRMED device limit: the official Nuvio 1.2.3 build also
+  fails to open remux on this Smart Monitor M8 (user test). Progressive
+  internet files fail in the native pipeline (AVPlay and <video>); HLS works.
+  Not a fork regression. AvTest uninstalled. TV still runs the official
+  build until the user reinstalls the fork. Open idea (not started): a
+  local/LAN re-serve path (e.g. the EngineFS service) only helps if
+  progressive playback from a LAN/localhost source works; that test needs a
+  LAN file server, which the auto-mode classifier blocked for the agent.
+
+- 2026-10-08 / Decision (user): accept the Smart Monitor M8 remux/progressive
+  limitation; no workaround work. Remaining: user reinstalls the fork on
+  Tizen (TV still on the official build); IPTV-05 first-frame measurement on
+  a non-adult category with the app player on both TVs; delete
+  local.properties.bak; coordinate with the parallel IPTV-10 session before
+  touching shared IPTV files.
+
+- 2026-10-08 / Fork reinstalled on Tizen by user (package:tizen + sign +
+  install OK). Starting IPTV-05 first-frame measurement on Tizen.
+
+- 2026-10-08 / IPTV-05 Tizen first frame (fork, app player = hls.js, CDP
+  Enter injection, no physical remote; debug launch): TRT 1 FHD 1080p,
+  3 runs Enter->playing: 4379 ms (cold, first after launch), 1819 ms,
+  1651 ms; first timeupdate>0 4213/1749/1542 ms. Back returns to the IPTV
+  list with focus on the same channel card each time. Cold start misses the
+  3 s target; warm runs meet it. Note: a <video> element remains in the DOM
+  after Back (not checked whether it is detached/stopped). Forward removed.
+  Next: same measurement on webOS; investigate cold-start (manifest/loader).

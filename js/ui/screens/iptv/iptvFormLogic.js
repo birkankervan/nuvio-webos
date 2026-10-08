@@ -40,5 +40,5 @@ export function validateAccountInput(values, normalizeServer) {
   if (!rawServer || !username || !password) return { ok: false, errorCode: "missing_fields" };
   const server = normalizeServer(withServerScheme(rawServer));
   if (!server) return { ok: false, errorCode: "invalid_server" };
-  return { ok: true, values: { server, username, password } };
+  return { ok: true, values: { server, username, password, showAdult: values?.showAdult === true } };
 }

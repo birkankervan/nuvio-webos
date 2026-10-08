@@ -42,4 +42,10 @@ export const SIMKL_API_URL = "https://api.simkl.com";
 export const SIMKL_APP_NAME = String(runtimeEnv.SIMKL_APP_NAME || "nuvio").trim() || "nuvio";
 // Rollback switch for the IPTV route and sidebar entry.
 export const IPTV_ENABLED = true;
+// Optional build-time IPTV account preset (from the gitignored .env); empty in public builds.
+export const IPTV_PRESET = {
+  server: String(runtimeEnv.IPTV_TEST_SERVER || "").trim(),
+  username: String(runtimeEnv.IPTV_TEST_USERNAME || "").trim(),
+  password: String(runtimeEnv.IPTV_TEST_PASSWORD || "")
+};
 export const PREMIUMIZE_CLIENT_ID = String(runtimeEnv.PREMIUMIZE_CLIENT_ID || "").trim();

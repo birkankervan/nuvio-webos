@@ -191,7 +191,7 @@ export function createPlayerScreenMethods02() {
       if (playbackEnded) {
         this.postPlayPlaybackEnded = true;
       }
-      if (!this.postPlayRecommendationController || this.isExternalFrameMode()) {
+      if (!this.postPlayRecommendationController || this.isExternalFrameMode() || this.isLocalOnlyMedia()) {
         return this.getPostPlayState();
       }
       return this.postPlayRecommendationController.update(

@@ -22,7 +22,10 @@ export const ENV_PROPERTY_KEYS = [
   "TRAKT_CLIENT_SECRET",
   "SIMKL_CLIENT_ID",
   "SIMKL_APP_NAME",
-  "PREMIUMIZE_CLIENT_ID"
+  "PREMIUMIZE_CLIENT_ID",
+  "IPTV_TEST_SERVER",
+  "IPTV_TEST_USERNAME",
+  "IPTV_TEST_PASSWORD"
 ];
 
 const DEFAULT_ENV_VALUES = {
@@ -45,7 +48,10 @@ const DEFAULT_ENV_VALUES = {
   TRAKT_CLIENT_SECRET: "",
   SIMKL_CLIENT_ID: "",
   SIMKL_APP_NAME: "nuvio",
-  PREMIUMIZE_CLIENT_ID: ""
+  PREMIUMIZE_CLIENT_ID: "",
+  IPTV_TEST_SERVER: "",
+  IPTV_TEST_USERNAME: "",
+  IPTV_TEST_PASSWORD: ""
 };
 
 async function pathExists(filePath) {
@@ -122,12 +128,32 @@ export async function resolveLocalPropertiesSource({ rootDir, sourcePath = "" } 
   return "";
 }
 
+// Private builds: the gitignored .env fills keys local.properties leaves empty
+// (e.g. IPTV_TEST_* presets the IPTV account). The value ends up in the package.
+async function readDotEnvProperties(rootDir) {
+  const dotEnvPath = rootDir ? path.join(rootDir, ".env") : "";
+  return dotEnvPath && (await pathExists(dotEnvPath))
+    ? parseProperties(await readFile(dotEnvPath, "utf8"))
+    : {};
+}
+
+function mergeDotEnv(properties, dotEnv) {
+  const merged = { ...properties };
+  ENV_PROPERTY_KEYS.forEach((key) => {
+    if (!String(merged[key] ?? "").trim() && String(dotEnv[key] ?? "").trim()) {
+      merged[key] = dotEnv[key];
+    }
+  });
+  return merged;
+}
+
 export async function readEnvProperties({ rootDir, sourcePath = "" } = {}) {
   const resolvedSourcePath = await resolveLocalPropertiesSource({ rootDir, sourcePath });
+  const dotEnv = await readDotEnvProperties(rootDir);
   if (!resolvedSourcePath) {
     return {
       sourcePath: "",
-      env: normalizeEnvProperties({})
+      env: normalizeEnvProperties(mergeDotEnv({}, dotEnv))
     };
   }
   if (/\.js$/i.test(resolvedSourcePath)) {
@@ -138,7 +164,7 @@ export async function readEnvProperties({ rootDir, sourcePath = "" } = {}) {
   const properties = parseProperties(await readFile(resolvedSourcePath, "utf8"));
   return {
     sourcePath: resolvedSourcePath,
-    env: normalizeEnvProperties(properties)
+    env: normalizeEnvProperties(mergeDotEnv(properties, dotEnv))
   };
 }
 

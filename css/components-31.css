@@ -212,6 +212,22 @@
   background-color: #000000;
 }
 
+.player-resolution-label {
+  margin-left: auto;
+  margin-right: 16px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.player-resolution-label:empty {
+  display: none;
+}
+
+/* Visible label takes the auto margin so it sits right next to the time. */
+.player-resolution-label:not(:empty) + .player-time-label {
+  margin-left: 0;
+}
+
 .player-time-label {
   margin-left: auto;
   font-size: 14px;

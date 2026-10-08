@@ -214,6 +214,12 @@ export function createPlayerScreenMethods72() {
     },
     async handlePlaybackEnded() {
       const naturalCompletion = this.isNaturalPlaybackCompletionEligible();
+      if (naturalCompletion && this.isLocalOnlyMedia()) {
+        // IPTV VOD: commit completion locally, then back to the list (no next-episode autoplay).
+        await PlayerController.flushCurrentProgress({ allowCloudSync: false }).catch(() => {});
+        this.navigateBackToStreamScreen();
+        return;
+      }
       if (!naturalCompletion) {
         this.postPlayPlaybackEnded = false;
         return this.finishNaturalPlaybackEnded();

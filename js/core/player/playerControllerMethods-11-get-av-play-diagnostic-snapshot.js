@@ -209,6 +209,10 @@ export function createPlayerControllerMethods11() {
       }
       this.playbackEngineAttempts.delete(normalizedUrl);
     },
+    // Xtream VOD: seekable, can end, but progress stays in iptvProgressStore only.
+    isLocalOnlyProgressItemType(itemType = this.currentItemType) {
+      return String(itemType || "").trim().toLowerCase() === "iptvvod";
+    },
     isLivePlaybackItemType(itemType = this.currentItemType) {
       const normalized = String(itemType || "")
         .trim()

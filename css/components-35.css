@@ -365,6 +365,7 @@
 
 .player-subtitle,
 .player-time-label,
+.player-resolution-label,
 .player-source-current-meta,
 .player-episode-panel-hint {
   font-size: var(--player-overlay-body-font);

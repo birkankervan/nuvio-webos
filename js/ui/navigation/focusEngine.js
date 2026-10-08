@@ -84,7 +84,7 @@ export const FocusEngine = {
     normalizedEvent.stopPropagation();
     normalizedEvent.stopImmediatePropagation();
 
-    if (Router.consumeRouteReturnBackGuard?.()) {
+    if (Router.consumeRouteReturnBackGuard?.() || Router.isPopstateBackCopy?.(BACK_DEBOUNCE_MS)) {
       return;
     }
 

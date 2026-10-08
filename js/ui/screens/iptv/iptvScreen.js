@@ -1,4 +1,5 @@
 import { ScreenUtils } from "../../navigation/screen.js";
+import { IPTV_PRESET } from "../../../config.js";
 import { LayoutPreferences } from "../../../data/local/layoutPreferences.js";
 import { IptvRepository } from "../../../data/repository/iptvRepository.js";
 import { IptvSourcesStore, normalizeIptvServer } from "../../../data/local/iptvSourcesStore.js";
@@ -10,17 +11,21 @@ import {
 } from "../../components/sidebarNavigation.js";
 import { renderLoadingIndicator } from "../../components/loadingIndicator.js";
 import { createResultCache } from "./iptvChannelFilter.js";
-import { ZONE, createFocus } from "./iptvNavigation.js";
+import { TABS, TAB_LIVE, TAB_MOVIES, TAB_SERIES, ZONE, createFocus } from "./iptvNavigation.js";
 import { validateAccountInput } from "./iptvFormLogic.js";
 import { createVirtualList } from "./iptvVirtualList.js";
+import { createPosterCardNode, bindPosterCard } from "./iptvPosterCards.js";
 import { bindCategory, bindChannelCard, createCategoryNode, createChannelCardNode } from "./iptvCards.js";
 import { createAccountForm, renderAccountFormMarkup } from "./iptvAccountForm.js";
+import { iptvDetailMethods } from "./iptvDetailView.js";
 import { iptvDataMethods } from "./iptvScreenData.js";
 import { FORM_ZONE, iptvFocusMethods } from "./iptvScreenFocus.js";
 import { escapeHtml, t } from "./iptvText.js";
 
-const GRID_COLUMNS = 4;
+const GRID_COLUMNS = 3;
 const CARD_ROW_HEIGHT = 156;
+const POSTER_COLUMNS = 5;
+const POSTER_ROW_HEIGHT = 340; // ~2.5 rows in the 850px body
 const CATEGORY_ROW_HEIGHT = 72;
 const EXPIRY_WARNING_DAYS = 14;
 
@@ -36,11 +41,16 @@ const EXPIRY_WARNING_DAYS = 14;
  * itemId: channel.id, playIptv: { sourceId, channelId }, title, playerTitle,
  * resumePosition: 0 }). Stream URL/credentials never enter route params.
  *
+ * Tabs (Canlı / Filmler / Diziler) share this screen: Movies/Series reuse the
+ * category rail and a 5-column poster grid (iptvPosterCards); OK hooks are
+ * openVodItem(item) and openSeriesItem(item) in iptvScreenData.
+ *
  * Mounted DOM is bounded by the window (~(visibleRows + 2) * columns cards),
  * independent of channel count; see iptvVirtualList/iptvChannelWindow.
  */
 export const IptvScreen = {
   ...iptvDataMethods,
+  ...iptvDetailMethods,
   ...iptvFocusMethods,
 
   getRouteStateKey() {
@@ -51,6 +61,8 @@ export const IptvScreen = {
     if (this.mode !== "channels" || !this.source) return null;
     return {
       sourceId: this.source.id,
+      tab: this.tab,
+      detail: this.captureDetailState(),
       viewKey: this.viewKey,
       query: this.query,
       focus: { ...this.focus },
@@ -75,11 +87,18 @@ export const IptvScreen = {
     if (!sources.length) {
       this.source = null;
       this.showForm({});
+      // ponytail: preset re-adds itself on every mount with no sources; fine for a private build.
+      if (IPTV_PRESET.server && IPTV_PRESET.username && IPTV_PRESET.password) {
+        this.form.setValues(IPTV_PRESET);
+        void this.submitForm();
+      }
       return;
     }
     const restored = navigationContext?.isBackNavigation ? navigationContext.restoredState : null;
     const source = sources.find((item) => item.id === restored?.sourceId) || sources[0];
-    this.enterChannels(source, restored?.sourceId === source.id ? restored : null);
+    const restore = restored?.sourceId === source.id ? restored : null;
+    this.enterChannels(source, restore);
+    if (restore?.detail) void this.openDetail(restore.detail.kind, restore.detail.item, restore.detail);
   },
 
   cleanup() {
@@ -94,6 +113,7 @@ export const IptvScreen = {
 
   // Stops everything the current view started: requests, timers, list DOM.
   teardownView() {
+    this.closeDetail();
     this.abortLoad?.();
     this.viewController?.abort();
     this.formController?.abort();
@@ -102,13 +122,61 @@ export const IptvScreen = {
     [this.searchTimer, this.holdTimer, this.deleteTimer].forEach((timer) => clearTimeout(timer));
     this.searchTimer = this.holdTimer = this.deleteTimer = null;
     this.holdArmed = false;
-    this.catList?.destroy();
-    this.chanList?.destroy();
-    this.catList = this.chanList = null;
+    this.teardownLists();
     this.manualFocused = null;
     this.form = null;
     this.formBusy = false;
     resetDpadRepeat(this);
+  },
+
+  // In-flight work and list DOM of the current tab (also used by tab switches).
+  teardownLists() {
+    this.abortLoad?.();
+    this.viewController?.abort();
+    this.loadRun = (this.loadRun || 0) + 1;
+    this.viewRun = (this.viewRun || 0) + 1;
+    clearTimeout(this.searchTimer);
+    this.searchTimer = null;
+    this.catList?.destroy();
+    this.chanList?.destroy();
+    this.catList = this.chanList = null;
+  },
+
+  // Category rail + item grid for the current tab (live: channel cards, VOD: posters).
+  createLists() {
+    const root = this.container;
+    const poster = this.tab !== TAB_LIVE;
+    this.columns = poster ? POSTER_COLUMNS : GRID_COLUMNS;
+    this.searchInput.placeholder = {
+      [TAB_LIVE]: t("iptv_search_live", "Search channels"),
+      [TAB_MOVIES]: t("iptv_search_movies", "Search movies"),
+      [TAB_SERIES]: t("iptv_search_series", "Search series")
+    }[this.tab];
+    this.catList = createVirtualList({
+      viewport: root.querySelector(".iptv-cat-viewport"),
+      columns: 1,
+      rowHeight: CATEGORY_ROW_HEIGHT,
+      createNode: createCategoryNode,
+      bindNode: (node, entry, index) => bindCategory(node, entry, index, { isSelected: (key) => key === this.viewKey })
+    });
+    this.chanList = createVirtualList({
+      viewport: root.querySelector(".iptv-channel-viewport"),
+      columns: this.columns,
+      rowHeight: poster ? POSTER_ROW_HEIGHT : CARD_ROW_HEIGHT,
+      createNode: poster ? createPosterCardNode : createChannelCardNode,
+      bindNode: poster
+        ? (node, item) => bindPosterCard(node, item)
+        : (node, channel, index) => bindChannelCard(node, channel, index, { isFavorite: (id) => this.favorites.has(id) })
+    });
+  },
+
+  updateTabLabels() {
+    const hint = this.container?.querySelector(".iptv-hint");
+    if (hint) hint.hidden = this.tab !== TAB_LIVE;
+    this.container?.querySelectorAll(".iptv-tab").forEach((node) => {
+      node.classList.toggle("is-active", node.dataset.tab === this.tab);
+      node.setAttribute("aria-selected", String(node.dataset.tab === this.tab));
+    });
   },
 
   renderSidebar() {
@@ -134,6 +202,7 @@ export const IptvScreen = {
     this.teardownView();
     this.mode = "channels";
     this.source = source;
+    this.tab = TABS.includes(restore?.tab) ? restore.tab : TAB_LIVE;
     this.catalog = null;
     this.entries = [];
     this.channels = [];
@@ -152,19 +221,31 @@ export const IptvScreen = {
       : ZONE.GRID;
     this.focus = restore
       ? { ...createFocus(), ...restore.focus, zone: restoredZone }
-      : createFocus({ zone: ZONE.HEADER, header: 1 });
+      : createFocus({ zone: ZONE.HEADER, header: TABS.indexOf(this.tab) });
     this.returnZone = null;
+    this.keepZone = false;
     this.renderChannelsShell();
-    void this.loadCatalog({ restore });
+    this.updateTabLabels();
+    if (this.tab === TAB_LIVE) void this.loadCatalog({ restore });
+    else void this.loadVodTab({ restore });
   },
 
   renderChannelsShell() {
     const button = (action, label) =>
       `<button type="button" class="iptv-btn" data-action="${action}">${escapeHtml(label)}</button>`;
+    const tabLabels = {
+      [TAB_LIVE]: t("iptv_tab_live", "Live"),
+      [TAB_MOVIES]: t("iptv_tab_movies", "Movies"),
+      [TAB_SERIES]: t("iptv_tab_series", "Series")
+    };
+    const tabs = TABS.map(
+      (tab) => `<button type="button" class="iptv-tab" role="tab" data-action="tab" data-tab="${tab}">${escapeHtml(tabLabels[tab])}</button>`
+    ).join("");
     this.container.innerHTML = `
       <div class="home-shell iptv-shell">
         ${this.renderSidebar()}
         <main class="home-main iptv-main">
+          <nav class="iptv-tabs" role="tablist">${tabs}</nav>
           <header class="iptv-header">
             <div class="iptv-title-block">
               <h1 class="iptv-title">${escapeHtml(t("iptv_title", "IPTV"))}</h1>
@@ -172,8 +253,7 @@ export const IptvScreen = {
               <div class="iptv-notice" role="status"></div>
             </div>
             <div class="iptv-toolbar">
-              <input class="iptv-search" type="text" data-action="search" autocomplete="off" spellcheck="false"
-                     placeholder="${escapeHtml(t("iptv_search_placeholder", "Search channels"))}" />
+              <input class="iptv-search" type="text" data-action="search" autocomplete="off" spellcheck="false" />
               ${button("cycleSource", t("iptv_switch_source", "Source"))}
               ${button("refresh", t("iptv_refresh", "Refresh"))}
               ${button("editSource", t("iptv_edit", "Edit"))}
@@ -193,26 +273,12 @@ export const IptvScreen = {
       </div>`;
     const root = this.container;
     this.searchInput = root.querySelector(".iptv-search");
-    this.headerNodes = Array.from(root.querySelectorAll(".iptv-toolbar > *"));
+    this.headerNodes = [...root.querySelectorAll(".iptv-tab"), ...root.querySelectorAll(".iptv-toolbar > *")];
     this.statusNode = root.querySelector(".iptv-status");
     this.noticeNode = root.querySelector(".iptv-notice");
     this.searchInput.value = this.query;
     this.searchInput.addEventListener("input", () => this.onSearchInput(this.searchInput.value));
-    this.catList = createVirtualList({
-      viewport: root.querySelector(".iptv-cat-viewport"),
-      columns: 1,
-      rowHeight: CATEGORY_ROW_HEIGHT,
-      createNode: createCategoryNode,
-      bindNode: (node, entry, index) => bindCategory(node, entry, index, { isSelected: (key) => key === this.viewKey })
-    });
-    this.chanList = createVirtualList({
-      viewport: root.querySelector(".iptv-channel-viewport"),
-      columns: this.columns,
-      rowHeight: CARD_ROW_HEIGHT,
-      createNode: createChannelCardNode,
-      bindNode: (node, channel, index) =>
-        bindChannelCard(node, channel, index, { isFavorite: (id) => this.favorites.has(id) })
-    });
+    this.createLists();
     this.bindSidebar();
     this.updateHeaderLabels();
     this.setStatus("loading");
@@ -259,16 +325,17 @@ export const IptvScreen = {
       host.hidden = true;
       host.replaceChildren();
     } else {
+      const live = this.tab === TAB_LIVE;
       const messages = {
-        empty: t("iptv_empty", "This category has no channels."),
-        no_results: t("iptv_no_results", "No channels match your search."),
+        empty: live ? t("iptv_empty", "This category has no channels.") : t("iptv_vod_empty", "This category is empty."),
+        no_results: live ? t("iptv_no_results", "No channels match your search.") : t("iptv_vod_no_results", "Nothing matches your search."),
         no_favorites: t("iptv_no_favorites", "No favorites yet. Hold OK on a channel to add one."),
         error: error ? this.messageFor(error) : ""
       };
       host.hidden = false;
       host.innerHTML =
         status === "loading"
-          ? `${renderLoadingIndicator({ className: "iptv-spinner" })}<div class="iptv-status-text">${escapeHtml(t("iptv_loading", "Loading channels..."))}</div>`
+          ? `${renderLoadingIndicator({ className: "iptv-spinner" })}<div class="iptv-status-text">${escapeHtml(this.tab === TAB_LIVE ? t("iptv_loading", "Loading channels...") : t("iptv_loading_vod", "Loading..."))}</div>`
           : `<div class="iptv-status-text">${escapeHtml(messages[status] || "")}</div>${
               status === "error"
                 ? `<button type="button" class="iptv-btn iptv-btn-primary" data-action="retry">${escapeHtml(t("iptv_retry", "Retry"))}</button>`
@@ -276,7 +343,7 @@ export const IptvScreen = {
             }`;
       if (status === "error") {
         this.statusAction = host.querySelector("[data-action='retry']");
-        this.statusRetry = retry || (() => this.loadCatalog({ force: true }));
+        this.statusRetry = retry || (() => (this.tab === TAB_LIVE ? this.loadCatalog({ force: true }) : this.loadVodTab()));
       }
     }
     if (this.focus.zone === ZONE.GRID && !this.channels.length) this.applyFocus();
@@ -297,6 +364,9 @@ export const IptvScreen = {
       show: t("iptv_form_show_password", "Show password"),
       hide: t("iptv_form_hide_password", "Hide password"),
       save: t("iptv_form_save", "Save"),
+      showAdult: t("iptv_form_show_adult", "Yetişkin içeriği göster"),
+      on: t("iptv_form_adult_on", "Açık"),
+      off: t("iptv_form_adult_off", "Kapalı"),
       cancel: this.formCanCancel ? t("iptv_form_cancel", "Cancel") : ""
     };
     this.container.innerHTML = `
@@ -305,7 +375,7 @@ export const IptvScreen = {
         <main class="home-main iptv-main iptv-form-main">${renderAccountFormMarkup(labels)}</main>
       </div>`;
     this.form = createAccountForm(this.container.querySelector(".iptv-form"), labels);
-    this.form.setValues(source ? { server: source.server, username: source.username, password: source.password } : {});
+    this.form.setValues(source ? { server: source.server, username: source.username, password: source.password, showAdult: source.showAdult } : {});
     this.focus = createFocus({ zone: FORM_ZONE });
     this.bindSidebar();
     this.applyFocus();
@@ -329,7 +399,7 @@ export const IptvScreen = {
         ? await IptvRepository.updateSource({ id: this.editing.id, ...check.values }, { signal })
         : await IptvRepository.addSource(check.values, { signal });
       if (token !== this.mountToken || signal.aborted) return;
-      this.enterChannels(source); // clears busy via teardownView
+      this.enterChannels(source, { tab: this.tab }); // reloads the current tab (adult filter re-read); clears busy via teardownView
     } catch (error) {
       if (token !== this.mountToken || error?.code === "aborted") return;
       // Inputs are kept as typed so the user only fixes what failed.

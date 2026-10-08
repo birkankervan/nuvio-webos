@@ -9,6 +9,6 @@ test("no sync service or feature references the IPTV store", () => {
   const dir = new URL("../../core/profile/", import.meta.url).pathname;
   const offenders = readdirSync(dir)
     .filter((name) => /sync/i.test(name) && name.endsWith(".js"))
-    .filter((name) => /iptvSources|IptvSources/.test(readFileSync(join(dir, name), "utf8")));
+    .filter((name) => /iptvSources|IptvSources|iptvProgress|IptvProgress/.test(readFileSync(join(dir, name), "utf8")));
   assert.deepEqual(offenders, []);
 });

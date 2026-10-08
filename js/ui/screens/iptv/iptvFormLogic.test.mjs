@@ -29,7 +29,7 @@ test("validation requires all fields and a usable server, and keeps the password
   assert.equal(validateAccountInput({ server: "", username: "u", password: "p" }, normalize).errorCode, "missing_fields");
   assert.equal(validateAccountInput({ server: "ftp://x", username: "u", password: "p" }, normalize).errorCode, "invalid_server");
   const ok = validateAccountInput({ server: "host:8080", username: " u ", password: " p " }, normalize);
-  assert.deepEqual(ok.values, { server: "http://host:8080", username: "u", password: " p " });
+  assert.deepEqual(ok.values, { server: "http://host:8080", username: "u", password: " p ", showAdult: false });
 });
 
 test("error results never contain the password", () => {

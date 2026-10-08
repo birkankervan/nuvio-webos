@@ -69,6 +69,16 @@ export function createChannelCardNode() {
   return node;
 }
 
+// Provider "category header" rows: box/block/geometric/dingbat glyphs, a run of 3+ of
+// one decoration char, decorations framing both ends, or no letters/digits at all.
+// "+" is not decoration ("Premium+++"); single "|TR|" prefixes are not frames.
+// ponytail: name heuristic only; Xtream gives no other provider-independent signal.
+const SEPARATOR_RE =
+  /[\u2500-\u27BF]|([#=\-_~*.\u2022])\1{2,}|^[|*#=~_\-\u2022<>\u00AB\u00BB]+\s.*\s[|*#=~_\-\u2022<>\u00AB\u00BB]+$|^[^\p{L}\p{N}]+$/u;
+export function isSeparatorName(name) {
+  return SEPARATOR_RE.test(String(name ?? "").trim());
+}
+
 export function bindChannelCard(node, channel, _index, { isFavorite }) {
   const { fallback, img, name, number } = node._parts;
   name.textContent = channel.name;
@@ -83,6 +93,7 @@ export function bindChannelCard(node, channel, _index, { isFavorite }) {
   }
   node.classList.toggle("has-logo", Boolean(channel.logo) && !img._failed);
   node.classList.toggle("is-favorite", isFavorite(channel.id));
+  node.classList.toggle("is-separator", isSeparatorName(channel.name));
   node.dataset.channelId = channel.id;
 }
 

@@ -1,4 +1,5 @@
 import { createProfileScopedStore } from "./profileScopedStore.js";
+import { IptvProgressStore } from "./iptvProgressStore.js";
 
 // Local-only IPTV state per profile. Credentials live here in plain local
 // storage (accepted risk, plan D1); never sync, log or put them in routes.
@@ -74,7 +75,8 @@ function normalizeSource(value) {
     password,
     createdAt,
     updatedAt: Number(source.updatedAt) || createdAt,
-    lastAccount: normalizeAccount(source.lastAccount)
+    lastAccount: normalizeAccount(source.lastAccount),
+    showAdult: source.showAdult === true
   };
 }
 
@@ -173,12 +175,14 @@ export const IptvSourcesStore = {
     }
     state.sources = state.sources.filter((source) => source.id !== id);
     write(profileId, state); // normalize drops this source's favorites and last channel.
+    IptvProgressStore.removeSource(id, profileId);
     notifyRemoval(profileId, id);
     return true;
   },
 
   clearProfile(profileId) {
     store.clearProfile(profileId, SILENT);
+    IptvProgressStore.clearProfile(profileId);
     notifyRemoval(profileId, null);
   },
 

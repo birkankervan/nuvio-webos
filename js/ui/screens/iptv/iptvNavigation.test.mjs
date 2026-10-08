@@ -44,3 +44,23 @@ test("resolveFocusIndex keeps identity across list changes and is nearest on rem
   assert.equal(resolveFocusIndex(list, "gone", 99), 2, "clamped");
   assert.equal(resolveFocusIndex([], "a", 3), 0);
 });
+
+test("tabs are the first header nodes: left/right walk them, down enters the rail", () => {
+  const withTabs = { ...ctx, headerCount: 9, columns: 5 };
+  assert.equal(moveFocus(at(ZONE.HEADER, { header: 0 }), "right", withTabs).focus.header, 1);
+  assert.equal(moveFocus(at(ZONE.HEADER, { header: 2 }), "left", withTabs).focus.header, 1);
+  assert.equal(moveFocus(at(ZONE.HEADER, { header: 0 }), "left", withTabs).focus.zone, ZONE.SIDEBAR);
+  assert.equal(moveFocus(at(ZONE.HEADER, { header: 1 }), "down", withTabs).focus.zone, ZONE.CATEGORIES);
+});
+
+test("5-column poster grid: window math and navigation", async () => {
+  const { computeChannelWindow } = await import("./iptvChannelWindow.js");
+  const win = computeChannelWindow({ count: 2079, columns: 5, rowStride: 340, viewportHeight: 850, scrollTop: 340 * 100 });
+  assert.ok(win.mountedCount <= 5 * 6, `mounted ${win.mountedCount}`);
+  assert.equal(win.ranges[0].start % 5, 0);
+  const five = { ...ctx, channelCount: 12, columns: 5 };
+  assert.equal(moveFocus(at(ZONE.GRID, { channel: 4 }), "right", five).focus.channel, 4, "row end stays");
+  assert.equal(moveFocus(at(ZONE.GRID, { channel: 3 }), "down", five).focus.channel, 8);
+  assert.equal(moveFocus(at(ZONE.GRID, { channel: 9 }), "down", five).focus.channel, 11, "partial last row");
+  assert.equal(moveFocus(at(ZONE.GRID, { channel: 5 }), "left", five).focus.zone, ZONE.CATEGORIES);
+});

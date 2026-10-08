@@ -194,6 +194,7 @@ export function createPlayerScreenMethods15() {
 
                   <div class="player-controls-row">
                     <div id="playerControlButtons" class="player-control-buttons"></div>
+                    <div id="playerResolutionLabel" class="player-resolution-label"></div>
                     <div id="playerTimeLabel" class="player-time-label">0:00 / 0:00</div>
                   </div>
                 </div>
@@ -272,6 +273,7 @@ export function createPlayerScreenMethods15() {
             progressFill: uiRoot.querySelector("#playerProgressFill"),
             controlButtons: uiRoot.querySelector("#playerControlButtons"),
             timeLabel: uiRoot.querySelector("#playerTimeLabel"),
+            resolutionLabel: uiRoot.querySelector("#playerResolutionLabel"),
             startupErrorButton: uiRoot.querySelector("#playerStartupErrorOverlay .player-startup-error-button")
           }
         : null;

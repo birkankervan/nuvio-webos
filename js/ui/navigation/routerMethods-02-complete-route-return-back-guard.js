@@ -167,10 +167,21 @@ export function createRouterMethods02() {
         const state = {
           route: this.current,
           params: this.currentParams,
-          previousRoute: previousRoute || null
+          // Same-route replace (IPTV CH+/CH- zap) keeps the entry's real predecessor,
+          // otherwise popToExistingRoute() sees "player" and refuses the history pop.
+          previousRoute:
+            (replaceHistory && previousRoute === routeName ? window.history.state?.previousRoute : previousRoute) || null
         };
         if (!this.historyInitialized) {
-          window.history.replaceState(state, "");
+          if (Platform.isWebOS() && this.current !== "home" && !NON_BACKSTACK_ROUTES.has(this.current)) {
+            // Cold resume straight into a non-Home route leaves history at index 0;
+            // webOS then exits on the first native Back before any key handler runs.
+            // Seed Home underneath so Back lands on Home instead.
+            window.history.replaceState({ route: "home", params: {}, previousRoute: null }, "");
+            window.history.pushState(state, "");
+          } else {
+            window.history.replaceState(state, "");
+          }
           this.historyInitialized = true;
         } else if (!fromHistory) {
           if (replaceHistory || NON_BACKSTACK_ROUTES.has(previousRoute)) {

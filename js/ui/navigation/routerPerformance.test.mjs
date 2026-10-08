@@ -29,3 +29,33 @@ test("a late lazy screen cannot replace a newer navigation or clean up twice", a
   assert.equal(cleanups, 1);
   assert.equal(router.stack.length, 1);
 });
+
+test("same-route replace (IPTV zap) keeps the history predecessor", async () => {
+  const writes = [];
+  window.history = {
+    state: { route: "player", previousRoute: "iptv" },
+    pushState: (s) => writes.push(["push", s]),
+    replaceState: (s) => writes.push(["replace", s])
+  };
+  const router = {
+    ...createRouterMethods02(), current: "player", currentParams: {}, stack: [], historyInitialized: true,
+    routes: { player: { cleanup() {}, mount: async () => {} } },
+    beginRouteReturnBackGuard() {}, captureCurrentRouteState() {},
+    resolveNavigationContext() { return {}; }, completeRouteReturnBackGuard() {},
+    persistWebOsResumeRoute() {}
+  };
+  await router.navigate("player", { a: 1 }, { replaceHistory: true });
+  assert.equal(writes[0][0], "replace");
+  assert.equal(writes[0][1].previousRoute, "iptv");
+  delete window.history;
+});
+
+test("a keydown Back right after a popstate-consumed Back is a copy", async () => {
+  const { createRouterMethods01 } = await import("./routerMethods-01-get-route-state-key.js");
+  const router = { ...createRouterMethods01() };
+  assert.equal(router.isPopstateBackCopy(), false);
+  router.lastPopstateBackConsumedAt = Date.now();
+  assert.equal(router.isPopstateBackCopy(), true);
+  router.lastPopstateBackConsumedAt = Date.now() - 1000;
+  assert.equal(router.isPopstateBackCopy(), false);
+});

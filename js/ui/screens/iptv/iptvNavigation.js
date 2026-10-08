@@ -8,6 +8,11 @@ export const ZONE = Object.freeze({
   GRID: "grid"
 });
 
+export const TAB_LIVE = "live";
+export const TAB_MOVIES = "movies";
+export const TAB_SERIES = "series";
+export const TABS = Object.freeze([TAB_LIVE, TAB_MOVIES, TAB_SERIES]);
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 export function createFocus(overrides = {}) {

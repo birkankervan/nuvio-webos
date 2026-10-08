@@ -250,7 +250,7 @@ export function createPlayerScreenMethods07() {
     },
     buildScrobbleContext() {
       // Trakt/Simkl have nothing to scrobble for a live channel.
-      if (PlayerController.isLivePlaybackItemType(this.params?.itemType)) return null;
+      if (PlayerController.isLivePlaybackItemType(this.params?.itemType) || PlayerController.isLocalOnlyProgressItemType(this.params?.itemType)) return null;
       const identity = this.buildPlaybackIdentityContext();
       const currentSec = this.getPlaybackCurrentSeconds();
       const durationSec = this.getPlaybackDurationSeconds();
@@ -312,10 +312,13 @@ export function createPlayerScreenMethods07() {
         this.maybeShowParentalGuideOverlay();
       }
     },
+    isLocalOnlyMedia() {
+      return PlayerController.isLocalOnlyProgressItemType(this.params?.itemType);
+    },
     async fetchSkipIntervals() {
       const requestToken = (this.skipIntervalsRequestToken || 0) + 1;
       this.skipIntervalsRequestToken = requestToken;
-      if (!PlayerSettingsStore.get().skipIntroEnabled) {
+      if (!PlayerSettingsStore.get().skipIntroEnabled || this.isLocalOnlyMedia()) {
         this.skipIntervals = [];
         this.activeSkipInterval = null;
         this.skipIntervalDismissed = false;

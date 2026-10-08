@@ -27,7 +27,7 @@ export function createPlayerScreenMethods68() {
         let repositorySubtitles = [];
 
         try {
-          if (subtitleLookup.id && subtitleLookup.type) {
+          if (subtitleLookup.id && subtitleLookup.type && !this.isLocalOnlyMedia()) {
             repositorySubtitles = await subtitleRepository.getSubtitles(
               subtitleLookup.type,
               subtitleLookup.id,

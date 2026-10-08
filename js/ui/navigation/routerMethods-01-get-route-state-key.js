@@ -179,6 +179,9 @@ export function createRouterMethods01() {
           !currentScreen?.hasBackDismissableOverlay?.();
         const consumeResult = !shouldSkipConsume && !shouldLetPlayerReturnToStream ? currentScreen?.consumeBackRequest?.() : false;
         if (consumeResult) {
+          // webOS may deliver popstate before keydown 461; FocusEngine drops that
+          // second copy so one physical Back stays one step.
+          this.lastPopstateBackConsumedAt = Date.now();
           if (consumeResult !== "history") {
             this.restoreCurrentHistoryState(state);
           }
@@ -208,6 +211,9 @@ export function createRouterMethods01() {
           );
         }
       });
+    },
+    isPopstateBackCopy(windowMs = 250) {
+      return Date.now() - Number(this.lastPopstateBackConsumedAt || 0) < windowMs;
     },
     suppressNextPopstate(durationMs = 700) {
       this.suppressPopstateUntil = Math.max(Number(this.suppressPopstateUntil || 0), Date.now() + Math.max(0, Number(durationMs || 0)));

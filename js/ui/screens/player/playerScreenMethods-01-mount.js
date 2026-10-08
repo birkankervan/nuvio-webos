@@ -1,6 +1,7 @@
 /* global __NUVIO_APP_VERSION__ */
 import * as internals from "./playerScreenContext.js";
 import { initializePlayerMountState } from "./playerMountStateInitialization.js";
+import { iptvProgressKey } from "../../../data/local/iptvProgressStore.js";
 
 export function createPlayerScreenMethods01() {
   const {
@@ -34,9 +35,12 @@ export function createPlayerScreenMethods01() {
   } = internals;
 
   return {
-    async resolveIptvStreamUrl({ sourceId, channelId } = {}) {
+    async resolveIptvStreamUrl({ sourceId, channelId, kind, streamId, ext } = {}) {
       try {
         const { IptvRepository } = await import("../../../data/repository/iptvRepository.js");
+        if (kind === "movie" || kind === "episode") {
+          return await IptvRepository.resolveVodPlaybackUrl(sourceId, kind, streamId, ext);
+        }
         return IptvRepository.resolveChannelPlaybackUrl(sourceId, channelId);
       } catch (error) {
         // Codes only: the URL carries credentials.
@@ -86,6 +90,10 @@ export function createPlayerScreenMethods01() {
         if (this.playerMountToken !== mountToken || !this.playerRouteActive) return;
         // Player memory only: the router keeps the id-only params it was given.
         if (streamUrl) params = this.params = { ...params, streamUrl };
+        if (params.itemType === "iptvvod") {
+          // Progress key doubles as itemId so every progress/meta path stays local.
+          params = this.params = { ...params, itemId: iptvProgressKey(params.playIptv) };
+        }
       }
       this.trackPreferenceContentId = this.getTrackPreferenceContentId();
       this.subtitleDelayPreferenceVideoId = this.getSubtitleDelayPreferenceVideoId();

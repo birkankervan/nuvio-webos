@@ -2,9 +2,12 @@ import { BoundedCache } from "../../core/util/boundedCache.js";
 import { IptvSourcesStore, normalizeIptvServer } from "../local/iptvSourcesStore.js";
 import { IptvError, XtreamApi } from "../remote/api/xtreamApi.js";
 import { registerSessionTeardownHandler } from "../../core/auth/sessionLifecycle.js";
+import { isAdultCategoryName, isAdultItemName } from "./iptvAdultFilter.js";
 
 const MAX_CACHED_CATALOGS = 8;
 const MAX_CACHED_CATEGORIES = 32;
+const MAX_CACHED_FULL_LISTS = 2; // 7 MB-class lists: memory only, never persisted.
+const MAX_CACHED_INFO = 32;
 
 // Single-connection contract (IPTV-04 player integration): when
 // getMaxConnections(source) === 1, the previous native session and its fetch
@@ -24,8 +27,20 @@ function groupByCategory(channels) {
   return map;
 }
 
+// Adult content is hidden unless the source opts in (source.showAdult === true).
+const hidesAdult = (source) => source?.showAdult !== true;
+const adultIdSet = (categories) => new Set(categories.filter((c) => isAdultCategoryName(c.name)).map((c) => String(c.id)));
+const keepItems = (items, hiddenIds) =>
+  items.filter((item) => !hiddenIds.has(String(item.categoryId)) && !isAdultItemName(item.name));
+// Live only: decorated separator rows ("█ ADULTS CHANNELS █", name starts with a symbol)
+// are category labels, so test them as such; plain titles like "Sex Education" stay.
+const keepLive = (items, hiddenIds) =>
+  keepItems(items, hiddenIds).filter((item) => /^[\p{L}\p{N}]/u.test(item.name) || !isAdultCategoryName(item.name));
+
 export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi } = {}) {
   const catalogs = new BoundedCache(MAX_CACHED_CATALOGS);
+  const vod = new BoundedCache(MAX_CACHED_CATEGORIES + MAX_CACHED_INFO); // categories, per-category lists, info
+  const fullLists = new BoundedCache(MAX_CACHED_FULL_LISTS);
   const inFlight = new Map();
   let generation = 0;
 
@@ -34,6 +49,8 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
   function invalidate() {
     generation += 1;
     catalogs.clear();
+    vod.clear();
+    fullLists.clear();
     inFlight.clear();
   }
 
@@ -87,7 +104,7 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
     return shared(key, signal, async () => {
       const source = requireSource(sourceId, profileId);
       const token = generation;
-      const categories = await api.getLiveCategories(source, { signal });
+      let categories = await api.getLiveCategories(source, { signal });
       let channels = null;
       try {
         channels = await api.getLiveStreams(source, { signal });
@@ -95,10 +112,19 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
         if (error?.code !== "too_large") throw error;
       }
       assertFresh(token);
+      // Filtered at build time; a source update (toggle) drops the catalog, so it is never stale.
+      const hideAdult = hidesAdult(source);
+      const hiddenIds = hideAdult ? adultIdSet(categories) : new Set();
+      if (hideAdult) {
+        categories = categories.filter((c) => !hiddenIds.has(String(c.id)));
+        if (channels) channels = keepLive(channels, hiddenIds);
+      }
       const catalog = {
         sourceId,
         mode: channels ? "full" : "byCategory",
         categories,
+        hiddenIds,
+        hideAdult,
         channels,
         channelsByCategory: channels ? groupByCategory(channels) : new BoundedCache(MAX_CACHED_CATEGORIES),
         fetchedAt: Date.now()
@@ -121,17 +147,70 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
       return categoryId == null ? catalog.channels : catalog.channelsByCategory.get(String(categoryId)) || [];
     }
     if (categoryId == null) throw new IptvError("too_large");
+    if (catalog.hiddenIds.has(String(categoryId))) return [];
     const cached = catalog.channelsByCategory.get(String(categoryId));
     if (cached) return cached;
     return shared(`${key}|${categoryId}`, signal, async () => {
       const source = requireSource(sourceId, profileId);
       const token = generation;
-      const channels = await api.getLiveStreams(source, { categoryId, signal });
+      let channels = await api.getLiveStreams(source, { categoryId, signal });
       assertFresh(token);
+      if (catalog.hideAdult) channels = keepLive(channels, catalog.hiddenIds);
       catalog.channelsByCategory.set(String(categoryId), channels);
       return channels;
     });
   }
+
+  // Cache-or-load for VOD/series data; stale results (invalidate mid-flight) are not stored.
+  function cached(cache, key, { signal }, load) {
+    const hit = cache.get(key);
+    if (hit) return Promise.resolve(hit); // always a promise: callers chain .catch
+    return shared(key, signal, async () => {
+      const token = generation;
+      const value = await load();
+      assertFresh(token);
+      cache.set(key, value);
+      return value;
+    });
+  }
+
+  // kind: "vod" | "series"; categoryId null loads the full list (memory only).
+  // Raw lists stay cached; adult filtering is applied on read (memoized per raw array)
+  // so toggling showAdult needs no cache invalidation.
+  function vodAccessors(kind, listName, listApi) {
+    const rawCats = (sourceId, opts) => {
+      const key = `${keyOf(opts.profileId, sourceId)}|${kind}|cats`;
+      return cached(vod, key, opts, () => api[kind === "vod" ? "getVodCategories" : "getSeriesCategories"](requireSource(sourceId, opts.profileId), { signal: opts.signal }));
+    };
+    const memo = new WeakMap();
+    const filtered = (raw, build) => {
+      let value = memo.get(raw);
+      if (!value) memo.set(raw, (value = build()));
+      return value;
+    };
+    return {
+      async categories(sourceId, opts = {}) {
+        const raw = await rawCats(sourceId, opts);
+        if (!hidesAdult(requireSource(sourceId, opts.profileId))) return raw;
+        return filtered(raw, () => raw.filter((c) => !isAdultCategoryName(c.name)));
+      },
+      async list(sourceId, categoryId, opts = {}) {
+        const all = categoryId == null;
+        const key = `${keyOf(opts.profileId, sourceId)}|${kind}|${all ? "all" : categoryId}`;
+        const hide = hidesAdult(requireSource(sourceId, opts.profileId));
+        const hiddenIds = hide ? adultIdSet(await rawCats(sourceId, opts)) : null;
+        if (hiddenIds && !all && hiddenIds.has(String(categoryId))) return [];
+        const raw = await cached(all ? fullLists : vod, key, opts, () => api[listName](requireSource(sourceId, opts.profileId), { categoryId: all ? undefined : categoryId, signal: opts.signal }));
+        return hide ? filtered(raw, () => keepItems(raw, hiddenIds)) : raw;
+      },
+      info(sourceId, id, opts = {}) {
+        const key = `${keyOf(opts.profileId, sourceId)}|${kind}|info|${id}`;
+        return cached(vod, key, opts, () => api[listApi](requireSource(sourceId, opts.profileId), id, { signal: opts.signal }));
+      }
+    };
+  }
+  const movies = vodAccessors("vod", "getVodStreams", "getVodInfo");
+  const shows = vodAccessors("series", "getSeries", "getSeriesInfo");
 
   return {
     listSources: (profileId) => store.list(profileId),
@@ -151,6 +230,16 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
       const prefix = `${sourceId}:`;
       if (!source || !String(channelId || "").startsWith(prefix)) throw new IptvError("not_found");
       return api.resolvePlaybackUrl(source, { sourceId: source.id, streamId: String(channelId).slice(prefix.length) });
+    },
+    getVodCategories: movies.categories,
+    getVodStreams: movies.list,
+    getVodInfo: movies.info,
+    getSeriesCategories: shows.categories,
+    getSeries: shows.list,
+    getSeriesInfo: shows.info,
+    /** kind: "movie" | "episode". In-memory URL only; never log it. */
+    resolveVodPlaybackUrl(sourceId, kind, id, ext, profileId) {
+      return api.resolveVodUrl(requireSource(sourceId, profileId), kind, id, ext);
     },
     // Profile switch / logout: stale in-flight results are discarded, cache dropped.
     invalidate
