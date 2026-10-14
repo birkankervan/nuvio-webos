@@ -16,6 +16,9 @@ class FakeDescription extends HTMLElement {
   set textContent(value) { this._text = value; this.textWrites++; }
   get textContent() { return this._text; }
   closest() { return {}; }
+  // registerHomeDomNodes snapshots the node after truncation.
+  get childNodes() { return []; }
+  cloneNode() { return {}; }
   get clientWidth() { return 400; }
   get clientHeight() { return 40; }
   get scrollWidth() { return 400; }
@@ -26,7 +29,7 @@ test("hero description truncation is skipped when text and box are unchanged", (
   const node = new FakeDescription("A long hero description that overflows the box");
   const screen = {
     ...createHomeScreenMethods14(),
-    layoutMode: "modern",
+    layoutMode: "classic",
     container: { querySelectorAll: () => [node] },
     applyModernHeroDescriptionBounds() {}
   };

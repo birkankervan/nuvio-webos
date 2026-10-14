@@ -2149,3 +2149,25 @@ ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açı
   3 s target; warm runs meet it. Note: a <video> element remains in the DOM
   after Back (not checked whether it is detached/stopped). Forward removed.
   Next: same measurement on webOS; investigate cold-start (manifest/loader).
+
+## SYNC-02 — upstream 1.2.5 — 15 Ekim 2026
+
+Sahip: root (tek ajan). Branch `merge/upstream-1.2.5`; `git merge --no-commit
+origin/main` (25b984f..cee232e, 30 commit, 1.2.4+1.2.5). Commit/push yapılmadı,
+main dokunulmadı.
+
+7 text conflict, hepsi iki tarafı birleştirerek çözüldü:
+- homeDomUpdate.js: yerel re-export (`keyedDomUpdate.js`) korundu; upstream
+  row/card-only `signature` perf fix'i `js/ui/components/keyedDomUpdate.js`'e
+  taşındı (stream/addon key'leri de boundary).
+- Home 04/05/14/21/30 + stream 04: union. 05'te çift import, 04'te
+  `getTvRuntimePerformanceProfile` çift tanım temizlendi.
+- Upstream modern Home hero açıklamasında JS truncation'ı kaldırıp CSS ellipsis'e
+  geçti; `homeTruncationMemo.test.mjs` classic yoluna alındı + DOM stub'ları.
+
+Kontroller: 149/149 Node test, lint, package:webos (1.2.5), check-performance-build,
+diff --check geçti. `space.nuvio.webos_1.2.5_all.ipk` TV'ye kuruldu ve açıldı;
+Inspector: home-shell, kart, focus, hero mevcut; `birkan` etiketi yok.
+Kumandayla kontrollü performans ölçümü yapılmadı.
+
+Kullanıcı kararı: upstream CSS hero ellipsis kalır; merge commit main'e alındı ve personal remote'a push edildi.

@@ -28,6 +28,7 @@ export function createStreamScreenMethods04() {
       this.streamLoadAbortController?.abort?.();
       const loadAbortController = typeof AbortController === "function" ? new AbortController() : null;
       this.streamLoadAbortController = loadAbortController;
+      // Every load supersedes the previous collector, including runtimes without AbortController.
       const token = this.loadToken = (this.loadToken || 0) + 1;
       if (this.streamChunkTimer) clearTimeout(this.streamChunkTimer);
       this.streamChunkTimer = null;
@@ -41,10 +42,16 @@ export function createStreamScreenMethods04() {
       this.loading = preserveExistingResults ? false : true;
       this.streamSearchCompleted = false;
       this.error = "";
+      if (this.errorChipTimer) {
+        clearTimeout(this.errorChipTimer);
+        this.errorChipTimer = null;
+      }
       if (!preserveExistingResults) {
         this.streams = [];
         this.addonFilter = "all";
-        this.focusState = { zone: "filter", index: 0 };
+        this.focusState = { zone: "filter", index: 1 };
+        this.streamUserMovedFocus = false;
+        this.streamInitialResultFocusAssigned = false;
         this.listScrollTop = 0;
         this.addonLogoLookup = {};
       }
@@ -180,7 +187,8 @@ export function createStreamScreenMethods04() {
         );
         this.streams = sortStreamsByAddonOrder(this.streams, this.sourceChips);
         this.scheduleDebridPreparation();
-        if (this.streams.length && this.focusState?.zone !== "card") {
+        if (!preserveExistingResults && this.streams.length && !this.streamUserMovedFocus && !this.streamInitialResultFocusAssigned) {
+          this.streamInitialResultFocusAssigned = true;
           this.focusState = { zone: "card", row: 0, action: "play" };
         }
         const firstVisibleChunk = this.loading;
@@ -275,10 +283,14 @@ export function createStreamScreenMethods04() {
         this.streamSearchCompleted = true;
         this.sourceChips = this.sourceChips.map((chip) => (chip.status === "loading" ? { ...chip, status: "error" } : chip));
         this.loading = false;
-        if (this.streams.length) {
+        if (!preserveExistingResults && this.streams.length && !this.streamUserMovedFocus && !this.streamInitialResultFocusAssigned) {
+          this.streamInitialResultFocusAssigned = true;
+          this.focusState = { zone: "card", row: 0, action: "play" };
+        }
+        if (this.streams.length && !preserveExistingResults && this.focusState?.zone === "card") {
           const visibleStreams = this.getFilteredStreams();
           const maxCardIndex = Math.max(0, visibleStreams.length - 1);
-          let initialIndex = clamp(Number(this.focusState?.index || 0), 0, maxCardIndex);
+          let initialIndex = clamp(Number(this.focusState?.row ?? this.focusState?.index ?? 0), 0, maxCardIndex);
           const preferred = String(this.params?.preferredStreamId || "").trim();
           if (preferred) {
             const prefIdx = visibleStreams.findIndex((s) => String(s?.id || "") === preferred);
@@ -293,8 +305,8 @@ export function createStreamScreenMethods04() {
             row: rowIndex,
             action: String(this.focusState?.action || "play")
           };
-        } else {
-          this.focusState = { zone: "filter", index: 0 };
+        } else if (!this.streams.length) {
+          this.focusState = { zone: "filter", index: 1 };
         }
         this.requestRender();
         this.scheduleErrorChipCleanup();

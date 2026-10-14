@@ -1,3 +1,4 @@
+import { ensureHeroMdbListRatings } from "./homeHeroMdbListLoad.js";
 import * as internals from "./homeScreenContext.js";
 import { hasMountedHomeDom, updateHomeDom } from "./homeDomUpdate.js";
 import { HomeRowVirtualizer } from "./homeRowVirtualizer.js";
@@ -103,7 +104,8 @@ export function createHomeScreenMethods23() {
         heroItem = { ...heroItem, heroMetaEnriching: true };
         this.heroItem = heroItem;
       }
-      const showHeroSection = Boolean(this.layoutPrefs?.heroSectionEnabled) && Boolean(heroItem);
+      const modernCarouselHasContent = this.layoutMode === "modern" && Boolean(this.rows?.length || this.continueWatchingDisplay?.length);
+      const showHeroSection = (modernCarouselHasContent || Boolean(this.layoutPrefs?.heroSectionEnabled)) && Boolean(heroItem);
       const modernLandscapePostersEnabled = this.layoutMode === "modern" && Boolean(this.layoutPrefs?.modernLandscapePostersEnabled);
       const modernLandscapeLayoutClass = modernLandscapePostersEnabled ? " home-modern-landscape-posters" : "";
       const modernHeroFullScreenBackdropClass =
@@ -506,6 +508,7 @@ export function createHomeScreenMethods23() {
       this.renderedDataHomeSettingsKey = this.getDataHomeRenderSettingsKey();
       this.ensureHomeTruncationObservers();
       this.scheduleHomeTruncationUpdate();
+      void ensureHeroMdbListRatings.call(this);
       this.scheduleHomeLazyImageHydration(null, { refreshIndex: true });
       this.scheduleReturnFocusRestore();
       this.setupHomeRowVirtualization();

@@ -14,6 +14,7 @@ export function createHomeScreenMethods30() {
       );
     },
     cleanup() {
+      this.heroMdbListRequest = null;
       this.pendingHomeDataChanges = null;
       if (this.detailScreenPrefetchTimer) clearTimeout(this.detailScreenPrefetchTimer);
       if (this.detailScreenPrefetchIdle) globalThis.cancelIdleCallback?.(this.detailScreenPrefetchIdle);
