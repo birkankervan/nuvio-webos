@@ -1322,3 +1322,38 @@ Inspector: home-shell, kart, focus, hero mevcut; `birkan` etiketi yok.
 Kumandayla kontrollü performans ölçümü yapılmadı.
 
 Kullanıcı kararı: upstream CSS hero ellipsis kalır; merge commit main'e alındı ve personal remote'a push edildi.
+
+## PERF-1.2.5 — TV A/B ölçümü — 15 Ekim 2026 (yarım)
+
+Sahip: root. A = merge öncesi fork `962ded8` (1.2.3 IPK), B = 1.2.5 merge `56f03775`.
+Harness `scripts/tv-ab/` (ab.sh + measure.mjs; commit edildi): taze kurulum+açılış,
+row1'e gir, ısınma, yatay 1:0→1:15→1:0 ×2 (150 ms), dikey 10 aşağı/10 yukarı
+(350 ms), row1 karttan Detail + CDP Back(461) → Home odak boyanana kadar süre.
+Metrikler: keydown→task handler p50/p95, rAF p95/max, long task sayı/max.
+
+Geçerli sonuç yalnız B (2 tur): yatay handler p95 35-40 ms, rAF p95 33.4,
+LT 1 (max 50-69); dikey handler p95 40-55, rAF p95 50, LT 15-16 (max 87-100);
+Back 418-472 ms, odak 1:0 korundu; hata yok.
+A turları tamamlanamadı: Mac kapağı kapalı (AppleClamshellState=Yes) ve sistem
+uyuyor; ~15 dk'da bir DarkWake. caffeinate clamshell uykusunu engellemiyor;
+Node zamanlayıcıları ve TV tüneli (ECONNRESET) donuyor. Aynı oturum A/B olmadan
+eski oturum sayılarıyla kıyas geçersiz (kural). TV'de yeniden 1.2.5 kurulu.
+
+Sonraki adım: Mac kapağı açık/uyanık iken `AB=<ipk klasörü> scripts/tv-ab/ab.sh A B A B A B`
+(A.ipk için 962ded8 worktree'den package:webos). Kumandaya dokunulmamalı.
+
+## PERF-1.2.5 — TV A/B sonucu — 15 Ekim 2026 (tamamlandı)
+
+Mac kapağı açık, aynı oturum A,B,A,B,A,B (A = 962ded8 1.2.3 fork, B = 1.2.5 merge
+56f03775). Harness `scripts/tv-ab/` (commit edildi); 1.2.3'te açılan bilgilendirme
+amaçlı app-update dialog'u (tek OK, close) harness tarafından kapatılıyor.
+Tüm turlar 1:0 → 1:15 ×2, dikey 11:0'a ulaştı; Back sonrası odak 1:0; hata 0.
+
+- Yatay: handler p95 A 41.1-41.8 / B 40.8-42.8, rAF p95 33.4 ikisi, LT 1 ikisi. Eşit.
+- Dikey: handler p95 A 38-54 / B 39-52, rAF p95 50 ikisi, LT A 13,13,12 / B 16,13,13,
+  LT max A 80-116 / B 74-98. Gürültü içinde eşit.
+- Back (Detail → Home odak boyanana kadar): A 602/667/707 ms, B 419/413/430 ms
+  (~%35 hızlı; kaynak doğrulanmadı, olası aday upstream 28692204 Home layer stall fix).
+Karar: 1.2.5 merge performans regresyonu yok; Back iyileşti. TV'de B (1.2.5) kurulu.
+Kalan: dikey long task 12-16/20 tuş (satır mount maliyeti, PERF-04/06 sonrası
+bilinen boşluk); fiziksel kumanda/soğuk başlangıç ölçülmedi.
