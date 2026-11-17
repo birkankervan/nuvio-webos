@@ -16,7 +16,7 @@ function context() {
     requestRender() {}, scheduleDebridPreparation() {}, maybeAutoResumeStream() {},
     maybeAutoPlayStream() {}, scheduleErrorChipCleanup() {},
     cancelAutoPlayCountdown() {}, cancelAutoPlaySelectionWait() {},
-    cancelScheduledRender() {}, stopStreamVirtualization() {},
+    cancelScheduledRender() {}, stopStreamVirtualization() {}, unbindStreamParty() {},
     applyAddonLogos: (streams) => streams,
     getFilteredStreams: () => ctx.streams
   };

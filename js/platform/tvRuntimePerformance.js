@@ -1,6 +1,6 @@
 import { Platform } from "./index.js";
 import { TizenCapabilities } from "./tizen/tizenCapabilities.js";
-import { LocalStore } from "../core/storage/localStore.js";
+import { getDeviceMemoryGb, isLowMemoryDevice } from "./tvPerformancePolicy.js";
 
 // The first common TV generation with a modern Chromium baseline is Samsung
 // Tizen 6.5 / Chromium M85 (2022) and LG webOS TV 22 / Chromium M87 (2022).
@@ -9,50 +9,6 @@ export const TV_RUNTIME_PERFORMANCE_THRESHOLDS = Object.freeze({
   modernTvYear: 2022,
   modernChromiumMajor: 85
 });
-
-// Keep the runtime-based automatic default unless the user explicitly chooses
-// a device-local override. Legacy API compatibility remains independent.
-const TV_PERF_MODE_KEY = "tvPerfMode";
-export const TV_PERF_MODES = Object.freeze(["auto", "reduced", "full"]);
-
-export function getTvPerformanceMode() {
-  try {
-    const raw = String(LocalStore.get(TV_PERF_MODE_KEY, "") || "").toLowerCase();
-    return raw === "reduced" || raw === "full" ? raw : "auto";
-  } catch (_) {
-    return "auto";
-  }
-}
-
-export function setTvPerformanceMode(mode) {
-  const normalized = String(mode || "").toLowerCase();
-  try {
-    if (normalized === "full" || normalized === "reduced") {
-      LocalStore.set(TV_PERF_MODE_KEY, normalized);
-    } else {
-      LocalStore.remove(TV_PERF_MODE_KEY);
-    }
-  } catch (_) {}
-  cachedProfile = null;
-  try {
-    if (typeof globalThis.dispatchEvent === "function" && typeof globalThis.Event === "function") {
-      globalThis.dispatchEvent(new Event("nuvio:performance-mode"));
-    }
-  } catch (_) {}
-  return getTvPerformanceMode();
-}
-
-function resolvePerformanceConstrained(isLegacyTvRuntime) {
-  const mode = getTvPerformanceMode();
-  if (mode === "reduced") {
-    return true;
-  }
-  if (mode === "full") {
-    return false;
-  }
-  // "auto": upstream version-based default (unchanged).
-  return Boolean(isLegacyTvRuntime);
-}
 
 const WEBOS_RELEASE_YEARS = Object.freeze({
   1: 2014,
@@ -195,6 +151,10 @@ export function getTvRuntimePerformanceProfile({ forceRefresh = false } = {}) {
   const isLegacyByChromium = chromiumVersionKnown && chromiumMajorVersion < modernChromiumMajor;
   const isUnidentifiedRuntime = !tvYearKnown && !chromiumVersionKnown;
   const isLegacyTvRuntime = isLegacyByYear || isLegacyByChromium || isUnidentifiedRuntime;
+  // RAM decides before the generation does: a 2022+ set with 1 GB cannot
+  // sustain the modern effect set either. Keep the check narrow (memory only),
+  // because hardwareConcurrency would flag almost every TV.
+  const lowMemoryTv = isLowMemoryDevice(getDeviceMemoryGb());
 
   cachedProfile = Object.freeze({
     isTvRuntime: true,
@@ -204,13 +164,29 @@ export function getTvRuntimePerformanceProfile({ forceRefresh = false } = {}) {
     tvYearKnown,
     chromiumVersionKnown,
     isLegacyTvRuntime,
-    isPerformanceConstrained: resolvePerformanceConstrained(isLegacyTvRuntime)
+    isPerformanceConstrained: Boolean(isLegacyTvRuntime || lowMemoryTv)
   });
   return cachedProfile;
 }
 
 export function resetTvRuntimePerformanceProfile() {
   cachedProfile = null;
+}
+
+/**
+ * Device pixels per CSS pixel for the panel actually being painted.
+ *
+ * webOS reports devicePixelRatio 2 on 1080p sets whose CSS viewport is already
+ * 1920 wide, so the reported value would quadruple every decode for no visible
+ * gain. Comparing the screen to the viewport gives 1 there and still gives 2 on
+ * a 4K panel that lays the app out at 1920.
+ */
+export function getTvArtworkPixelRatio() {
+  const viewportWidth = Number(globalThis.innerWidth) || 0;
+  const screenWidth = Number(globalThis.screen?.width) || 0;
+  const measured = viewportWidth > 0 && screenWidth > 0 ? screenWidth / viewportWidth : 1;
+  const reported = Number(globalThis.devicePixelRatio) || 1;
+  return Math.min(Math.max(Math.min(measured, reported), 1), 2);
 }
 
 // Android keeps the current hero scene alive while the next artwork is being

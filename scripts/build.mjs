@@ -11,6 +11,7 @@ import { readAppMetadata, syncVersionFiles } from "./appMetadata.mjs";
 import { compatibilityPolicy } from "./compatibilityPolicy.mjs";
 import { writeRuntimeEnvScriptFile } from "./envProperties.mjs";
 import { buildI18nBundles } from "./buildI18nBundles.mjs";
+import { assSubtitleRuntimeSource } from "./assSubtitleRuntime.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, "..");
@@ -541,7 +542,13 @@ async function buildCoreJsBundle() {
 
 async function buildAssSubtitleLibrary() {
   await build({
-    entryPoints: [path.join(rootDir, "node_modules", "assjs", "dist", "ass.global.min.js")],
+    stdin: {
+      contents: await assSubtitleRuntimeSource(rootDir),
+      resolveDir: rootDir,
+      sourcefile: "ass-runtime.js"
+    },
+    bundle: true,
+    format: "iife",
     outfile: path.join(distDir, "assets", "libs", "ass.min.js"),
     minify: !debugBundle,
     target: [`chrome${compatibilityPolicy.chromiumVersion}`],
@@ -588,6 +595,21 @@ async function buildPluginRuntimeAssets() {
     path.join(rootDir, "node_modules", "crypto-js", "LICENSE"),
     path.join(distDir, "assets", "libs", "crypto-js.LICENSE")
   );
+}
+
+async function buildSubtitleAutoSyncWorker() {
+  console.log("building subtitle AutoSync worker...");
+  await mkdir(path.join(distDir, "assets", "runtime"), { recursive: true });
+  await build({
+    entryPoints: [path.join(rootDir, "js", "core", "player", "subtitleAutoSyncWorker.js")],
+    outfile: path.join(distDir, "assets", "runtime", "subtitle-autosync-worker.js"),
+    bundle: true,
+    platform: "browser",
+    format: "iife",
+    target: [`chrome${compatibilityPolicy.chromiumVersion}`],
+    minify: !debugBundle,
+    legalComments: "none"
+  });
 }
 
 async function buildBundle() {
@@ -678,6 +700,7 @@ async function runBuild() {
     ]);
     await buildAssSubtitleLibrary();
     await buildPluginRuntimeAssets();
+    await buildSubtitleAutoSyncWorker();
     await cp(
       path.join(rootDir, "node_modules", "libbitsub", "pkg", "libbitsub_bg.wasm"),
       path.join(distDir, "assets", "libs", "libbitsub_bg.wasm")

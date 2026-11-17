@@ -26,7 +26,9 @@ async function key(name) {
   await send("Input.dispatchKeyEvent", { type: "rawKeyDown", windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, key: k, code: k });
   await send("Input.dispatchKeyEvent", { type: "keyUp", windowsVirtualKeyCode: code, nativeVirtualKeyCode: code, key: k, code: k });
 }
-const homeReady = `(() => { const f = document.querySelector(".home-shell .focused"); return Boolean(document.querySelector(".home-shell") && f && f.isConnected && f.getBoundingClientRect().width > 0); })()`;
+// 1.3.x keeps Home mounted under Detail (home-dom-preserved); a hidden Home is not ready.
+const homeVisible = `(() => { const f = document.querySelector(".home-shell .focused"); return Boolean(f && f.isConnected && f.getBoundingClientRect().width > 0 && !document.querySelector(".home-dom-preserved")); })()`;
+const homeReady = homeVisible;
 
 for (let i = 0; i < 120 && !(await ev(homeReady)); i++) await sleep(500);
 if (!(await ev(homeReady))) { console.log(JSON.stringify({ label, error: "home not ready" })); process.exit(1); }
@@ -96,7 +98,7 @@ if (/^1:/.test(out.backFrom)) {
   await key("Enter");
   for (let i = 0; i < 40 && (await ev(homeReady)); i++) await sleep(250);
   await sleep(4000);
-  await ev(`(() => { window.__B = 0; window.__Bstart = () => { const s = performance.now(); const tick = () => { const f = document.querySelector(".home-shell .focused"); if (f && f.isConnected && f.getBoundingClientRect().width > 0) requestAnimationFrame(() => requestAnimationFrame(() => { window.__B = performance.now() - s; })); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); }; })()`);
+  await ev(`(() => { window.__B = 0; window.__Bstart = () => { const s = performance.now(); const tick = () => { const f = document.querySelector(".home-shell .focused"); if (f && f.isConnected && f.getBoundingClientRect().width > 0 && !document.querySelector(".home-dom-preserved")) requestAnimationFrame(() => requestAnimationFrame(() => { window.__B = performance.now() - s; })); else requestAnimationFrame(tick); }; requestAnimationFrame(tick); }; })()`);
   await ev(`window.__Bstart()`);
   await key("Back");
   for (let i = 0; i < 60 && !(await ev(`window.__B`)); i++) await sleep(100);

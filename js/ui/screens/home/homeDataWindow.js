@@ -2,7 +2,7 @@ import { HomeRowMetrics } from "./homeRowMetrics.js";
 import { calculateHomeVirtualWindow } from "./homeVirtualWindow.js";
 import { resolveHomeLogicalFocus, moveHomeLogicalFocus } from "./homeLogicalFocus.js";
 import { getHomeFocusIdentity } from "./homeFocusPolicy.js";
-import { updateKeyedDom, patchKeyedNode, createKeyedNode, invalidateKeyedMarkup, setKeyedAttribute } from "../../components/keyedDomUpdate.js";
+import { updateKeyedDom, patchKeyedNode, createKeyedNode, invalidateKeyedMarkup, setKeyedAttribute, releaseKeyedPosters } from "../../components/keyedDomUpdate.js";
 
 const indices = ranges => ranges.flatMap(({ start, end }) => Array.from({ length: end - start }, (_, index) => start + index));
 const number = (value, fallback) => Number.isFinite(Number(value)) ? Number(value) : fallback;
@@ -280,7 +280,7 @@ export class HomeDataWindow {
     }
     // Same as the full keyed update: rows left out of the window are removed even
     // when focused; Home's commit path restores a disconnected focus.
-    departed.forEach(node => node.remove());
+    departed.forEach(node => { releaseKeyedPosters(node); node.remove(); });
     shell.style.height = `${parts.height}px`;
     invalidateKeyedMarkup(shell);
     return true;
@@ -310,6 +310,7 @@ export class HomeDataWindow {
       // state (focus, expansion, trailer); like the full keyed update, replace it.
       const before = previousByKey.get(key);
       if (card && before?.itemId !== itemId) {
+        releaseKeyedPosters(card);
         card.remove();
         card = null;
       }
@@ -318,7 +319,7 @@ export class HomeDataWindow {
     }
     // Absolute positions make DOM order irrelevant. rowWindow keeps the focused
     // index in the window, so a card left out here is gone from the data.
-    liveCards.forEach(card => card.remove());
+    liveCards.forEach(card => { releaseKeyedPosters(card); card.remove(); });
     invalidateKeyedMarkup(track);
     return true;
   }

@@ -1,3 +1,5 @@
+import { LayoutPreferences } from "../../../data/local/layoutPreferences.js";
+
 export const MODERN_HOME_CONSTANTS = {
   heroFocusDelayMs: 450,
   heroRapidNavThresholdMs: 130,
@@ -13,7 +15,6 @@ export const MODERN_HOME_CONSTANTS = {
   cameraSafetyDurationMs: 180,
   verticalScrollSettlePollMs: 60,
   smartTvLazyHydrationDebounceMs: 240,
-  smartTvTrailerCleanupDelayMs: 900,
   springScrollStiffness: 180,
   springScrollDampingRatio: 0.95,
   rowFocusInset: 40,
@@ -22,6 +23,16 @@ export const MODERN_HOME_CONSTANTS = {
   verticalFastScrollEndTimeoutMs: 160,
   verticalFastScrollMaxFrameMs: 48
 };
+
+export function renderModernHeroBadges(badges = [], escapeHtml) {
+  const visibleBadges = badges.filter(Boolean);
+  if (visibleBadges.length === 2) {
+    return `<span class="home-modern-hero-badge home-modern-hero-badge-combined"><span>${escapeHtml(visibleBadges[0])}</span><span class="home-modern-hero-badge-divider" aria-hidden="true"></span><span>${escapeHtml(visibleBadges[1])}</span></span>`;
+  }
+  return visibleBadges
+    .map((badge) => `<span class="home-modern-hero-badge">${escapeHtml(badge)}</span>`)
+    .join("");
+}
 
 export function renderModernHomeLayout({
   rows = [],
@@ -57,6 +68,7 @@ export function renderModernHomeLayout({
 } = {}) {
   const catalogSeeAllMap = new Map();
   const sectionsMarkup = [];
+  const posterSettings = LayoutPreferences.get();
 
   rows.forEach((rowData, rowIndex) => {
     const isCollectionRow = rowData?.rowKind === "collection";
@@ -115,7 +127,8 @@ export function renderModernHomeLayout({
           expandFocusedPoster && focusedRowKey === rowKey && focusedItemIndex === itemIndex,
           preferLandscapePosters,
           deferRowImages,
-          watchedTitleIds
+          watchedTitleIds,
+          posterSettings
         )
       )
       .join("");
@@ -159,7 +172,8 @@ export function renderModernHomeLayout({
               itemLimit: continueWatchingRenderLimit,
               useEpisodeThumbnails: useEpisodeThumbnailsInCw,
               blurNextUp: blurContinueWatchingNextUp,
-              cardStyle: continueWatchingCardStyle
+              cardStyle: continueWatchingCardStyle,
+              posterSettings
             })}
             ${renderContinueWatchingSection(upcomingItems, {
               rowKey: "upcoming_section",
@@ -169,7 +183,8 @@ export function renderModernHomeLayout({
               itemLimit: upcomingItems.length,
               useEpisodeThumbnails: useEpisodeThumbnailsInCw,
               blurNextUp: blurContinueWatchingNextUp,
-              cardStyle: continueWatchingCardStyle
+              cardStyle: continueWatchingCardStyle,
+              posterSettings
             })}
             <div class="home-modern-catalogs">
               ${sectionsMarkup.join("")}
@@ -260,9 +275,9 @@ function renderModernHeroMarkup({
       `<span class="home-modern-hero-highlight">${escapeHtml(display.secondaryHighlightText)}</span>`
     );
   }
-  display.badges.forEach((badge) => {
-    secondaryParts.push(`<span class="home-modern-hero-badge">${escapeHtml(badge)}</span>`);
-  });
+  if (display.badges.length) {
+    secondaryParts.push(renderModernHeroBadges(display.badges, escapeHtml));
+  }
   if (display.showImdbSecondary) {
     secondaryParts.push(`
       <span class="home-hero-imdb">
@@ -289,7 +304,7 @@ function renderModernHeroMarkup({
             typeof renderHeroBackdropImage === "function"
               ? renderHeroBackdropImage(display)
               : display.backdrop
-                ? `<img class="home-hero-backdrop" src="${escapeAttribute(display.backdrop)}" alt="${escapeAttribute(display.title)}" decoding="async" fetchpriority="high" />`
+                ? `<img class="home-hero-backdrop" src="${escapeAttribute(display.backdrop)}" alt="" decoding="async" fetchpriority="high" />`
                 : '<div class="home-hero-backdrop placeholder"></div>'
           }
           </div>

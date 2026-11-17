@@ -10,7 +10,7 @@ const noopScreen = (base) => new Proxy(base, {
   get(target, key) {
     if (key in target) return target[key];
     // Methods are verbs; state fields such as homeRowVirtualizer stay undefined.
-    return typeof key === "string" && /^(cancel|clear|collapse|destroy|end|persist|stop|teardown|unlock)/.test(key) ? () => {} : undefined;
+    return typeof key === "string" && /^(cancel|clear|collapse|destroy|end|persist|release|stop|teardown|unbind|unlock)/.test(key) ? () => {} : undefined;
   }
 });
 

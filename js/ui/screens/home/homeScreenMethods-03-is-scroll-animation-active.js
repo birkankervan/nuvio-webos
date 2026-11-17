@@ -58,6 +58,18 @@ export function createHomeScreenMethods03() {
       }
       return this.isScrollAnimationActive(this.modernCameraFollowLastVerticalContainer, "y");
     },
+    isModernHydrationScrollActive() {
+      if (this.layoutMode !== "modern") {
+        return false;
+      }
+      if (this.isModernVerticalScrollActive()) {
+        return true;
+      }
+      if (this.isPerformanceConstrained() || this.isLegacyTvRuntime()) {
+        return false;
+      }
+      return this.isScrollAnimationActive(this.modernCameraFollowLastHorizontalContainer, "x");
+    },
     isSidebarFocusActive() {
       return Boolean(this.container?.querySelector(".home-sidebar .focusable.focused, .modern-sidebar-panel .focusable.focused"));
     },
@@ -184,11 +196,10 @@ export function createHomeScreenMethods03() {
       );
     },
     shouldUseImmediateFocusScroll() {
-      return (
-        this.isPerformanceConstrained() ||
-        globalThis?.document?.body?.classList?.contains("legacy-tizen") ||
-        globalThis?.document?.documentElement?.classList?.contains("legacy-tizen")
-      );
+      // Camera moves snap only on constrained runtimes. Every Samsung set
+      // carries legacy-tizen as a layout fallback, so that class must not
+      // decide motion: a 2022+ Tizen tweens like webOS and Android TV (#1250).
+      return this.isPerformanceConstrained();
     },
     hasCollectionHomeRows() {
       return Array.isArray(this.collections) && this.collections.length > 0;

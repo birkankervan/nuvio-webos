@@ -3,6 +3,7 @@ import * as internals from "./homeScreenContext.js";
 import { hasMountedHomeDom, updateHomeDom } from "./homeDomUpdate.js";
 import { HomeRowVirtualizer } from "./homeRowVirtualizer.js";
 import { getTvRuntimePerformanceProfile } from "../../../platform/tvRuntimePerformance.js";
+import { hasMarkedFirstHomePaint, markFirstHomePaint } from "../../../core/diagnostics/bootTiming.js";
 
 export function createHomeScreenMethods23() {
   const {
@@ -188,6 +189,7 @@ export function createHomeScreenMethods23() {
           ? HOME_GRID_SAFE_MAX_COLUMNS * homeGridRowCount
           : rowItemLimit;
       this.teardownGridStickyHeader();
+      this.renderedWatchedTitleIds = this.watchedTitleIds;
 
       let mainContentMarkup = "";
       let modernLayoutPayload = null;
@@ -336,7 +338,16 @@ export function createHomeScreenMethods23() {
           focusedNode: liveFocusedNode
         });
         this.renderedMarkup = nextMarkup;
+        if (!hasMarkedFirstHomePaint()) {
+          // Boot timing only: the first Home DOM commit is about to paint.
+          if (typeof globalThis.requestAnimationFrame === "function") {
+            globalThis.requestAnimationFrame(() => markFirstHomePaint());
+          } else {
+            setTimeout(() => markFirstHomePaint(), 0);
+          }
+        }
       }
+      this.applyHeroDescriptionAutoScroll?.();
       if (this.layoutMode === "grid") {
         normalizeHomeGridCatalogSections(this.container, {
           maxDisplayItems: gridMaxDisplayItems,

@@ -2,8 +2,15 @@ import * as internals from "./homeScreenContext.js";
 import { registerHomeDomNodes } from "./homeDomUpdate.js";
 
 export function createHomeScreenMethods29() {
-  const { Router, catalogRepository, buildModernRowKey, MODERN_HOME_CONSTANTS, HOME_MAX_ITEMS_PER_ROW_DEFAULT, createPosterCardMarkup } =
-    internals;
+  const {
+    Router,
+    LayoutPreferences,
+    catalogRepository,
+    buildModernRowKey,
+    MODERN_HOME_CONSTANTS,
+    HOME_MAX_ITEMS_PER_ROW_DEFAULT,
+    createPosterCardMarkup
+  } = internals;
 
   return {
     setupModernTrackScrollPagination() {
@@ -39,7 +46,7 @@ export function createHomeScreenMethods29() {
           if (this._trackPaginationInFlight?.has(rowKey)) {
             return;
           }
-          const cards = (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-content-card.focusable"))).filter(card => !card.classList.contains("home-poster-card-loading"));
+          const cards = (this.homeRowVirtualizer?.getTrackCards(track)?.filter(card => !card.classList.contains("home-poster-card-loading")) || Array.from(track.querySelectorAll(".home-content-card.focusable:not(.home-poster-card-loading)")));
           const totalVisible = cards.length;
           if (!totalVisible) {
             return;
@@ -72,6 +79,8 @@ export function createHomeScreenMethods29() {
             if (!itemsToAppend.length || !track.isConnected || this._trackScrollHandlers?.get(track) !== handler) {
               return false;
             }
+            // Read the poster preferences once per appended chunk, not per card.
+            const posterSettings = LayoutPreferences.get();
             const newMarkup = itemsToAppend
               .map((item, i) =>
                 createPosterCardMarkup(
@@ -85,7 +94,8 @@ export function createHomeScreenMethods29() {
                   false,
                   preferLandscape,
                   true,
-                  this.watchedTitleIds
+                  this.watchedTitleIds,
+                  posterSettings
                 )
               )
               .join("");
@@ -251,7 +261,7 @@ export function createHomeScreenMethods29() {
             const requestContext = pendingPrefetchContext;
             pendingPrefetchContext = null;
             if (requestContext?.focusedNode?.isConnected) {
-              const cards = (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-content-card.focusable"))).filter(card => !card.classList.contains("home-poster-card-loading"));
+              const cards = (this.homeRowVirtualizer?.getTrackCards(track)?.filter(card => !card.classList.contains("home-poster-card-loading")) || Array.from(track.querySelectorAll(".home-content-card.focusable:not(.home-poster-card-loading)")));
               const mountedCount = cards.length;
               const trackWidth = Number(track.clientWidth || 0);
               if (trackWidth !== measuredTrackWidth) {

@@ -16,5 +16,7 @@ logs/
 app.bundle.js
 ecosystem.config.cjs
 scripts/commit-build-poller.mjs
+store-assets/
+.claude/
 .DS_Store
 .env

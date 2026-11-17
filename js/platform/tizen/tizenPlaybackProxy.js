@@ -1,3 +1,4 @@
+import { createPlaybackProxyRedirectTrace } from "../playbackProxyRedirectTrace.js";
 import { TizenEngineFsService } from "./tizenEngineFsService.js";
 
 const NATIVE_AVPLAY_REQUEST_HEADERS = new Set(["cookie", "user-agent"]);
@@ -40,7 +41,7 @@ export function hasTizenUnsupportedPlaybackHeaders(headers = {}) {
   return normalizeHeaderEntries(headers).some(([key]) => !NATIVE_AVPLAY_REQUEST_HEADERS.has(key.toLowerCase()));
 }
 
-export function buildTizenPlaybackProxyUrl(baseUrl, sourceUrl, headers = {}) {
+export function buildTizenPlaybackProxyUrl(baseUrl, sourceUrl, headers = {}, traceId = null) {
   const base = parseHttpUrl(baseUrl);
   const source = parseHttpUrl(sourceUrl);
   const entries = normalizeHeaderEntries(headers);
@@ -50,8 +51,11 @@ export function buildTizenPlaybackProxyUrl(baseUrl, sourceUrl, headers = {}) {
 
   const options = new URLSearchParams();
   options.set("d", `${source.protocol}//${source.host}`);
+  if (/^[0-9a-f]{32}$/.test(traceId || "")) options.set("nuvioTrace", traceId);
   entries.forEach(([key, value]) => {
-    options.append("h", `${key}:${value}`);
+    // The router decodes its path parameter before parsing the query options.
+    // Protect reserved characters inside the value through both decoding steps.
+    options.append("h", `${key}:${encodeURIComponent(value)}`);
   });
 
   const root = `${base.protocol}//${base.host}`.replace(/\/+$/, "");
@@ -79,7 +83,10 @@ export const TizenPlaybackProxy = {
 
   async resolve(sourceUrl = "", headers = {}, options = {}) {
     const originalUrl = String(sourceUrl || "").trim();
-    if (!this.requiresProxy(originalUrl, headers, options)) {
+    // forceProxy: AVPlay could not start the source directly (e.g. a server
+    // that sends lowercase Content-Range); the proxy rewrites the headers.
+    const forced = options?.forceProxy === true && Boolean(parseHttpUrl(originalUrl)) && !isLocalProxyUrl(originalUrl);
+    if (!forced && !this.requiresProxy(originalUrl, headers, options)) {
       return { status: "not-required", url: originalUrl, proxied: false };
     }
 
@@ -104,7 +111,8 @@ export const TizenPlaybackProxy = {
       };
     }
 
-    const proxyUrl = buildTizenPlaybackProxyUrl(baseUrl, originalUrl, headers);
+    const redirectTrace = createPlaybackProxyRedirectTrace(baseUrl);
+    const proxyUrl = buildTizenPlaybackProxyUrl(baseUrl, originalUrl, headers, redirectTrace?.id);
     if (!proxyUrl) {
       return {
         status: "unavailable",
@@ -118,6 +126,7 @@ export const TizenPlaybackProxy = {
       status: "success",
       url: proxyUrl,
       proxied: true,
+      redirectReportUrl: redirectTrace?.reportUrl || null,
       baseUrl,
       headerNames: normalizeHeaderEntries(headers).map(([key]) => key)
     };

@@ -19,6 +19,7 @@ class FakeDescription extends HTMLElement {
   // registerHomeDomNodes snapshots the node after truncation.
   get childNodes() { return []; }
   cloneNode() { return {}; }
+  get ownerDocument() { return { implementation: { createHTMLDocument: () => ({ importNode: () => ({}) }) } }; }
   get clientWidth() { return 400; }
   get clientHeight() { return 40; }
   get scrollWidth() { return 400; }

@@ -106,7 +106,7 @@ export function createStreamScreenMethods01() {
           return marginBottom;
         }
       }
-      this.streamVirtualRowGap = this.isLegacyWebOsRoute() ? 10 : 18;
+      this.streamVirtualRowGap = 40;
       return this.streamVirtualRowGap;
     },
     getStreamVirtualModel(streams = this.streamVirtualItems) {
@@ -168,7 +168,8 @@ export function createStreamScreenMethods01() {
             streamKey: model.keys[index],
             virtualized: true,
             virtualRowGap: model.rowGap,
-            virtualLast: index === streams.length - 1
+            virtualLast: index === streams.length - 1,
+            previousStream: streams[index - 1] || null
           })
         );
       }
@@ -293,7 +294,8 @@ export function createStreamScreenMethods01() {
           streamKey: model.keys[index],
           virtualized: true,
           virtualRowGap: model.rowGap,
-          virtualLast: index === streams.length - 1
+          virtualLast: index === streams.length - 1,
+          previousStream: streams[index - 1] || null
         });
       }).join("");
       registerGeneratedDomNodes(Array.from(windowNode.childNodes));

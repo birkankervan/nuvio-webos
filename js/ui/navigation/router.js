@@ -10,6 +10,7 @@ import { ExperienceModeSelectionScreen } from "../screens/onboarding/experienceM
 import { EssentialAddonSetupScreen } from "../screens/onboarding/essentialAddonSetupScreen.js";
 import { Platform } from "../../platform/index.js";
 import { TizenCapabilities } from "../../platform/tizen/tizenCapabilities.js";
+import { markBootTiming } from "../../core/diagnostics/bootTiming.js";
 import { RouteStateStore } from "./routeStateStore.js";
 import { Router } from "./routerState.js";
 import { LocalStore } from "../../core/storage/localStore.js";
@@ -18,6 +19,7 @@ import { IPTV_ENABLED } from "../../config.js";
 import { createRouterMethods01 } from "./routerMethods-01-get-route-state-key.js";
 import { createRouterMethods02 } from "./routerMethods-02-complete-route-return-back-guard.js";
 import { createRouterMethods03 } from "./routerMethods-03-back.js";
+import { openPendingLaunchDeepLink } from "../../core/deeplink/launchDeepLink.js";
 
 export {
   Router,
@@ -37,7 +39,9 @@ export {
   ROUTER_PERF_DEBUG,
   routerPerfNow,
   logRouterPerf,
+  markBootTiming,
   NON_BACKSTACK_ROUTES,
+  openPendingLaunchDeepLink,
   WEBOS_RESUME_ROUTE_KEY,
   WEBOS_RESUME_ROUTE_TTL_MS,
   TIZEN_ROUTE_RETURN_BACK_GUARD_MS,
@@ -83,9 +87,12 @@ const WEBOS_NON_RESTORABLE_ROUTES = new Set([
   "plugin",
   "plugins",
   "catalogOrder",
+  "collections",
+  "collectionEditor",
   "detail",
   "player",
-  "stream"
+  "stream",
+  "watchParty"
 ]);
 
 function getStackEntryRoute(entry) {
@@ -155,7 +162,10 @@ Object.assign(Router, {
     castDetail: createLazyRoute(() => import("../screens/cast/castDetailScreen.js"), "CastDetailScreen"),
     catalogSeeAll: createLazyRoute(() => import("../screens/catalog/catalogSeeAllScreen.js"), "CatalogSeeAllScreen"),
     tmdbEntityBrowse: createLazyRoute(() => import("../screens/tmdb/tmdbEntityBrowseScreen.js"), "TmdbEntityBrowseScreen"),
-    folderDetail: createLazyRoute(() => import("../screens/collection/folderDetailScreen.js"), "FolderDetailScreen")
+    folderDetail: createLazyRoute(() => import("../screens/collection/folderDetailScreen.js"), "FolderDetailScreen"),
+    collections: createLazyRoute(() => import("../screens/collection/collectionsScreen.js"), "CollectionsScreen"),
+    collectionEditor: createLazyRoute(() => import("../screens/collection/collectionEditorScreen.js"), "CollectionEditorScreen"),
+    watchParty: createLazyRoute(() => import("../screens/party/partyScreen.js"), "PartyScreen")
   },
   ...createRouterMethods01(),
   ...createRouterMethods02(),

@@ -84,6 +84,13 @@ export function createMetaDetailsScreenMethods27() {
       }
     },
     cleanup() {
+      this.synopsisDialog?.destroy();
+      this.synopsisDialog = null;
+      this.shuffleDialog?.destroy();
+      this.shuffleDialog = null;
+      this.commentOverlayDialog?.destroy();
+      this.commentOverlayDialog = null;
+      this.commentOverlay = null;
       this.detailLoadToken = (this.detailLoadToken || 0) + 1;
       if (this._sectionsUpdateRaf) {
         // Detached call: cancelAnimationFrame throws "Illegal invocation" when

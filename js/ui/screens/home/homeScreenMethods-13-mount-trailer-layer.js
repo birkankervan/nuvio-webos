@@ -8,10 +8,39 @@ export function createHomeScreenMethods13() {
       if (!container || !source) {
         return;
       }
+      this.cancelTrailerLayerCleanup?.(container);
+      const pendingHide = this.homeTrailerLayerHideTimers?.get?.(container);
+      if (pendingHide) {
+        clearTimeout(pendingHide);
+        this.homeTrailerLayerHideTimers.delete(container);
+      }
+      container.classList.remove("is-trailer-layer-idle-hidden");
+      if (source.kind === "youtube" && source.embedUrl) {
+        const existingFrame = container.querySelector("iframe");
+        if (existingFrame?.dataset?.trailerSrc === source.embedUrl) {
+          // Same trailer already mounted: reveal it instead of clearing and
+          // rebuilding the YouTube iframe, whose teardown is expensive on TV.
+          try {
+            existingFrame.contentWindow?.postMessage(
+              {
+                source: "nuvio-detail-trailer",
+                type: "command",
+                command: "play",
+                payload: {}
+              },
+              "*"
+            );
+          } catch (_) {}
+          container.classList.add("is-active");
+          onReady?.();
+          return;
+        }
+      }
       this.clearTrailerLayer(container);
       if (source.kind === "youtube" && source.embedUrl) {
         const frame = document.createElement("iframe");
         frame.className = "home-inline-trailer-frame";
+        frame.dataset.trailerSrc = source.embedUrl;
         frame.src = source.embedUrl;
         frame.title = "Trailer preview";
         frame.allow = "autoplay; encrypted-media; picture-in-picture";
@@ -46,11 +75,18 @@ export function createHomeScreenMethods13() {
           if (!data || typeof data !== "object" || data.source !== "nuvio-youtube-proxy") {
             return;
           }
+          if (data.type === "ended" || data.type === "error") {
+            frame.dataset.ambientTrailerPlaying = "false";
+          }
           if (data.type === "firstFrame") {
+            frame.dataset.ambientTrailerPlaying = "true";
             reveal(150);
             return;
           }
           const state = data.type === "state" && data.state && typeof data.state === "object" ? data.state : null;
+          if (state) {
+            frame.dataset.ambientTrailerPlaying = String(state.paused === false && state.loading === false);
+          }
           if (state && Number(state.currentTime || 0) > 0 && state.paused === false) {
             reveal(150);
           } else if (state && state.controllable === false && state.loading === false) {
@@ -184,11 +220,9 @@ export function createHomeScreenMethods13() {
         }
         target.classList.remove("is-expanded", "is-trailer-active", "is-expanded-backdrop-ready");
         const trailerLayer = target.querySelector(".home-poster-trailer-layer");
-        if (this.shouldUseImmediateFocusScroll()) {
-          this.scheduleTrailerLayerCleanup(trailerLayer);
-        } else {
-          this.clearTrailerLayer(trailerLayer);
-        }
+        // Tearing down a YouTube frame blocks the main thread for ~0.4s on TVs;
+        // pause and hide now, destroy after the collapse/sidebar animation.
+        this.scheduleTrailerLayerCleanup(trailerLayer);
         if (instant && target instanceof HTMLElement) {
           void target.offsetWidth;
           requestAnimationFrame(() => {
@@ -203,11 +237,7 @@ export function createHomeScreenMethods13() {
       });
       if (!preserveHeroMedia) {
         const heroLayer = this.container?.querySelector(".home-hero-trailer-layer");
-        if (this.shouldUseImmediateFocusScroll()) {
-          this.scheduleTrailerLayerCleanup(heroLayer);
-        } else {
-          this.clearTrailerLayer(heroLayer);
-        }
+        this.scheduleTrailerLayerCleanup(heroLayer);
         this.setHeroTrailerActive(false);
         this.heroTrailerPlaybackState = null;
       }

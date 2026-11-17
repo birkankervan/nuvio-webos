@@ -9,6 +9,8 @@ const { createHomeScreenMethods23 } = await import("./homeScreenMethods-23-rende
 const { createHomeScreenMethods19 } = await import("./homeScreenMethods-19-handle-home-dpad.js");
 const { catalogRepository } = await import("../../../data/repository/catalogRepository.js");
 const { Router } = await import("../../navigation/routerState.js");
+// Poster markup reads the active route; tests that need another route stub it themselves.
+Router.getCurrent ||= () => "home";
 
 test("dirty metadata keeps measured geometry while loading and collection shape changes invalidate it", () => {
   const catalog = { rowKey: "catalog", kind: "catalog", isLoading: false, items: [{ source: { id: "one" } }],

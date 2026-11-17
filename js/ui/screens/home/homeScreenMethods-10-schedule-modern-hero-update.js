@@ -1,7 +1,9 @@
 import * as internals from "./homeScreenContext.js";
+import { isModernTvProfile } from "../../../platform/tvPerformancePolicy.js";
+import { getTvRuntimePerformanceProfile } from "../../../platform/tvRuntimePerformance.js";
 
 export function createHomeScreenMethods10() {
-  const { Router, getTvRuntimePerformanceProfile, MODERN_HOME_CONSTANTS, shouldEnrichModernHero, preloadHeroAssets, buildHeroIdentity } = internals;
+  const { Router, MODERN_HOME_CONSTANTS, shouldEnrichModernHero, preloadHeroAssets, buildHeroIdentity } = internals;
 
   return {
     scheduleDetailScreenPrefetch() {
@@ -52,8 +54,9 @@ export function createHomeScreenMethods10() {
       if (isRapidNav || immediate) {
         this.container?.querySelector(".home-modern-hero-card")?.classList.add("is-hero-focus-pending");
       }
+      const shouldWaitForCamera = deferUntilVerticalSettle || isModernTvProfile(getTvRuntimePerformanceProfile());
       const waitForVerticalSettle = (callback) => {
-        if (deferUntilVerticalSettle && this.isModernVerticalScrollActive()) {
+        if (shouldWaitForCamera && this.isModernHydrationScrollActive()) {
           this.heroBackdropPreloadTimer = setTimeout(
             () => waitForVerticalSettle(callback),
             MODERN_HOME_CONSTANTS.verticalScrollSettlePollMs

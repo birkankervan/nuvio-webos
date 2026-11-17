@@ -1,11 +1,16 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./settingsScreenContext.js";
+import { AUTO_SYNC_TOLERANCE_OPTIONS_MS } from "../../../core/player/subtitleAutoSyncEngine.js";
+import { normalizeHdrBrightness } from "../../../core/player/hdrSubtitleStyle.js";
 
 export function registerPlaybackActionsPart02(model) {
   const {
     PlayerSettingsStore,
     SUBTITLE_VERTICAL_OFFSET_DEFAULT,
     TorrentSettingsStore,
+    TORRENT_CACHE_SIZES,
+    TORRENT_PROFILES,
+    P2pCacheService,
     TizenCapabilities,
     PREFERRED_SUBTITLE_LANGUAGE_OPTIONS,
     PREFERRED_PLAYBACK_LANGUAGE_OPTIONS,
@@ -15,6 +20,7 @@ export function registerPlaybackActionsPart02(model) {
     SUBTITLE_TEXT_COLOR_OPTIONS,
     SUBTITLE_TEXT_OPACITY_OPTIONS,
     SUBTITLE_OUTLINE_COLOR_OPTIONS,
+    SUBTITLE_HDR_BRIGHTNESS_OPTIONS,
     normalizeSubtitleStyleHex,
     clampSubtitleSize,
     clampSubtitleTextOpacity,
@@ -58,20 +64,37 @@ export function registerPlaybackActionsPart02(model) {
   this.actionMap.set("playback:showOnlyPreferredSubtitleLanguages", () => {
     const currentSettings = PlayerSettingsStore.get();
     const enabled = !currentSettings.subtitleStyle?.showOnlyPreferredLanguages;
-    const currentStartupMode = currentSettings.addonSubtitleStartupMode || "ALL_SUBTITLES";
-    const autoPreferred = Boolean(currentSettings.addonSubtitleStartupModeAutoPreferred);
     PlayerSettingsStore.set({
-      addonSubtitleStartupMode:
-        enabled && currentStartupMode === "ALL_SUBTITLES"
-          ? "PREFERRED_ONLY"
-          : !enabled && autoPreferred && currentStartupMode === "PREFERRED_ONLY"
-            ? "ALL_SUBTITLES"
-            : currentStartupMode,
-      addonSubtitleStartupModeAutoPreferred: enabled && currentStartupMode === "ALL_SUBTITLES",
       subtitleStyle: {
         ...currentSettings.subtitleStyle,
         showOnlyPreferredLanguages: enabled
       }
+    });
+  });
+  this.actionMap.set("playback:subtitleAutoSync", () => {
+    const currentSettings = PlayerSettingsStore.get();
+    updateSubtitleStyle({
+      autoSyncEnabled: !currentSettings.subtitleStyle?.autoSyncEnabled
+    });
+  });
+  this.actionMap.set("playback:subtitleAutoSyncTolerance", () => {
+    const current = Math.trunc(Number(PlayerSettingsStore.get().subtitleStyle?.autoSyncToleranceMs || 0));
+    this.openOptionDialog({
+      title: t("autosync_tolerance_title", {}, "Auto Sync Tolerance"),
+      options: AUTO_SYNC_TOLERANCE_OPTIONS_MS.map((value) => ({
+        id: String(value),
+        label: value > 0 ? t("autosync_tolerance_value", [value], `${value} ms`) : t("autosync_tolerance_off", {}, "Off")
+      })),
+      selectedId: String(current),
+      returnFocusKey: "playback:subtitleAutoSyncTolerance",
+      onSelect: (option) => {
+        updateSubtitleStyle({ autoSyncToleranceMs: Math.trunc(Number(option.id)) || 0 });
+      }
+    });
+  });
+  this.actionMap.set("playback:subtitleAutoSyncThorough", () => {
+    updateSubtitleStyle({
+      autoSyncThorough: PlayerSettingsStore.get().subtitleStyle?.autoSyncThorough === false
     });
   });
   this.actionMap.set("playback:subtitleLanguage", () => {
@@ -118,23 +141,6 @@ export function registerPlaybackActionsPart02(model) {
         })
     });
   });
-  this.actionMap.set("playback:subtitleStartupMode", () =>
-    this.openOptionDialog({
-      title: t("sub_startup_mode_title", {}, "Subtitle startup mode"),
-      options: [
-        { id: "FAST_STARTUP", labelKey: "sub_startup_mode_fast" },
-        { id: "PREFERRED_ONLY", labelKey: "sub_startup_mode_preferred" },
-        { id: "ALL_SUBTITLES", labelKey: "sub_startup_mode_all" }
-      ],
-      selectedId: model.player.addonSubtitleStartupMode || "ALL_SUBTITLES",
-      returnFocusKey: "playback:subtitleStartupMode",
-      onSelect: (option) =>
-        PlayerSettingsStore.set({
-          addonSubtitleStartupMode: option.id,
-          addonSubtitleStartupModeAutoPreferred: false
-        })
-    })
-  );
   this.actionMap.set("playback:renderMode", () => {
     this.openOptionDialog({
       title: t("settings.dialogs.subtitleRenderMode"),
@@ -176,6 +182,9 @@ export function registerPlaybackActionsPart02(model) {
         updateSubtitleStyle({ verticalOffset: clampSubtitleOffset(option.id) });
       }
     });
+  });
+  this.actionMap.set("playback:subtitleStripSdh", () => {
+    updateSubtitleStyle({ stripSdh: !PlayerSettingsStore.get().subtitleStyle?.stripSdh });
   });
   this.actionMap.set("playback:subtitleBold", () => {
     updateSubtitleStyle({ bold: !PlayerSettingsStore.get().subtitleStyle?.bold });
@@ -232,6 +241,38 @@ export function registerPlaybackActionsPart02(model) {
       }
     });
   });
+  this.actionMap.set("playback:subtitleHdrStyle", () => {
+    updateSubtitleStyle({
+      hdrStyleEnabled: PlayerSettingsStore.get().subtitleStyle?.hdrStyleEnabled !== true
+    });
+  });
+  this.actionMap.set("playback:subtitleHdrTextColor", () => {
+    this.openOptionDialog({
+      title: t("sub_hdr_text_color", {}, "HDR Text Color"),
+      options: SUBTITLE_TEXT_COLOR_OPTIONS,
+      selectedId: normalizeSubtitleStyleHex(PlayerSettingsStore.get().subtitleStyle?.hdrTextColor, "#FFFFFF"),
+      returnFocusKey: "playback:subtitleHdrTextColor",
+      onSelect: (option) => {
+        updateSubtitleStyle({ hdrTextColor: normalizeSubtitleStyleHex(option.id, "#FFFFFF") });
+      }
+    });
+  });
+  this.actionMap.set("playback:subtitleHdrBrightness", () => {
+    this.openOptionDialog({
+      title: t("sub_hdr_brightness", {}, "HDR Brightness"),
+      options: SUBTITLE_HDR_BRIGHTNESS_OPTIONS,
+      selectedId: normalizeHdrBrightness(PlayerSettingsStore.get().subtitleStyle?.hdrBrightness),
+      returnFocusKey: "playback:subtitleHdrBrightness",
+      onSelect: (option) => {
+        updateSubtitleStyle({ hdrBrightness: normalizeHdrBrightness(option.id) });
+      }
+    });
+  });
+  this.actionMap.set("playback:subtitleHdrDimPlayerControls", () => {
+    updateSubtitleStyle({
+      hdrDimPlayerControls: PlayerSettingsStore.get().subtitleStyle?.hdrDimPlayerControls !== true
+    });
+  });
   this.actionMap.set("playback:p2pEnabled", () => {
     if (TizenCapabilities.isP2pUnsupported()) {
       return;
@@ -265,6 +306,48 @@ export function registerPlaybackActionsPart02(model) {
     }
     TorrentSettingsStore.setHideTorrentStats(!TorrentSettingsStore.get().hideTorrentStats);
   });
+  this.actionMap.set("playback:torrentProfile", () => {
+    if (TizenCapabilities.isP2pUnsupported()) {
+      return;
+    }
+    const current = String(TorrentSettingsStore.get().torrentProfile || "BALANCED");
+    this.openOptionDialog({
+      title: t("settings_p2p_profile_title", {}, "Torrent profile"),
+      options: TORRENT_PROFILES.map((profile) => ({
+        id: profile,
+        label: t(`settings_p2p_profile_${profile.toLowerCase()}`, {}, profile),
+        description: t(`settings_p2p_profile_${profile.toLowerCase()}_description`, {}, "")
+      })),
+      selectedId: current,
+      returnFocusKey: "playback:torrentProfile",
+      onSelect: (option) => TorrentSettingsStore.setTorrentProfile(option.id)
+    });
+  });
+  this.actionMap.set("playback:torrentCacheSize", () => {
+    if (TizenCapabilities.isP2pUnsupported()) {
+      return;
+    }
+    const current = String(TorrentSettingsStore.get().torrentCacheSize || "GB_2");
+    this.openOptionDialog({
+      title: t("settings_p2p_cache_size_title", {}, "Torrent cache size"),
+      subtitle: t("settings_p2p_cache_size_description", {}, "Downloaded torrent data kept on this device for faster replays"),
+      options: Object.keys(TORRENT_CACHE_SIZES).map((size) => ({
+        id: size,
+        label: t(size === "NONE" ? "settings_p2p_cache_none" : `settings_p2p_cache_${size.replace("GB_", "")}_gb`, {}, size)
+      })),
+      selectedId: current,
+      returnFocusKey: "playback:torrentCacheSize",
+      onSelect: (option) => {
+        TorrentSettingsStore.setTorrentCacheSize(option.id);
+        if (P2pCacheService.supportsCacheControls()) {
+          void P2pCacheService.setCacheSize(TORRENT_CACHE_SIZES[option.id]).catch((error) => {
+            console.warn("Could not apply torrent cache size", error);
+          });
+        }
+      }
+    });
+  });
+  this.actionMap.set("playback:clearTorrentCache", () => this.clearP2pCache());
 
   if (model.experience?.mode === "ESSENTIAL") {
     const torrentSettings = model.torrent || TorrentSettingsStore.get();

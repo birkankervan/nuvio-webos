@@ -18,7 +18,8 @@ test("a late lazy screen cannot replace a newer navigation or clean up twice", a
     },
     beginRouteReturnBackGuard() {}, captureCurrentRouteState() {},
     resolveNavigationContext() { return {}; }, completeRouteReturnBackGuard() {},
-    persistWebOsResumeRoute() {}
+    persistWebOsResumeRoute() {},
+    getCurrent() { return this.current; }
   };
   const first = router.navigate("first");
   await router.navigate("second");
@@ -42,7 +43,8 @@ test("same-route replace (IPTV zap) keeps the history predecessor", async () => 
     routes: { player: { cleanup() {}, mount: async () => {} } },
     beginRouteReturnBackGuard() {}, captureCurrentRouteState() {},
     resolveNavigationContext() { return {}; }, completeRouteReturnBackGuard() {},
-    persistWebOsResumeRoute() {}
+    persistWebOsResumeRoute() {},
+    getCurrent() { return this.current; }
   };
   await router.navigate("player", { a: 1 }, { replaceHistory: true });
   assert.equal(writes[0][0], "replace");

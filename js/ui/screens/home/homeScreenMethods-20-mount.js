@@ -1,3 +1,4 @@
+import { nextShuffleVisit } from "../../../core/player/episodeShuffle.js";
 import * as internals from "./homeScreenContext.js";
 
 export function createHomeScreenMethods20() {
@@ -12,6 +13,8 @@ export function createHomeScreenMethods20() {
     buildWatchedTitleIdSet,
     getSidebarProfileState,
     setModernSidebarPillIconOnly,
+    setModernSidebarExpanded,
+    setLegacySidebarExpanded,
     HOME_PERF_DEBUG,
     homePerfNow,
     logHomePerf,
@@ -39,6 +42,7 @@ export function createHomeScreenMethods20() {
       return true;
     },
     async mount(params = {}, navigationContext = {}) {
+      this.shuffleVisit = nextShuffleVisit();
       const mountStart = HOME_PERF_DEBUG ? homePerfNow() : 0;
       const isBackNavigation = Boolean(navigationContext?.isBackNavigation);
       this.container = document.getElementById("home");
@@ -139,6 +143,13 @@ export function createHomeScreenMethods20() {
         this.container.style.removeProperty("left");
         this.container.style.removeProperty("visibility");
         this.container.style.removeProperty("pointer-events");
+        // The preserved DOM still has the menu that opened the route expanded;
+        // Android lands on Home with the drawer closed, so apply that state too.
+        if (this.layoutPrefs?.modernSidebar) {
+          setModernSidebarExpanded(this.container, false);
+        } else {
+          setLegacySidebarExpanded(this.container, false);
+        }
         setModernSidebarPillIconOnly(this.container, this.pillIconOnly);
         this.scheduleModernSidebarPillAutoCollapse();
         this.homeLoadToken = (this.homeLoadToken || 0) + 1;
@@ -310,11 +321,14 @@ export function createHomeScreenMethods20() {
         return;
       }
       this.watchedItems = Array.isArray(projectedItems) ? projectedItems : baseWatchedItems;
-      const nextWatchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
-      const watchedTitlesChanged = nextWatchedTitleIds.size !== this.watchedTitleIds?.size ||
-        [...nextWatchedTitleIds].some((id) => !this.watchedTitleIds?.has(id));
-      this.watchedTitleIds = nextWatchedTitleIds;
-      if (watchedTitlesChanged) this.requestBackgroundRender({ invalidateMountedCatalogCards: true });
+      this.watchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
+      // Every Home return re-projects watched titles; re-rendering all rows for an unchanged set only repeats identical markup.
+      const rendered = this.renderedWatchedTitleIds;
+      const unchanged =
+        rendered instanceof Set && rendered.size === this.watchedTitleIds.size && [...rendered].every((id) => this.watchedTitleIds.has(id));
+      if (!unchanged) {
+        this.requestBackgroundRender({ invalidateMountedCatalogCards: true });
+      }
     }
   };
 }
