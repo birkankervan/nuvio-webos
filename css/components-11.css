@@ -378,6 +378,12 @@
   text-align: center;
 }
 
+/* Android LibraryScreen: natural height with spacing.xl above and below, under the filters. */
+.library-empty-state.library-empty-state-items {
+  min-height: 0;
+  padding: 38px 0;
+}
+
 .library-empty-icon {
   width: 86px;
   height: 86px;
@@ -439,7 +445,7 @@
 .library-overlay {
   position: fixed;
   inset: 0;
-  background: rgb(var(--bg-color-rgb) / 0.58);
+  background: rgba(var(--bg-color-rgb-legacy), 0.58);
   display: flex;
   align-items: center;
   justify-content: center;

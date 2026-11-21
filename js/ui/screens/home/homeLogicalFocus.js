@@ -3,9 +3,12 @@ import { getHomeFocusIdentity } from "./homeFocusPolicy.js";
 const identityFields = ["itemType", "videoId", "season", "episode"];
 const indexWithin = (value, length) => Math.max(0, Math.min(length - 1, Number.isFinite(Number(value)) ? Math.trunc(Number(value)) : 0));
 const identityOf = (item) => getHomeFocusIdentity({ dataset: item });
+// Continue Watching cards are keyed by show (Android cw_<contentId>); the data
+// model still tells two episodes of one show apart, then falls back to the show.
+const exactIdentityOf = (item) => item && getHomeFocusIdentity({ dataset: { ...item, action: "" } });
 
 function matchesIdentity(item, identity) {
-  const candidate = identityOf(item);
+  const candidate = exactIdentityOf(item);
   return Boolean(candidate && candidate.itemId === identity.itemId &&
     identityFields.every(field => !identity[field] || candidate[field] === identity[field]));
 }
@@ -41,10 +44,14 @@ export function resolveHomeLogicalFocus(rows = [], state = {}) {
     .filter(entry => Object.prototype.hasOwnProperty.call(state.preferredItemIndexByRowKey || {}, entry.rowKey))
     .map(entry => [entry.rowKey, state.preferredItemIndexByRowKey[entry.rowKey]]));
   let itemIndex = indexWithin(state.rowKey === row.rowKey ? state.itemIndex : preferred[row.rowKey], row.items.length);
-  const identity = identityOf(state.itemIdentity);
+  const identity = exactIdentityOf(state.itemIdentity);
   if (state.rowKey === row.rowKey && identity && !matchesIdentity(row.items[itemIndex], identity)) {
     // The usual key press checks one item; a reorder scans data once, without DOM queries.
-    const identityIndex = row.items.findIndex(item => matchesIdentity(item, identity));
+    let identityIndex = row.items.findIndex(item => matchesIdentity(item, identity));
+    if (identityIndex < 0) {
+      const show = { itemId: identity.itemId, itemType: identity.itemType };
+      identityIndex = row.items.findIndex(item => matchesIdentity(item, show));
+    }
     if (identityIndex >= 0) itemIndex = identityIndex;
   }
   return focusAt(rows, rowIndex, itemIndex, preferred);

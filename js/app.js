@@ -19,6 +19,7 @@ import { DeviceSessionRegistration } from "./core/auth/deviceSessionRegistration
 import { ProfileManager } from "./core/profile/profileManager.js";
 import { MemberAccessRepository } from "./data/remote/supabase/memberAccessRepository.js";
 import { ProfileSyncService } from "./core/profile/profileSyncService.js";
+import { ProfileSettingsSyncService } from "./core/profile/profileSettingsSyncService.js";
 import { StartupSyncService } from "./core/profile/startupSyncService.js";
 import { ProviderCredentialSyncService } from "./core/profile/providerCredentialSyncService.js";
 import { ThemeManager } from "./ui/theme/themeManager.js";
@@ -29,7 +30,11 @@ import { runAfterFirstHomePaint } from "./runtime/startupScheduler.js";
 import { Platform } from "./platform/index.js";
 import { TizenCapabilities } from "./platform/tizen/tizenCapabilities.js";
 import { PluginServiceClient } from "./platform/pluginServiceClient.js";
-import { getTvRuntimePerformanceProfile } from "./platform/tvRuntimePerformance.js";
+import {
+  getTvRuntimePerformanceProfile,
+  resetTvRuntimePerformanceProfile
+} from "./platform/tvRuntimePerformance.js";
+import { createFramePaceMonitor, storeMeasuredTvTier } from "./platform/tvAdaptiveTier.js";
 import { LocalStore } from "./core/storage/localStore.js";
 import { I18n } from "./i18n/index.js";
 import { getLatestAppUpdateWithRetry } from "./core/update/appUpdateService.js";
@@ -89,7 +94,9 @@ function loadRemoteStylesheet(href) {
       link.href = href;
       link.onload = () => resolve(true);
       link.onerror = () => resolve(false);
-      head.appendChild(link);
+      // Before the local sheets, like the old @imports: they rely on source
+      // order to size `.material-icons` (Google's sheet sets 24px).
+      head.insertBefore(link, head.querySelector('link[rel="stylesheet"]'));
     } catch (_) {
       resolve(false);
     }
@@ -288,6 +295,27 @@ function applyPerformanceMode() {
   );
 }
 
+// A TV on the full profile is watched after every key press; one that cannot
+// hold its frame rate is moved to the constrained profile, now and on the next
+// launches of this build.
+function watchTvFramePace() {
+  const profile = getTvRuntimePerformanceProfile();
+  if (!profile.isTvRuntime || profile.isPerformanceConstrained) {
+    return;
+  }
+  const monitor = createFramePaceMonitor({
+    onSlow: (lostMs) => {
+      storeMeasuredTvTier({ tier: "constrained", appVersion: APP_VERSION, lostMs });
+      resetTvRuntimePerformanceProfile();
+      applyPerformanceMode();
+      console.warn(`TV moved to the constrained profile (${Math.round(lostMs)} ms lost per key)`);
+    }
+  });
+  // Readable from the remote inspector when a set's tier is in question.
+  globalThis.__NUVIO_FRAME_PACE__ = monitor;
+  document.addEventListener("keydown", () => monitor.noteKey(), true);
+}
+
 function isAddonRemoteMode() {
   try {
     return new URLSearchParams(window.location.search).get("addonsRemote") === "1";
@@ -386,6 +414,9 @@ async function enterWithLastProfile({ restoreWebOsRoute = false } = {}) {
     null;
   if (activeProfile) {
     await ProfileManager.setActiveProfile(activeProfile.id);
+    // The account wins at sign-in. Start the settings pull before Home without
+    // delaying its first paint; an edit made meanwhile aborts it and is pushed.
+    void ProfileSettingsSyncService.pull(activeProfile.id).catch(() => false);
     StartupSyncService.enableProfileScopedSync();
     detailWatchedEnrichmentService.invalidateAllCache();
     await I18n.init();
@@ -657,6 +688,11 @@ function setupTizenPlaybackLifecycle() {
   if (!Platform.isTizen()) return;
 
   document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      // Finish a player exit that the TV suspended before its history traversal committed.
+      void Router.resumePendingHistoryReturn();
+      return;
+    }
     if (document.visibilityState !== "hidden" || Router.getCurrent() !== "player") return;
 
     // Samsung requires hidden playback to follow the player exit path.
@@ -742,6 +778,7 @@ async function bootstrapApp() {
     markBootStage("PluginService starts on first plugin use");
   }
   applyPerformanceMode();
+  watchTvFramePace();
   startTvArtworkLazyLoader();
   installFrameBudgetSampler();
   markBootStage("Loading language resources");

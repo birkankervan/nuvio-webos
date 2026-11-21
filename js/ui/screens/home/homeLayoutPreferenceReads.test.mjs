@@ -29,6 +29,7 @@ function cardStubs(onRead) {
       }
     },
     Router: { getCurrent: () => "home" },
+    Platform: { isTizen: () => false, isWebOS: () => false },
     isCollectionFolderItem: () => false,
     normalizeCatalogItem: (item) => item,
     firstNonEmpty: (...values) => values.find(Boolean) || "",

@@ -1357,3 +1357,159 @@ Tüm turlar 1:0 → 1:15 ×2, dikey 11:0'a ulaştı; Back sonrası odak 1:0; hat
 Karar: 1.2.5 merge performans regresyonu yok; Back iyileşti. TV'de B (1.2.5) kurulu.
 Kalan: dikey long task 12-16/20 tuş (satır mount maliyeti, PERF-04/06 sonrası
 bilinen boşluk); fiziksel kumanda/soğuk başlangıç ölçülmedi.
+
+## TIZEN-1.2.5 — Samsung kurulum — 15 Ekim 2026
+
+Smart Monitor M8 (Tizen 9.0) LAN 192.168.1.165:26101 (port 26101 taramasıyla
+bulundu; IP değişebilir). Agent: `npm run package:tizen` → `tizen package -t wgt
+-s nuvio -- NuvioTV001_1.2.5.wgt` → `tizen install -s <ip>:26101 -n <wgt>` →
+`tizen run`. Aynı author cert; veri/oturum korunur. Inspector (sdb shell 0
+debug + forward): home-shell, 13 kart, focus var, update dialog yok, hata yok.
+Forward kaldırıldı, uygulama normal modda yeniden açıldı. WGT backend key
+içerir: paylaşma. Tizen'de performans ölçümü yapılmadı.
+
+## SYNC-03 — upstream 1.3.11 — 10 Kasım 2026
+
+Sahip: root. Branch `merge/upstream-1.3.11`, `git merge --no-commit 1.3.11`
+(1.2.5 → 1.3.11, ~300 commit; origin/main'deki 3 yayınlanmamış fix dahil değil).
+Merge commit EDİLMEDİ; kullanıcı kararı bekleniyor.
+
+22 dosyada 30 conflict çözüldü:
+- router: fork lazy route'ları korundu; upstream'in collections,
+  collectionEditor, watchParty ekranları lazy route olarak eklendi.
+- homeDomUpdate: fork re-export'u korundu; upstream'in inert document
+  karşılaştırması + rescaled artwork release'i `keyedDomUpdate.js`'e taşındı
+  (`releaseKeyedPosters` export); homeDataWindow row/card silme yolları da
+  artwork'ü bırakıyor (blob URL sızıntısı önlemi).
+- profileManager: upstream `deleteProfile` alındı; IPTV temizliği ortak
+  `removeLocalProfileData`'ya taşındı (sync ile silinen profiller de kapsanıyor).
+- app.js: upstream'in ilk Home paint sonrası badge ön yüklemesi, stream ekranını
+  lazy tutmak için helper modülün dinamik import'uyla yapılıyor.
+- Home 10/14/20/21/23, player 01/07/15/32/71, tmdb, scrobble, config, css,
+  appShell: iki taraf birleştirildi (dirtyRows + snapshot persist; IPTV +
+  party/chapters/live label; `fetchTmdbJson(url, { signal })`).
+- pagination (29): virtualizer yoksa upstream'in `:not(.home-poster-card-loading)`
+  selector'u kullanılıyor.
+- Test fixture'ları: upstream homeArtworkRetention'a `cancelDataHomePagination`
+  stub'ı; bizim router/dataWindow/preservedResume/truncation/stream testlerine
+  yeni Router/metod stub'ları.
+
+Kontroller: 292/292 Node test, lint, npm test ayakları (profile/plugin/media/
+perf 90/90) geçti; `tests/` upstream'de gitignored (bilinen). package:webos 1.3.11,
+check-performance-build, diff --check temiz. TV'ye 1.3.11 kuruldu: Home, gezinme,
+posterler, IPTV sidebar, Detail→Back (odak 1:0) çalışıyor; dialog/hata/`birkan` yok.
+
+Harness düzeltmesi: 1.3.x Detail açıkken Home'u `home-dom-preserved` ile DOM'da
+tutuyor; measure.mjs homeReady/Back artık bu sınıfı görünmez sayıyor (eski hali
+Back'i 35 ms gibi geçersiz ölçüyordu). Tek tur (A/B değil, taze kurulum değil):
+yatay handler p95 26 ms, rAF p95 16.8, LT 0; dikey p95 14 ms, LT 1; Back 222 ms.
+Oturumlar arası kıyas geçersiz; gerekirse 56f03775 vs merge A/B yapılmalı.
+Samsung'a 1.3.11 kurulmadı.
+
+- 2026-11-17: LG Developer Mode oturumu dolmuş, sideload Nuvio silinmişti (9922/9991 kapalı). Kullanıcı Dev Mode + Key Server açtı; 1.3.11 ipk yeniden kuruldu ve başlatıldı. Uygulama verisi (giriş/profil/addon) sıfırlanmış olabilir. Merge hâlâ commitsiz.
+
+## SYNC-04 upstream 1.4.3 (2026-11-17, devam ediyor)
+- 1.3.11 merge yerel commit `28319299` (main/push yok). 1.4.3 merge'ü aynı branch'te, commitsiz.
+- Çakışmalar: .gitignore (birleşim), metaRepository import birleşimi, homeDomUpdate (upstream WeakMap→node property, sibling-walk children, UNCHANGED_ROW stand-in keyedDomUpdate.js'e taşındı; homeDomUpdate re-export'a unchangedHomeRowMarkup eklendi), modernHomeLayout (virtualRowsMarkup varken "\u0000" split yerine doğrudan markup), Home-06 (data window erken dönüş + upstream prepareHomeRowsForRestore), Home-20 (upstream watched-set kimliği + invalidateMountedCatalogCards), Home-23 import birleşimi, Home-29 (upstream dwell prefetch + virtualizer kart listesi).
+- Home-18 syncHomeRowWindow: homeDataWindow aktifken upstream homeRowWindow kapatılıyor (çift sanallaştırma çakışmasın).
+- homeLogicalFocus: upstream CW kimliği show bazlı oldu; veri modelinde önce tam bölüm eşleşmesi, yoksa show eşleşmesi.
+- css/iptv.css: Tizen 5 için rgb(var(--x-rgb) / a) → rgba(var(--x-rgb-legacy), a).
+- Upstream homeLayoutPreferenceReads.test.mjs temiz 1.4.3'te de kırık (Platform stub yok); stub eklendi.
+- Kontroller: 350/350 modül testi, lint, diff --check, test:perf + npm test ilk ayaklar, package:webos, check-performance-build OK. `binaryen` upstream devDependency, npm install yapıldı. test:plugins/android-parity: upstream tests/ gitignore sorunu (bilinen).
+- Aktif: same-session A/B (A=data window, B=upstream homeRowWindow; B sadece ölçüm build'i, kaynakta yok). Sonraki adım: sonuca göre karar, TV kurulum, commit sorusu.
+- A/B sonucu (aynı oturum, 2+2 tur, 5. turda kullanıcı isteğiyle durduruldu; TV'de A kurulu kaldı):
+  - Yatay: A hP50 14.5/20.7, hP95 26.1/26.1; B hP50 8.1/7.3, hP95 23.1/22.3. B daha iyi.
+  - Dikey: A LT 9/10 (max 77/88 ms), rafP95 50/33; B LT 1/0, rafP95 16.8/16.8. B belirgin iyi.
+  - Back: A 338/260 ms; B 1240/1205 ms. A ~4x iyi.
+  - Karar bekliyor: hibrit hedef = data window Back hızını koru, dikeyde satır mount/unmount long task'ını azalt (veya B + hızlı Back). Örnek küçük, kesin hüküm değil.
+
+- 2026-11-21 / ACTIVE: macOS kurulumu (kullanıcı isteği, IPTV dahil). Karar:
+  yeni dependency/Electron yok; browser platform adapter + dist + serve.mjs
+  (HOST=127.0.0.1, PORT 4173) + ayrı Chrome profili `--app` modunda.
+  CORS: TV runtime CORS uygulamıyor, Xtream/HLS host'ları CORS header
+  göndermiyor → yalnız `~/Library/Application Support/NuvioChrome` profilinde
+  `--disable-web-security`. Sahip: Sonnet subagent, dosya sınırı
+  scripts/install-macos.sh (yeni) + package.json `install:macos`.
+  Çıktı: ~/Applications/Nuvio.app. Sonraki adım: Mac'te açıp IPTV canlı
+  kanal ilk kare + klavye Back doğrulaması.
+- 2026-11-21 / macOS kurulu (Sonnet subagent bitti, aktif ajan yok).
+  Dosyalar: scripts/install-macos.sh (yeni), package.json `install:macos`.
+  `npm run build` OK; ~/Applications/Nuvio.app kuruldu (Info.plist lint OK,
+  icns OK). Doğrulama (CDP, app-mode Chrome 158): app boot ediyor, hesap QR
+  ekranı geliyor, CORS açık, hls.js yüklü; sayfa içinden Xtream preset auth=1
+  Active, 29 canlı kategori, m3u8 200. Doğrulanmadı: oturum açma sonrası
+  IPTV ekranından gerçek oynatma ilk kare, klavye Back. Risk: dist içi env
+  (anahtar + IPTV preset) yalnız 127.0.0.1'den servis ediliyor; serve süreci
+  app kapansa da arka planda kalır (log ~/Library/Logs/Nuvio.log).
+  Sonraki adım: kullanıcı QR ile girer, IPTV → ULUSAL kanal oynatır.
+- 2026-11-21 / Kullanıcı: Chrome launcher'da video açılmıyor, mouse yok →
+  resmi macOS app + IPTV istedi. Resmi NuvioMedia/NuvioDesktop (Kotlin
+  Compose MP, libmpv, GPL-3.0) 0.1.38-alpha arm64 DMG SHA256 doğrulandı,
+  /Applications/Nuvio.app 1.1.30→1.1.38 güncellendi, açılıyor. IPTV yok →
+  kaynaktan: ~/Desktop/projeler/NuvioDesktop (tag 0.1.38-alpha, shallow),
+  brew openjdk@17 + git-lfs (macOS libmpv LFS pull), local.properties TV'den
+  kopyalandı (gitignored, 600; değer okunmadı). ACTIVE: baseline
+  createReleaseDistributable (bg) + Sonnet subagent IPTV modülü
+  (features/iptv, Xtream live+VOD, dizi yok). Sonraki: incele, derle,
+  /Applications'a kur, Mac'te kanal oynat.
+- 2026-11-21 / NuvioDesktop + IPTV kuruldu (aktif ajan yok). Kaynak
+  ~/Desktop/projeler/NuvioDesktop (commit yok): features/iptv/{IptvApi,
+  IptvScreen,IptvStorage,IptvMeta}.kt + desktop/android/ios storage actual;
+  AppScreenTab/AppShellComponents/MainTabsDestination/MainAppContent wiring
+  (IPTV sekmesi yalnız desktop, üst bar layout). Yan etki guard'ları
+  (parentMetaId "iptv:"): WatchProgressRepository.upsert, TrackingMedia
+  title, AddonEventDispatcher.player, PlayerStreamsRepository.fetchStreams,
+  MetaDetailsRepository.fetch → IPTV CW/Supabase/Trakt/addon'a yazılmaz.
+  Build: JDK brew openjdk@17 + `-Pcompose.desktop.packaging.checkJdkVendor=false`
+  createReleaseDistributable OK; ad-hoc imzalı /Applications/Nuvio.app
+  1.1.38+IPTV açılıyor, mevcut oturum/ayarlar korundu. Geri dönüş: scratchpad
+  resmi DMG (SHA256 doğrulandı). Doğrulanmadı: IPTV sekmesi UI, libmpv ile
+  canlı m3u8 oynatma (ekran kaydı izni yok). Eksik: dizi, sidebar layout,
+  kategori cache. Chrome launcher ~/Applications/Nuvio.app artık gereksiz.
+- 2026-11-21 / Kullanıcı onayıyla Chrome launcher (~/Applications/Nuvio.app)
+  Çöp Kutusu'na taşındı; serve.mjs (4173) ve media runtime durduruldu.
+  scripts/install-macos.sh + `install:macos` repo'da duruyor (web varyantı).
+  NuvioChrome profili (~/Library/Application Support/NuvioChrome) silinmedi.
+- 2026-11-21 / Kullanıcı: IPTV sekmesi görünmüyordu. Kök neden: desktop
+  varsayılan layout Sidebar (DesktopNavigationLayout.kt:16) ve
+  DesktopHoverSidebar (AppShellComponents.kt) sekmeleri hardcode ediyordu.
+  "sidebar_iptv" öğesi eklendi (Sonnet), release build OK, /Applications'a
+  kuruldu ve açıldı. Doğrulama kullanıcıda: sol menüde IPTV + kanal oynatma.
+- 2026-11-21 / IPTV desktop: kanal açılmıyordu → kayıtlı şifrede baş/son
+  boşluk vardı; player_api query'yi trim'liyor (auth=1) ama /live/ path 404.
+  IptvScreen form kaydı + loadAccount trim (kayıtlı hesap kendini düzeltir).
+  İsimler görünmüyordu → Text'lerde color yok, LocalContentColor koyu;
+  onSurface eklendi. Build 18:15, /Applications'a kuruldu, açıldı.
+  Doğrulama kullanıcıda (ekran izni yok). Not: liste başındaki "▃▅ TURK
+  ULUSAL" ayraç satırları oynatılamaz, filtrelenmedi.
+- 2026-11-21 / IPTV desktop UX (Sonnet): Back sıfırlanması kök neden
+  NavDisplay'in PlayerRoute'ta tab kompozisyonunu dispose etmesi + state'in
+  remember'da olması → process-ömürlü IptvUiState (seçim, arama, scroll,
+  kategori/kanal cache). Yeni dosyalar IptvBrowser/IptvPreviewPanel/
+  IptvPreviewSurface(+desktop actual: NativePlayerController, controls
+  about:blank). Sağda 16:9 önizleme + short EPG; max_connections=1 için
+  tam ekrandan önce releaseBeforeNavigation, dönüşte 800 ms + 400 ms debounce.
+  Build 18:25 kuruldu. Riskler: önizleme açılınca klavye odağı WebView'da
+  kalabilir (requestFocus muhtemelen etkisiz), tek tık ~300 ms gecikme.
+  Doğrulama kullanıcıda.
+- 2026-11-21 / IPTV önizleme düzeltmesi (Sonnet, native dahil): kök
+  nedenler — MacosAwtViewResolver pencerenin tüm contentView'ını veriyordu
+  (önizleme tüm pencereyi kaplıyordu); about:blank bile WKWebView açıp
+  firstResponder yapıyordu (ok tuşları kayboluyordu). player_bridge.mm:
+  createPreview (WebView yok, NuvioPreviewContainerView acceptsFirstResponder
+  NO, önceki responder geri), setPreviewFrame (AWT bounds→container),
+  clickCount==2 → previewDoubleClick event → tam ekran. Build 18:30 kuruldu.
+  Doğrulanmadı: y-flip/inset hesabı, odak, çift tık (kullanıcıda).
+- 2026-11-21 / IPTV önizleme hızlandırma + yerinde tam ekran (Sonnet):
+  önceden her kanal değişiminde mpv core yeniden yaratılıyordu → preview'da
+  loadPreviewUrl (loadfile replace). Preview-only mpv: ytdl=no,
+  analyzeduration 0.5, probesize 500k, live_start_index=-1, hls-bitrate=min,
+  cache-pause-initial=no. Satır seçimi press'te, debounce 200 ms. Canlı tam
+  ekran: aynı mpv container setPreviewFullWindow + macOS toggleFullScreen
+  (yeniden bağlanma yok), ↑↓ kanal değiştir, Esc/Backspace/çift tık çık.
+  VOD PlayerRoute'ta kalır. Ölçüm logu [IPTV-PREVIEW] → app terminalden
+  scratchpad app.log'a başlatıldı. Doğrulama kullanıcıda.
+
+- 2026-11-21 macOS IPTV preview bug fix (NuvioDesktop): (1) In fullscreen the preview kept the old window size and stuck to the bottom left. Fix: when fullWindow is set, setPreviewFrame follows hostView.bounds, plus an NSWindow enter-fullscreen/resize observer. (2) Leaving IPTV for Home left the native preview on screen. Fix: new setPreviewHidden JNI, an AWT SHOWING_CHANGED listener, and hide-first on dispose. (3) Exiting with the green button left fullscreen state stale. Fix: an exit-fullscreen observer sends a previewExitFullscreen event and Kotlin resets the state. Build and install OK; not yet visually checked by the user. Measured: select→loadfile 72ms, loadfile→firstFrame 1527ms (single sample).
+- 2026-11-21 macOS IPTV: per user request, full screen for live channels now opens Nuvio's own player (PlayerRoute: full controls/settings). The custom in-place fullscreen on the Kotlin side was removed. The JNI functions stay unused. The preview is released first (max_connections=1); on Back the selection is restored and the preview restarts after 800ms. Built and installed; not yet visually checked by the user. Known trade-off: switching to full screen restarts the stream; no ↑↓ zapping inside the player.
+- 2026-11-21 macOS Discover: the images were missing because the AIOStreams TorBox catalog sends no poster at all (0 of 47 items). PosterGridTile now falls back to the title (isNullOrBlank). Built and installed; not yet visually checked by the user.

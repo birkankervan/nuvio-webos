@@ -3,12 +3,15 @@ import { TraktScrobbleService } from "./traktScrobbleService.js";
 import { SimklScrobbleService } from "./simklScrobbleService.js";
 
 import { MdbListScrobbleService } from "./mdbListScrobbleService.js";
+import { AddonPlayerScrobbleService } from "./addonEventDispatcher.js";
 
 const providers = [
   MediaServerScrobbleService,
   TraktScrobbleService,
   SimklScrobbleService,
-  MdbListScrobbleService
+  MdbListScrobbleService,
+  // Stremio add-ons that declare the "player" resource (Android AddonEventDispatcher).
+  AddonPlayerScrobbleService
 ];
 
 let stopped = false;
@@ -36,6 +39,10 @@ export const TrackingScrobbleService = {
     if (stopped) return;
     stopped = true;
     if (context) enabledProviders().forEach((provider) => provider.stop(context));
+  },
+
+  seeked(getContext) {
+    if (AddonPlayerScrobbleService.isEnabled()) AddonPlayerScrobbleService.seeked(getContext);
   },
 
   cancel() {

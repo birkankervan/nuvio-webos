@@ -3,18 +3,40 @@ import { releaseHomeArtwork } from "../images/tvPosterRescaler.js";
 
 // Compare generated markup, rather than the live DOM: focus, image hydration,
 // expansion and trailer playback all add state that a data refresh must retain.
-const sourceByNode = new WeakMap();
+// Stored on the node itself: Chromium 63's WeakMap rehashes on insert once the
+// table is full of collected keys, and every hero update registers new nodes
+// (measured on a 2019 Tizen: 55 ms per D-pad press spent in WeakMap.set).
+const SOURCE_KEY = "__nuvioHomeSource";
+const sourceByNode = {
+  get: (node) => node?.[SOURCE_KEY],
+  has: (node) => Boolean(node?.[SOURCE_KEY]),
+  set: (node, value) => {
+    node[SOURCE_KEY] = value;
+  }
+};
 const mountedShells = new WeakMap();
+
+// A row whose generated markup did not change is sent as this empty stand-in:
+// parsing all the rows again on every data refresh was half of the refresh
+// (152 of 304 ms on a 2025 webOS set). Only valid for a row that is mounted.
+const UNCHANGED_ROW = "data-home-row-unchanged";
+export function unchangedHomeRowMarkup(escapedRowKey) {
+  return `<section data-row-key="${escapedRowKey}" ${UNCHANGED_ROW}></section>`;
+}
 
 export function hasMountedKeyedDom(container, shellSelector = ".home-shell") {
   const shell = mountedShells.get(container);
   return Boolean(shell && shell === container.querySelector(shellSelector));
 }
 
+// A sibling walk: Array.from(childNodes).filter() was two thirds of this cost
+// on Chromium 63.
 function children(node) {
-  return Array.from(node.childNodes).filter(
-    (child) => child.nodeType !== 3 || child.textContent.trim()
-  );
+  const result = [];
+  for (let child = node.firstChild; child; child = child.nextSibling) {
+    if (child.nodeType !== 3 || child.textContent.trim()) result.push(child);
+  }
+  return result;
 }
 
 function key(node) {
@@ -58,7 +80,8 @@ function snapshot(source, withMarkup = true) {
 function remember(node, source, withMarkup = true) {
   sourceByNode.set(node, snapshot(source, withMarkup));
   const liveChildren = children(node);
-  children(source).forEach((child, index) => remember(liveChildren[index], child, withMarkup));
+  const sourceChildren = source === node ? liveChildren : children(source);
+  sourceChildren.forEach((child, index) => remember(liveChildren[index], child, withMarkup));
 }
 
 export function registerHomeDomNodes(nodes) {
@@ -141,6 +164,7 @@ export function releaseKeyedPosters(node) {
 }
 
 function updateNode(node, source, protectedNode) {
+  if (source.nodeType === 1 && source.hasAttribute(UNCHANGED_ROW)) return;
   const previous = sourceByNode.get(node);
   const markup = signature(source);
   // null (registered without markup) or undefined (wrapper) never matches.

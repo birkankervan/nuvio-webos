@@ -1,6 +1,6 @@
 # webOS devam kontrol noktası
 
-Güncelleme: 5 Ekim 2026. Bu dosya compaction/ajan devri öncesi güncellenir.
+Güncelleme: 21 Kasım 2026 — macOS: resmi NuvioDesktop kaynaktan + IPTV modülü (~/Desktop/projeler/NuvioDesktop), /Applications/Nuvio.app. IPTV oynatma kullanıcı doğrulamasında. Detay iş panosunda.
 Önce [güncel plan](plans/2026-10-05-webos-nihai-mimari.md), sonra
 [iş panosu](WEBOS_IS_TAKIBI.md), ardından bu dosya okunur.
 
@@ -2206,3 +2206,68 @@ Tüm turlar 1:0 → 1:15 ×2, dikey 11:0'a ulaştı; Back sonrası odak 1:0; hat
 Karar: 1.2.5 merge performans regresyonu yok; Back iyileşti. TV'de B (1.2.5) kurulu.
 Kalan: dikey long task 12-16/20 tuş (satır mount maliyeti, PERF-04/06 sonrası
 bilinen boşluk); fiziksel kumanda/soğuk başlangıç ölçülmedi.
+
+## TIZEN-1.2.5 — Samsung kurulum — 15 Ekim 2026
+
+Smart Monitor M8 (Tizen 9.0) LAN 192.168.1.165:26101 (port 26101 taramasıyla
+bulundu; IP değişebilir). Agent: `npm run package:tizen` → `tizen package -t wgt
+-s nuvio -- NuvioTV001_1.2.5.wgt` → `tizen install -s <ip>:26101 -n <wgt>` →
+`tizen run`. Aynı author cert; veri/oturum korunur. Inspector (sdb shell 0
+debug + forward): home-shell, 13 kart, focus var, update dialog yok, hata yok.
+Forward kaldırıldı, uygulama normal modda yeniden açıldı. WGT backend key
+içerir: paylaşma. Tizen'de performans ölçümü yapılmadı.
+
+## SYNC-03 — upstream 1.3.11 — 10 Kasım 2026
+
+Sahip: root. Branch `merge/upstream-1.3.11`, `git merge --no-commit 1.3.11`
+(1.2.5 → 1.3.11, ~300 commit; origin/main'deki 3 yayınlanmamış fix dahil değil).
+Merge commit EDİLMEDİ; kullanıcı kararı bekleniyor.
+
+22 dosyada 30 conflict çözüldü:
+- router: fork lazy route'ları korundu; upstream'in collections,
+  collectionEditor, watchParty ekranları lazy route olarak eklendi.
+- homeDomUpdate: fork re-export'u korundu; upstream'in inert document
+  karşılaştırması + rescaled artwork release'i `keyedDomUpdate.js`'e taşındı
+  (`releaseKeyedPosters` export); homeDataWindow row/card silme yolları da
+  artwork'ü bırakıyor (blob URL sızıntısı önlemi).
+- profileManager: upstream `deleteProfile` alındı; IPTV temizliği ortak
+  `removeLocalProfileData`'ya taşındı (sync ile silinen profiller de kapsanıyor).
+- app.js: upstream'in ilk Home paint sonrası badge ön yüklemesi, stream ekranını
+  lazy tutmak için helper modülün dinamik import'uyla yapılıyor.
+- Home 10/14/20/21/23, player 01/07/15/32/71, tmdb, scrobble, config, css,
+  appShell: iki taraf birleştirildi (dirtyRows + snapshot persist; IPTV +
+  party/chapters/live label; `fetchTmdbJson(url, { signal })`).
+- pagination (29): virtualizer yoksa upstream'in `:not(.home-poster-card-loading)`
+  selector'u kullanılıyor.
+- Test fixture'ları: upstream homeArtworkRetention'a `cancelDataHomePagination`
+  stub'ı; bizim router/dataWindow/preservedResume/truncation/stream testlerine
+  yeni Router/metod stub'ları.
+
+Kontroller: 292/292 Node test, lint, npm test ayakları (profile/plugin/media/
+perf 90/90) geçti; `tests/` upstream'de gitignored (bilinen). package:webos 1.3.11,
+check-performance-build, diff --check temiz. TV'ye 1.3.11 kuruldu: Home, gezinme,
+posterler, IPTV sidebar, Detail→Back (odak 1:0) çalışıyor; dialog/hata/`birkan` yok.
+
+Harness düzeltmesi: 1.3.x Detail açıkken Home'u `home-dom-preserved` ile DOM'da
+tutuyor; measure.mjs homeReady/Back artık bu sınıfı görünmez sayıyor (eski hali
+Back'i 35 ms gibi geçersiz ölçüyordu). Tek tur (A/B değil, taze kurulum değil):
+yatay handler p95 26 ms, rAF p95 16.8, LT 0; dikey p95 14 ms, LT 1; Back 222 ms.
+Oturumlar arası kıyas geçersiz; gerekirse 56f03775 vs merge A/B yapılmalı.
+Samsung'a 1.3.11 kurulmadı.
+
+- 2026-11-17: LG Developer Mode oturumu dolmuş, sideload Nuvio silinmişti (9922/9991 kapalı). Kullanıcı Dev Mode + Key Server açtı; 1.3.11 ipk yeniden kuruldu ve başlatıldı. Uygulama verisi (giriş/profil/addon) sıfırlanmış olabilir. Merge hâlâ commitsiz.
+
+## SYNC-04 upstream 1.4.3 (2026-11-17, devam ediyor)
+- 1.3.11 merge yerel commit `28319299` (main/push yok). 1.4.3 merge'ü aynı branch'te, commitsiz.
+- Çakışmalar: .gitignore (birleşim), metaRepository import birleşimi, homeDomUpdate (upstream WeakMap→node property, sibling-walk children, UNCHANGED_ROW stand-in keyedDomUpdate.js'e taşındı; homeDomUpdate re-export'a unchangedHomeRowMarkup eklendi), modernHomeLayout (virtualRowsMarkup varken "\u0000" split yerine doğrudan markup), Home-06 (data window erken dönüş + upstream prepareHomeRowsForRestore), Home-20 (upstream watched-set kimliği + invalidateMountedCatalogCards), Home-23 import birleşimi, Home-29 (upstream dwell prefetch + virtualizer kart listesi).
+- Home-18 syncHomeRowWindow: homeDataWindow aktifken upstream homeRowWindow kapatılıyor (çift sanallaştırma çakışmasın).
+- homeLogicalFocus: upstream CW kimliği show bazlı oldu; veri modelinde önce tam bölüm eşleşmesi, yoksa show eşleşmesi.
+- css/iptv.css: Tizen 5 için rgb(var(--x-rgb) / a) → rgba(var(--x-rgb-legacy), a).
+- Upstream homeLayoutPreferenceReads.test.mjs temiz 1.4.3'te de kırık (Platform stub yok); stub eklendi.
+- Kontroller: 350/350 modül testi, lint, diff --check, test:perf + npm test ilk ayaklar, package:webos, check-performance-build OK. `binaryen` upstream devDependency, npm install yapıldı. test:plugins/android-parity: upstream tests/ gitignore sorunu (bilinen).
+- Aktif: same-session A/B (A=data window, B=upstream homeRowWindow; B sadece ölçüm build'i, kaynakta yok). Sonraki adım: sonuca göre karar, TV kurulum, commit sorusu.
+- A/B sonucu (aynı oturum, 2+2 tur, 5. turda kullanıcı isteğiyle durduruldu; TV'de A kurulu kaldı):
+  - Yatay: A hP50 14.5/20.7, hP95 26.1/26.1; B hP50 8.1/7.3, hP95 23.1/22.3. B daha iyi.
+  - Dikey: A LT 9/10 (max 77/88 ms), rafP95 50/33; B LT 1/0, rafP95 16.8/16.8. B belirgin iyi.
+  - Back: A 338/260 ms; B 1240/1205 ms. A ~4x iyi.
+  - Karar bekliyor: hibrit hedef = data window Back hızını koru, dikeyde satır mount/unmount long task'ını azalt (veya B + hızlı Back). Örnek küçük, kesin hüküm değil.

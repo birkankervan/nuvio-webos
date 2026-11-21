@@ -3,6 +3,7 @@ import { safeApiCall } from "../../core/network/safeApiCall.js";
 import { addonRepository } from "./addonRepository.js";
 import { MetaApi } from "../remote/api/metaApi.js";
 import { BoundedCache } from "../../core/util/boundedCache.js";
+import { normalizeTmdbLogoUrl } from "../../core/tmdb/tmdbImageUrl.js";
 
 const INSTALLED_ADDONS_WAIT_MS = 750;
 
@@ -350,7 +351,7 @@ class MetaRepository {
       name: normalizeDisplayText(meta.name || "Untitled"),
       poster: meta.poster || null,
       background: meta.background || null,
-      logo: meta.logo || null,
+      logo: normalizeTmdbLogoUrl(meta.logo) || null,
       description: normalizeDisplayText(meta.description || ""),
       genres: Array.isArray(meta.genres)
         ? meta.genres.map((genre) => normalizeDisplayText(genre))

@@ -27,6 +27,7 @@ const BLOCKED_ROUTES = new Set([
   "authSignIn",
   "serverConnection"
 ]);
+const TIZEN_SCREEN_SAVER_BLOCK_IDLE_MS = 10000;
 const now = () => globalThis.performance?.now?.() ?? Date.now();
 let lastImageFailure = "";
 function logImageFailure(url, reason) {
@@ -41,6 +42,28 @@ function logImageFailure(url, reason) {
   lastImageFailure = key;
   console.warn("Ambient image failed", { reason, host });
 }
+const NON_TEXT_INPUT_TYPES = new Set([
+  "button",
+  "checkbox",
+  "color",
+  "file",
+  "hidden",
+  "image",
+  "radio",
+  "range",
+  "reset",
+  "submit"
+]);
+
+// An element that opens the TV's on-screen keyboard while it has focus.
+function isTextEntryElement(element) {
+  if (!element) return false;
+  if (element.isContentEditable) return true;
+  const tag = String(element.tagName || "").toUpperCase();
+  if (tag === "TEXTAREA") return true;
+  return tag === "INPUT" && !NON_TEXT_INPUT_TYPES.has(String(element.type || "text").toLowerCase());
+}
+
 function shuffled(values) {
   const copy = [...values];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -97,6 +120,7 @@ export const AmbientMode = {
   generation: 0,
   lastInteraction: 0,
   swallowedKey: null,
+  exiting: false,
   start() {
     if (this.started) return;
     this.started = true;
@@ -129,14 +153,18 @@ export const AmbientMode = {
     document.addEventListener("visibilitychange", () => {
       if (document.hidden) {
         this.dismiss();
-        this.setTizenScreenSaverBlocked(false);
+        if (!this.exiting) this.setTizenScreenSaverBlocked(false);
       }
       this.lastInteraction = now();
     });
     if (Platform.isTizen())
-      document.addEventListener("nuvio:beforeExitApp", () =>
-        this.setTizenScreenSaverBlocked(false)
-      );
+      document.addEventListener("nuvio:beforeExitApp", () => {
+        // Android drops keepScreenOn with the window; the launcher then owns
+        // the screensaver. Re-enabling the Samsung one here lets the TV's
+        // black screensaver cover the exit and Smart Hub on sets where it is
+        // due, which is the exit black screen reported on Tizen 6 (#1375).
+        this.exiting = true;
+      });
     this.interval = setInterval(() => this.tick(), 1000);
     this.tick();
   },
@@ -153,7 +181,7 @@ export const AmbientMode = {
     this.swallowedKey = null;
   },
   setTizenScreenSaverBlocked(blocked) {
-    if (!Platform.isTizen()) return;
+    if (!Platform.isTizen() || this.exiting) return;
     if (blocked) TizenScreenSaver.block();
     else TizenScreenSaver.unblock();
   },
@@ -168,6 +196,7 @@ export const AmbientMode = {
     );
   },
   tick() {
+    if (this.exiting) return;
     const route = Router.getCurrent();
     if (BLOCKED_ROUTES.has(route)) {
       // Playback and sign-in routes never show Ambient Mode. Skip the settings
@@ -209,7 +238,11 @@ export const AmbientMode = {
       if (this.showing) this.dismiss();
       return;
     }
-    this.setTizenScreenSaverBlocked(true);
+    // The first AppCommon call loads Samsung's plugin synchronously (243 ms on
+    // a UE50RU7400), and the first allowed tick lands while Home is mounting.
+    // The TV screensaver needs minutes of idle, so wait for a quiet moment.
+    if (now() - this.lastInteraction >= TIZEN_SCREEN_SAVER_BLOCK_IDLE_MS)
+      this.setTizenScreenSaverBlocked(true);
     if (!this.showing && now() - this.lastInteraction >= settings.timeoutMinutes * 60000)
       this.show();
   },
@@ -249,6 +282,14 @@ export const AmbientMode = {
     this.showing = true;
     if (Platform.isWebOS())
       WebOSPlayerExtensions.startAmbientKeepAwake(() => this.showing && !document.hidden);
+    // On a Tizen 5 set the slide animations advanced but were only seen on
+    // screen while something kept requesting frames, so Ambient Mode does.
+    if (Platform.isTizen() && typeof requestAnimationFrame === "function") {
+      const keepPresenting = () => {
+        if (this.showing) requestAnimationFrame(keepPresenting);
+      };
+      requestAnimationFrame(keepPresenting);
+    }
     const screen = Router.getCurrentScreen?.();
     screen?.stopTrailerPlayback?.();
     screen?.cancelFocusedPosterFlow?.();
@@ -267,6 +308,11 @@ export const AmbientMode = {
     this.previousScreen = screen;
     this.previousProfileId = ProfileManager.getActiveProfileId();
     this.previousFocus = document.activeElement;
+    // Android hides the on-screen keyboard when Ambient Mode starts. On TVs the
+    // keyboard follows the focused text field, so release it; the field keeps
+    // its D-pad highlight and is not refocused afterwards, so it stays closed.
+    this.previousFocusWasTextEntry = isTextEntryElement(this.previousFocus);
+    if (this.previousFocusWasTextEntry) this.previousFocus.blur?.();
     const root = document.createElement("div");
     root.className = "ambient-mode";
     root.setAttribute("role", "presentation");
@@ -368,7 +414,9 @@ export const AmbientMode = {
     const canRestoreFocus =
       Router.getCurrentScreen?.() === this.previousScreen &&
       ProfileManager.getActiveProfileId() === this.previousProfileId;
-    if (
+    if (canRestoreFocus && this.previousFocusWasTextEntry) {
+      // Leave the keyboard closed, as Android does.
+    } else if (
       canRestoreFocus &&
       this.previousFocus?.isConnected &&
       this.previousFocus !== document.body &&
@@ -379,6 +427,7 @@ export const AmbientMode = {
       this.previousScreen?.applyFocus?.();
     }
     this.previousFocus = null;
+    this.previousFocusWasTextEntry = false;
     this.previousScreen = null;
     this.previousProfileId = null;
   }

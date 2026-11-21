@@ -350,7 +350,7 @@
   align-items: center;
   justify-content: center;
   gap: 24px;
-  background: rgb(var(--bg-color-rgb) / 0.88);
+  background: rgba(var(--bg-color-rgb-legacy), 0.88);
   text-align: center;
 }
 
@@ -573,8 +573,8 @@
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(90deg, rgb(var(--bg-color-rgb) / 0.95) 0%, rgb(var(--bg-color-rgb) / 0.85) 60%, rgb(var(--bg-color-rgb) / 0.78) 100%),
-    linear-gradient(0deg, rgb(var(--bg-color-rgb) / 0.9) 0%, rgb(var(--bg-color-rgb) / 0) 50%);
+    linear-gradient(90deg, rgba(var(--bg-color-rgb-legacy), 0.95) 0%, rgba(var(--bg-color-rgb-legacy), 0.85) 60%, rgba(var(--bg-color-rgb-legacy), 0.78) 100%),
+    linear-gradient(0deg, rgba(var(--bg-color-rgb-legacy), 0.9) 0%, rgba(var(--bg-color-rgb-legacy), 0) 50%);
 }
 
 .iptv-detail-head {
@@ -761,7 +761,7 @@
   height: 72px;
   padding: 0 44px;
   border-radius: 36px;
-  background: rgb(var(--bg-elevated-rgb) / 0.85);
+  background: rgba(var(--bg-elevated-rgb-legacy), 0.85);
   font-size: 28px;
   font-weight: 600;
   overflow: hidden;
@@ -778,7 +778,7 @@
 
 .iptv-btn-hero.iptv-btn-primary.focused {
   background: var(--secondary-variant);
-  box-shadow: 0 0 0 4px rgb(var(--focus-color-rgb) / 0.55);
+  box-shadow: 0 0 0 4px rgba(var(--focus-color-rgb-legacy), 0.55);
 }
 
 .iptv-btn-icon {
@@ -854,7 +854,7 @@
   padding: 0 16px;
   border: 2px solid transparent;
   border-radius: 14px;
-  background: rgb(var(--card-bg-rgb) / 0.88);
+  background: rgba(var(--card-bg-rgb-legacy), 0.88);
   overflow: hidden;
   box-sizing: border-box;
 }
