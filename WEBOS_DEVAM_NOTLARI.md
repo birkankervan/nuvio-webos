@@ -1,6 +1,6 @@
 # webOS devam kontrol noktası
 
-Güncelleme: 21 Kasım 2026 — macOS: resmi NuvioDesktop kaynaktan + IPTV modülü (~/Desktop/projeler/NuvioDesktop), /Applications/Nuvio.app. IPTV oynatma kullanıcı doğrulamasında. Detay iş panosunda.
+Güncelleme: 2026-11-23 — macOS IPTV planı Adım 1–6 + ekler (canlı eof yeniden bağlanma, çözünürlük etiketi, tam ekran canlı tampon) TAMAM; NuvioDesktop feat/macos-iptv → Dev merge 132ff119b, pushlandı (build + handoff/IPTV testleri geçti). Canlı yeniden bağlanma uzun izlemede test edilmedi. İki fork main dalında main-release-notes.yml var (main push → ön sürüm release + commit listesi). TV: 1.4.4 kurulu, ayrıntı WEBOS_IS_TAKIBI SYNC-05.
 Önce [güncel plan](plans/2026-10-05-webos-nihai-mimari.md), sonra
 [iş panosu](WEBOS_IS_TAKIBI.md), ardından bu dosya okunur.
 
