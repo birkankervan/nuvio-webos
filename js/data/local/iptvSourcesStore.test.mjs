@@ -40,7 +40,17 @@ test("upsert keeps createdAt, rejects invalid, normalizes account", () => {
   data.clear();
   const a = store.upsert(input, "1");
   const b = store.upsert(
-    { ...a, name: "B", lastAccount: { status: "Active", expDate: "99", maxConnections: "1", allowedFormats: ["TS"], timezone: "X" } },
+    {
+      ...a,
+      name: "B",
+      lastAccount: {
+        status: "Active",
+        expDate: "99",
+        maxConnections: "1",
+        allowedFormats: ["TS"],
+        timezone: "X"
+      }
+    },
     "1"
   );
   assert.equal(b.createdAt, a.createdAt);

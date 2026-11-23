@@ -91,8 +91,8 @@ export function createHomeScreenMethods21() {
         }
         this.watchedItems = Array.isArray(watchedItems) ? watchedItems : [];
         const nextWatchedTitleIds = buildWatchedTitleIdSet(this.watchedItems);
-        const watchedTitlesChanged = nextWatchedTitleIds.size !== this.watchedTitleIds?.size ||
-          [...nextWatchedTitleIds].some((id) => !this.watchedTitleIds?.has(id));
+        const watchedTitlesChanged =
+          nextWatchedTitleIds.size !== this.watchedTitleIds?.size || [...nextWatchedTitleIds].some((id) => !this.watchedTitleIds?.has(id));
         this.watchedTitleIds = nextWatchedTitleIds;
         if (watchedTitlesChanged) this.requestBackgroundRender({ invalidateMountedCatalogCards: true });
         void this.refreshWatchedTitleState({ token });
@@ -311,11 +311,17 @@ export function createHomeScreenMethods21() {
       const dataHomeDirtyRows = new Set(initialRows.map((row) => String(row?.homeCatalogKey || "")).filter(Boolean));
       const currentHomeRowOrder = (this.rows || []).map((row) => String(row?.homeCatalogKey || "")).filter(Boolean);
       const currentHomeRowKeys = new Set(currentHomeRowOrder);
-      previousHomeRowKeys.forEach((key) => { if (!currentHomeRowKeys.has(key)) dataHomeDirtyRows.add(key); });
+      previousHomeRowKeys.forEach((key) => {
+        if (!currentHomeRowKeys.has(key)) dataHomeDirtyRows.add(key);
+      });
       const previousRowIndex = new Map(previousHomeRowOrder.map((key, index) => [key, index]));
-      currentHomeRowOrder.forEach((key, index) => { if (previousRowIndex.has(key) && previousRowIndex.get(key) !== index) dataHomeDirtyRows.add(key); });
-      if (background) (this.rows || []).filter((row) => row?.rowKind === "collection")
-        .forEach((row) => dataHomeDirtyRows.add(String(row.homeCatalogKey || "")));
+      currentHomeRowOrder.forEach((key, index) => {
+        if (previousRowIndex.has(key) && previousRowIndex.get(key) !== index) dataHomeDirtyRows.add(key);
+      });
+      if (background)
+        (this.rows || [])
+          .filter((row) => row?.rowKind === "collection")
+          .forEach((row) => dataHomeDirtyRows.add(String(row.homeCatalogKey || "")));
       persistHomeCatalogSnapshot(this, token);
       if (preserveContinueWatching) {
         this.continueWatchingLoading = false;
@@ -367,7 +373,12 @@ export function createHomeScreenMethods21() {
         this.loadedHomeRouteInputSignature = routeInputSignature;
       }
       if (background) {
-        this.requestBackgroundRender({ dirtyRows: dataHomeDirtyRows, continueWatching: preserveContinueWatching, hero: true, full: profileChanged });
+        this.requestBackgroundRender({
+          dirtyRows: dataHomeDirtyRows,
+          continueWatching: preserveContinueWatching,
+          hero: true,
+          full: profileChanged
+        });
       } else {
         this.render();
       }
@@ -430,7 +441,10 @@ export function createHomeScreenMethods21() {
             }
             void this.refreshWatchedTitleState({ token });
             persistHomeCatalogSnapshot(this, token, { force: true });
-            this.requestBackgroundRender({ dirtyRows: extraRows.map((row) => String(row?.homeCatalogKey || "")).filter(Boolean), hero: true });
+            this.requestBackgroundRender({
+              dirtyRows: extraRows.map((row) => String(row?.homeCatalogKey || "")).filter(Boolean),
+              hero: true
+            });
             this.retryPendingCatalogRows();
           })
           .catch((error) => {

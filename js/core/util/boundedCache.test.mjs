@@ -25,16 +25,27 @@ test("metadata caches stay bounded, retain hot results, and keep shared pending 
     metaRepository.clearCache();
     TmdbService.clearCache();
     addonRepository.getInstalledAddons = async () => [];
-    MetaApi.getMeta = async url => {
+    MetaApi.getMeta = async (url) => {
       metaRequests++;
-      if (url.includes("pending.json")) await new Promise(resolve => { finishMeta = resolve; });
-      const id = decodeURIComponent(url.split("/").pop().replace(/\.json$/, ""));
+      if (url.includes("pending.json"))
+        await new Promise((resolve) => {
+          finishMeta = resolve;
+        });
+      const id = decodeURIComponent(
+        url
+          .split("/")
+          .pop()
+          .replace(/\.json$/, "")
+      );
       return { meta: { id, type: "movie", name: id } };
     };
-    const getMeta = id => metaRepository.getMeta("https://cache-test.invalid", "movie", id);
+    const getMeta = (id) => metaRepository.getMeta("https://cache-test.invalid", "movie", id);
     for (let id = 0; id < 120; id++) await getMeta(`item-${id}`);
-    assert.equal(metaRepository.getCachedMeta("movie", "item-0").id, "item-0",
-      "suffix lookup should promote recently used metadata before eviction");
+    assert.equal(
+      metaRepository.getCachedMeta("movie", "item-0").id,
+      "item-0",
+      "suffix lookup should promote recently used metadata before eviction"
+    );
     await getMeta("item-120");
     assert.equal(metaRepository.metaCache.size, 120);
     assert.equal(metaRepository.getCachedMeta("movie", "item-1"), null);
@@ -54,11 +65,14 @@ test("metadata caches stay bounded, retain hot results, and keep shared pending 
     assert.equal(metaRepository.inFlightMeta.size, 0);
 
     Platform.isWebOS = () => false;
-    globalThis.fetch = async url => {
+    globalThis.fetch = async (url) => {
       tmdbRequests++;
       const id = Number(String(url).match(/\/(?:movie|tv)\/(\d+)\/external_ids/)?.[1]);
       assert.ok(id);
-      if (id === 999) await new Promise(resolve => { finishTmdb = resolve; });
+      if (id === 999)
+        await new Promise((resolve) => {
+          finishTmdb = resolve;
+        });
       return { ok: true, json: async () => ({ imdb_id: `tt${100000 + id}` }) };
     };
     for (let id = 1; id <= 120; id++) await TmdbService.tmdbToImdb(String(id));
@@ -69,7 +83,11 @@ test("metadata caches stay bounded, retain hot results, and keep shared pending 
     assert.equal(tmdbRequests, beforeHotTmdb);
     assert.equal(await TmdbService.tmdbToImdb("2"), "tt100002");
     assert.equal(tmdbRequests, beforeHotTmdb + 1);
-    assert.equal(await TmdbService.ensureTmdbId("tt100002"), "2", "reverse conversion result is reused");
+    assert.equal(
+      await TmdbService.ensureTmdbId("tt100002"),
+      "2",
+      "reverse conversion result is reused"
+    );
     const pendingTmdb = [TmdbService.tmdbToImdb("999"), TmdbService.tmdbToImdb("999")];
     while (!finishTmdb) await Promise.resolve();
     const beforeTmdbResolve = tmdbRequests;
@@ -85,7 +103,11 @@ test("metadata caches stay bounded, retain hot results, and keep shared pending 
       assert.equal(cache.size, cache.maxEntries);
       assert.equal(cache.get(0), hot);
       assert.equal(cache.has(1), false);
-      assert.equal([...cache.entries()].length, cache.maxEntries, "normal iteration remains finite");
+      assert.equal(
+        [...cache.entries()].length,
+        cache.maxEntries,
+        "normal iteration remains finite"
+      );
     }
   } finally {
     MetaApi.getMeta = originalGetMeta;
@@ -94,6 +116,6 @@ test("metadata caches stay bounded, retain hot results, and keep shared pending 
     Platform.isWebOS = originalIsWebOs;
     metaRepository.clearCache();
     TmdbService.clearCache();
-    caches.forEach(cache => cache.clear());
+    caches.forEach((cache) => cache.clear());
   }
 });

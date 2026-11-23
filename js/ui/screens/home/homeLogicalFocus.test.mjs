@@ -2,8 +2,12 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { moveHomeLogicalFocus, resolveHomeLogicalFocus } from "./homeLogicalFocus.js";
 
-const item = id => ({ itemId: String(id), itemType: "movie" });
-const row = (rowKey, count, kind = "catalog") => ({ rowKey, kind, items: Array.from({ length: count }, (_, index) => item(index)) });
+const item = (id) => ({ itemId: String(id), itemType: "movie" });
+const row = (rowKey, count, kind = "catalog") => ({
+  rowKey,
+  kind,
+  items: Array.from({ length: count }, (_, index) => item(index))
+});
 
 test("logical focus survives reorder and removal, reaches distant items and does not mutate data", () => {
   const catalog = row("movies", 250);
@@ -25,8 +29,11 @@ test("logical focus survives reorder and removal, reaches distant items and does
 
 test("vertical movement skips empty rows, restores per-row indices, clamps and returns boundaries", () => {
   const rows = [row("first", 10), row("empty", 0), row("short", 2), row("last", 5)];
-  let focus = resolveHomeLogicalFocus(rows, { rowKey: "first", itemIndex: 8,
-    preferredItemIndexByRowKey: { short: 200, gone: 300 } });
+  let focus = resolveHomeLogicalFocus(rows, {
+    rowKey: "first",
+    itemIndex: 8,
+    preferredItemIndexByRowKey: { short: 200, gone: 300 }
+  });
   assert.equal(Object.hasOwn(focus.preferredItemIndexByRowKey, "gone"), false);
   focus = moveHomeLogicalFocus(rows, focus, "down");
   assert.equal(focus.rowKey, "short");
@@ -53,17 +60,36 @@ test("vertical movement skips empty rows, restores per-row indices, clamps and r
 });
 
 test("episode identity distinguishes CW entries, see-all is navigable, and classic hero rotates", () => {
-  const cw = { rowKey: "continue_watching", kind: "continue", items: [
-    { itemId: "series", itemType: "series", videoId: "series:1:1", season: "1", episode: "1" },
-    { itemId: "series", itemType: "series", videoId: "series:1:2", season: "1", episode: "2" }
-  ] };
-  const focus = resolveHomeLogicalFocus([cw], { rowKey: cw.rowKey, itemIndex: 0, itemIdentity: cw.items[1] });
+  const cw = {
+    rowKey: "continue_watching",
+    kind: "continue",
+    items: [
+      { itemId: "series", itemType: "series", videoId: "series:1:1", season: "1", episode: "1" },
+      { itemId: "series", itemType: "series", videoId: "series:1:2", season: "1", episode: "2" }
+    ]
+  };
+  const focus = resolveHomeLogicalFocus([cw], {
+    rowKey: cw.rowKey,
+    itemIndex: 0,
+    itemIdentity: cw.items[1]
+  });
   assert.equal(focus.itemIndex, 1);
-  assert.equal(resolveHomeLogicalFocus([{ ...cw, items: [...cw.items].reverse() }], focus).itemIndex, 0);
+  assert.equal(
+    resolveHomeLogicalFocus([{ ...cw, items: [...cw.items].reverse() }], focus).itemIndex,
+    0
+  );
   const catalog = row("movies", 2);
   catalog.items.push({ itemId: "__see_all__:movies", itemType: "action" });
-  assert.equal(moveHomeLogicalFocus([catalog], { rowKey: "movies", itemIndex: 1 }, "right").itemIdentity.itemType, "action");
-  const hero = { rowKey: "__hero__", kind: "hero", items: [{ itemId: "__hero__", itemType: "action" }] };
+  assert.equal(
+    moveHomeLogicalFocus([catalog], { rowKey: "movies", itemIndex: 1 }, "right").itemIdentity
+      .itemType,
+    "action"
+  );
+  const hero = {
+    rowKey: "__hero__",
+    kind: "hero",
+    items: [{ itemId: "__hero__", itemType: "action" }]
+  };
   const rotation = moveHomeLogicalFocus([hero, catalog], {}, "left");
   assert.equal(rotation.action, "rotateHero");
   assert.equal(rotation.delta, -1);

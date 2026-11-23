@@ -201,9 +201,11 @@ export function createHomeScreenMethods23() {
         this.catalogSeeAllMap = new Map();
       } else if (this.layoutMode === "modern") {
         const dataWindow = this.createDataHomeWindow(continueWatchingRows, effectiveContinueWatchingLoadingCount, retainedFocusState);
-        const virtualRowsMarkup = dataWindow.markup({ offset: Number(retainedFocusState?.mainScrollTop || 0),
+        const virtualRowsMarkup = dataWindow.markup({
+          offset: Number(retainedFocusState?.mainScrollTop || 0),
           width: this.container.clientWidth || globalThis.innerWidth || 1280,
-          height: this.getHomeViewport()?.clientHeight || 560 });
+          height: this.getHomeViewport()?.clientHeight || 560
+        });
         modernLayoutPayload = renderModernHomeLayout({
           virtualRowsMarkup,
           rows: this.rows,

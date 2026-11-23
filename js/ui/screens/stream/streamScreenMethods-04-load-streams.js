@@ -29,7 +29,7 @@ export function createStreamScreenMethods04() {
       const loadAbortController = typeof AbortController === "function" ? new AbortController() : null;
       this.streamLoadAbortController = loadAbortController;
       // Every load supersedes the previous collector, including runtimes without AbortController.
-      const token = this.loadToken = (this.loadToken || 0) + 1;
+      const token = (this.loadToken = (this.loadToken || 0) + 1);
       if (this.streamChunkTimer) clearTimeout(this.streamChunkTimer);
       this.streamChunkTimer = null;
       if (this.debridPreparationTimer) clearTimeout(this.debridPreparationTimer);

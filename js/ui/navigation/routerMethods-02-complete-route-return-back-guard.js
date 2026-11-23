@@ -142,7 +142,7 @@ export function createRouterMethods02() {
         return;
       }
 
-      const requestId = this.navigationRequestId = (this.navigationRequestId || 0) + 1;
+      const requestId = (this.navigationRequestId = (this.navigationRequestId || 0) + 1);
       if (Screen.load) {
         try {
           Screen = await Screen.load();
@@ -224,8 +224,7 @@ export function createRouterMethods02() {
           params: this.currentParams,
           // Same-route replace (IPTV CH+/CH- zap) keeps the entry's real predecessor,
           // otherwise popToExistingRoute() sees "player" and refuses the history pop.
-          previousRoute:
-            (replaceHistory && previousRoute === routeName ? window.history.state?.previousRoute : previousRoute) || null
+          previousRoute: (replaceHistory && previousRoute === routeName ? window.history.state?.previousRoute : previousRoute) || null
         };
         if (!this.historyInitialized) {
           if (Platform.isWebOS() && this.current !== "home" && !NON_BACKSTACK_ROUTES.has(this.current)) {

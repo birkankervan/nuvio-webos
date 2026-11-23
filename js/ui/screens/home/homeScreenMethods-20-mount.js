@@ -119,7 +119,7 @@ export function createHomeScreenMethods20() {
         // The data window mounts only visible rows, so its logical rows are the
         // rendered catalog sequence; the DOM query only fits fully rendered layouts.
         const renderedCatalogRowKeys = this.homeDataWindow?.rows
-          ? this.homeDataWindow.rows.filter(row => row.kind !== "continue").map(row => row.rowKey)
+          ? this.homeDataWindow.rows.filter((row) => row.kind !== "continue").map((row) => row.rowKey)
           : getRenderedHomeCatalogRowKeys(this.container);
         this.collections = CollectionsStore.get();
         this.rows = this.sortAndFilterRows(this.rows, this.collections);

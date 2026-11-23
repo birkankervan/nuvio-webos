@@ -16,14 +16,21 @@ test("detail paints a loading shell before fetching and cancels a departed route
   const container = { style: {}, innerHTML: "" };
   try {
     globalThis.document = { getElementById: () => container };
-    globalThis.requestAnimationFrame = callback => frames.push(callback);
-    globalThis.setTimeout = callback => tasks.push(callback);
+    globalThis.requestAnimationFrame = (callback) => frames.push(callback);
+    globalThis.setTimeout = (callback) => tasks.push(callback);
     Router.getCurrent = () => "detail";
     const ctx = {
       ...createMetaDetailsScreenMethods02(),
-      stopTrailerPlayback() {}, cancelTraktCommentsRequest() {}, bindTrailerProxyMessaging() {},
+      stopTrailerPlayback() {},
+      cancelTraktCommentsRequest() {},
+      bindTrailerProxyMessaging() {},
       hydrateFromRouteState: () => false,
-      async loadDetail() { loads++; }, renderError() { assert.fail("unexpected load error"); }
+      async loadDetail() {
+        loads++;
+      },
+      renderError() {
+        assert.fail("unexpected load error");
+      }
     };
     await ctx.mount({ itemId: "test" });
     assert.match(container.innerHTML, /detail-loading-shell/);

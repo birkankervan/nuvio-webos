@@ -24,15 +24,15 @@ baseline'ıdır. Sanallaştırma henüz uygulanmadı.
 - Mevcut uygulamanın ana bundle'ı: **3.143.906 byte**. HLS ve DASH bu örnek
   anında yüklenmişti; bu veri ilk açılışta yüklendikleri anlamına gelmez.
 
-| Ölçüm | Boşta, 3 saniye | Sentetik 8 aşağı + 8 yukarı |
-| --- | --- | --- |
-| Frame p95 | 16,8 ms | 133,3 ms |
-| En uzun frame | 16,8 ms | 266,6 ms |
-| 33,4 ms üzeri frame | 0 / 182 | 42 / 104 |
-| Long task (50 ms üzeri) | 0 | 7 |
-| En uzun long task | 0 | 96 ms |
-| Keydown handler p95 | — | 81,5 ms |
-| Keydown'dan sonraki rAF callback'ine p95 | — | 202,9 ms |
+| Ölçüm                                    | Boşta, 3 saniye | Sentetik 8 aşağı + 8 yukarı |
+| ---------------------------------------- | --------------- | --------------------------- |
+| Frame p95                                | 16,8 ms         | 133,3 ms                    |
+| En uzun frame                            | 16,8 ms         | 266,6 ms                    |
+| 33,4 ms üzeri frame                      | 0 / 182         | 42 / 104                    |
+| Long task (50 ms üzeri)                  | 0               | 7                           |
+| En uzun long task                        | 0               | 96 ms                       |
+| Keydown handler p95                      | —               | 81,5 ms                     |
+| Keydown'dan sonraki rAF callback'ine p95 | —               | 202,9 ms                    |
 
 Gezinme örneğinde tuşlar arasında en az 180 ms beklenip sonrasında 700 ms
 settle süresi tanındı. Olaylar JavaScript `KeyboardEvent` ile üretildi; native
@@ -51,16 +51,16 @@ erken instrumentation denendi, fakat örnek verisi oluşmadı; sonuç raporlanma
 
 ## Öncelikli bulgular
 
-| Öncelik | Bulgu | Kanıt ve etki | Durum |
-| --- | --- | --- | --- |
-| P1 | Home gerçek anlamda sanallaştırılmıyor | `modernHomeLayout.js` her dolu satırı üretir. İlk kart sınırı 8/10/15; `homeScreenMethods-29-setup-modern-track-scroll-pagination.js` sağa ilerledikçe DOM'a kart ekler, eski kartları çıkarmaz. DOM maliyeti katalog/sayfa sayısıyla büyür. | Mimari olarak doğrulandı; TV etkisi ölçülecek. |
-| P1 | Collection satırları başlangıç sınırını atlıyor | `modernHomeLayout.js` içinde `isCollectionRow ? rowItems : rowItems.slice(...)` var. Büyük koleksiyon başlangıçta bütün kartlarını üretir. | Kodda doğrulandı. |
-| P1 | Geri dönüşte baştan odaklanan karta kadar tüm kartlar üretiliyor | Aynı dosyada `Math.max(maxItems, focusedItemLimit)`; örneğin 200. karta dönüş en az 201 kartı tekrar üretir. | Kodda doğrulandı. |
-| P2 | Eski TV kumanda tekrar sınırı çalışmıyor | `homeScreenMethods-03-is-scroll-animation-active.js/getDirectionalRepeatThrottleMs`: `!Platform.isBrowser()` erken dönüşü, aşağıdaki legacy/constrained koşullarını webOS/Tizen için erişilemez yapar. Legacy yatay gezinme 120 ms yerine 80 ms aralığı kullanır. Bu TV'nin modern profili doğrudan etkilenmez. | Yerelde düzeltildi. |
-| P2 | Görsel kuyruğu ekleme maliyeti gereksiz büyüyor | `homeScreenMethods-24-schedule-home-lazy-image-hydration.js/commitHomeLazyImageSources`: her yeni görsel için `pending.findIndex`; N bekleyen ve M yeni görsel için O(N×M) arama. Bu yol legacy profilde çalışır; bu TV'nin modern profilindeki ana sorunu açıklamaz. | Yerelde Map ile düzeltildi; arama O(N+M), sıralama maliyeti ayrıca devam ediyor. |
-| P2 | Modern webOS'ta arka plan render girişle çakışabilir | `homeScreenMethods-04-get-hero-focus-delay.js/shouldDeferHomeRenderForInput` 800 ms korumayı sadece constrained/legacy cihazlara uygular. Modern classic/grid ve animasyonsuz modern gezinme aynı korumadan yararlanmaz. | Yerelde modern TV için 250 ms giriş bekleme aralığı eklendi; cihazda etkisi henüz ölçülmedi. |
-| P3 | Debug kapalıyken de focus ölçüm argümanları hesaplanıyor | `focusNode` ve `syncMainFocusToViewport` debug zaman hesabını ve veri nesnesini koşulsuz üretir; `logHomePerf` ancak fonksiyona girdikten sonra döner. | Yerelde debug koşuluna alındı. Küçük maliyet; tek başına frame kaybını çözmesi beklenmez. |
-| P2 | Diğer katalog ekranları da birikimli render yapıyor | See All `renderedItemsLimit` büyütür; bu bir pencere değil, baştan genişleyen bir dilimdir. Library/Search render akışlarında tüm içerik için markup/DOM oluşturma yolları var. | İkinci inceleme/sanallaştırma hedefleri. |
+| Öncelik | Bulgu                                                            | Kanıt ve etki                                                                                                                                                                                                                                                                                                   | Durum                                                                                        |
+| ------- | ---------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| P1      | Home gerçek anlamda sanallaştırılmıyor                           | `modernHomeLayout.js` her dolu satırı üretir. İlk kart sınırı 8/10/15; `homeScreenMethods-29-setup-modern-track-scroll-pagination.js` sağa ilerledikçe DOM'a kart ekler, eski kartları çıkarmaz. DOM maliyeti katalog/sayfa sayısıyla büyür.                                                                    | Mimari olarak doğrulandı; TV etkisi ölçülecek.                                               |
+| P1      | Collection satırları başlangıç sınırını atlıyor                  | `modernHomeLayout.js` içinde `isCollectionRow ? rowItems : rowItems.slice(...)` var. Büyük koleksiyon başlangıçta bütün kartlarını üretir.                                                                                                                                                                      | Kodda doğrulandı.                                                                            |
+| P1      | Geri dönüşte baştan odaklanan karta kadar tüm kartlar üretiliyor | Aynı dosyada `Math.max(maxItems, focusedItemLimit)`; örneğin 200. karta dönüş en az 201 kartı tekrar üretir.                                                                                                                                                                                                    | Kodda doğrulandı.                                                                            |
+| P2      | Eski TV kumanda tekrar sınırı çalışmıyor                         | `homeScreenMethods-03-is-scroll-animation-active.js/getDirectionalRepeatThrottleMs`: `!Platform.isBrowser()` erken dönüşü, aşağıdaki legacy/constrained koşullarını webOS/Tizen için erişilemez yapar. Legacy yatay gezinme 120 ms yerine 80 ms aralığı kullanır. Bu TV'nin modern profili doğrudan etkilenmez. | Yerelde düzeltildi.                                                                          |
+| P2      | Görsel kuyruğu ekleme maliyeti gereksiz büyüyor                  | `homeScreenMethods-24-schedule-home-lazy-image-hydration.js/commitHomeLazyImageSources`: her yeni görsel için `pending.findIndex`; N bekleyen ve M yeni görsel için O(N×M) arama. Bu yol legacy profilde çalışır; bu TV'nin modern profilindeki ana sorunu açıklamaz.                                           | Yerelde Map ile düzeltildi; arama O(N+M), sıralama maliyeti ayrıca devam ediyor.             |
+| P2      | Modern webOS'ta arka plan render girişle çakışabilir             | `homeScreenMethods-04-get-hero-focus-delay.js/shouldDeferHomeRenderForInput` 800 ms korumayı sadece constrained/legacy cihazlara uygular. Modern classic/grid ve animasyonsuz modern gezinme aynı korumadan yararlanmaz.                                                                                        | Yerelde modern TV için 250 ms giriş bekleme aralığı eklendi; cihazda etkisi henüz ölçülmedi. |
+| P3      | Debug kapalıyken de focus ölçüm argümanları hesaplanıyor         | `focusNode` ve `syncMainFocusToViewport` debug zaman hesabını ve veri nesnesini koşulsuz üretir; `logHomePerf` ancak fonksiyona girdikten sonra döner.                                                                                                                                                          | Yerelde debug koşuluna alındı. Küçük maliyet; tek başına frame kaybını çözmesi beklenmez.    |
+| P2      | Diğer katalog ekranları da birikimli render yapıyor              | See All `renderedItemsLimit` büyütür; bu bir pencere değil, baştan genişleyen bir dilimdir. Library/Search render akışlarında tüm içerik için markup/DOM oluşturma yolları var.                                                                                                                                 | İkinci inceleme/sanallaştırma hedefleri.                                                     |
 
 ## Zaten iyi olanlar
 

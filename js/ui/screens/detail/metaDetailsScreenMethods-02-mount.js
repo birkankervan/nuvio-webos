@@ -167,16 +167,18 @@ export function createMetaDetailsScreenMethods02() {
       // route completion or Back/D-pad handling on canonicalization or metadata
       // requests.
       const loadToken = this.detailLoadToken;
-      void new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0))).then(() => {
-        if (loadToken !== this.detailLoadToken || Router.getCurrent() !== "detail") return;
-        return this.loadDetail();
-      }).catch((error) => {
-        if (loadToken !== this.detailLoadToken || Router.getCurrent() !== "detail" || !this.container) {
-          return;
-        }
-        console.warn("Detail background load failed", error);
-        this.renderError("Unable to load detail.");
-      });
+      void new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)))
+        .then(() => {
+          if (loadToken !== this.detailLoadToken || Router.getCurrent() !== "detail") return;
+          return this.loadDetail();
+        })
+        .catch((error) => {
+          if (loadToken !== this.detailLoadToken || Router.getCurrent() !== "detail" || !this.container) {
+            return;
+          }
+          console.warn("Detail background load failed", error);
+          this.renderError("Unable to load detail.");
+        });
     }
   };
 }

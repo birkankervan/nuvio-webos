@@ -764,7 +764,10 @@ async function buildBundle() {
     }
   });
   await mkdir(path.join(rootDir, ".cache"), { recursive: true });
-  await writeFile(path.join(rootDir, ".cache", "module-build-meta.json"), JSON.stringify(modern.metafile));
+  await writeFile(
+    path.join(rootDir, ".cache", "module-build-meta.json"),
+    JSON.stringify(modern.metafile)
+  );
   console.log("bundle build complete");
 }
 async function runBuild() {

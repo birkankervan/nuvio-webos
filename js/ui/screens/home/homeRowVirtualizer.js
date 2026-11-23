@@ -16,9 +16,11 @@ export class HomeRowVirtualizer {
       // Reattaching a window must not restart the row's entrance animation.
       row.classList.remove("home-row-enter");
       const spacer = row.ownerDocument.createElement("section");
-      spacer.className = row.className.replace(/\bhome-row-enter\b/g, "") + " home-virtual-row-placeholder";
+      spacer.className =
+        row.className.replace(/\bhome-row-enter\b/g, "") + " home-virtual-row-placeholder";
       const style = getComputedStyle(row);
-      spacer.style.cssText = "box-sizing:border-box;min-height:0;max-height:none;padding:0;border:0;";
+      spacer.style.cssText =
+        "box-sizing:border-box;min-height:0;max-height:none;padding:0;border:0;";
       spacer.style.margin = style.margin;
       spacer.setAttribute("aria-hidden", "true");
       spacer.style.flexShrink = "0";
@@ -35,9 +37,13 @@ export class HomeRowVirtualizer {
 
   mount(target) {
     const owner = typeof target === "string" ? null : this.cardOwners.get(target);
-    const record = owner?.record || this.records.find(({ row }) =>
-      typeof target === "string" ? row.dataset.rowKey === target : row === target || row.contains(target)
-    );
+    const record =
+      owner?.record ||
+      this.records.find(({ row }) =>
+        typeof target === "string"
+          ? row.dataset.rowKey === target
+          : row === target || row.contains(target)
+      );
     if (!record) return;
     if (record.detached) {
       record.spacer.replaceWith(record.row);
@@ -52,28 +58,34 @@ export class HomeRowVirtualizer {
   }
 
   readCards(record) {
-    record.cards = Array.from(record.track?.querySelectorAll(".home-content-card.focusable") || [], (node) => {
-      const spacer = node.ownerDocument.createElement("div");
-      spacer.className = "home-virtual-card-placeholder";
-      spacer.setAttribute("aria-hidden", "true");
-      const style = getComputedStyle(node);
-      spacer.style.cssText = "box-sizing:border-box;flex-shrink:0;visibility:hidden;pointer-events:none;";
-      spacer.style.margin = style.margin;
-      spacer.style.width = `${node.offsetWidth}px`;
-      spacer.style.height = `${node.offsetHeight}px`;
-      const card = { node, spacer, detached: false };
-      this.cardOwners.set(node, { record, card });
-      return card;
-    });
+    record.cards = Array.from(
+      record.track?.querySelectorAll(".home-content-card.focusable") || [],
+      (node) => {
+        const spacer = node.ownerDocument.createElement("div");
+        spacer.className = "home-virtual-card-placeholder";
+        spacer.setAttribute("aria-hidden", "true");
+        const style = getComputedStyle(node);
+        spacer.style.cssText =
+          "box-sizing:border-box;flex-shrink:0;visibility:hidden;pointer-events:none;";
+        spacer.style.margin = style.margin;
+        spacer.style.width = `${node.offsetWidth}px`;
+        spacer.style.height = `${node.offsetHeight}px`;
+        const card = { node, spacer, detached: false };
+        this.cardOwners.set(node, { record, card });
+        return card;
+      }
+    );
   }
 
   getTrackCards(track) {
-    const record = this.records.find(record => record.track === track);
-    return record ? record.cards.map(card => card.node) : Array.from(track?.querySelectorAll(".home-content-card.focusable") || []);
+    const record = this.records.find((record) => record.track === track);
+    return record
+      ? record.cards.map((card) => card.node)
+      : Array.from(track?.querySelectorAll(".home-content-card.focusable") || []);
   }
 
   refreshTrack(track) {
-    const record = this.records.find(record => record.track === track);
+    const record = this.records.find((record) => record.track === track);
     if (!record) return;
     this.restoreCards(record);
     this.readCards(record);
@@ -81,7 +93,7 @@ export class HomeRowVirtualizer {
   }
 
   restoreCards(record) {
-    record.cards.forEach(card => {
+    record.cards.forEach((card) => {
       if (!card.detached) return;
       card.spacer.replaceWith(card.node);
       card.detached = false;
@@ -93,11 +105,18 @@ export class HomeRowVirtualizer {
     const rect = record.track.getBoundingClientRect();
     const margin = Math.max(240, record.track.clientWidth * 0.5);
     const active = this.viewport.ownerDocument.activeElement;
-    return record.cards.map(card => {
+    return record.cards.map((card) => {
       const box = (card.detached ? card.spacer : card.node).getBoundingClientRect();
-      return { card, width: card.node.offsetWidth, height: card.node.offsetHeight,
-        keep: card.node === active || card.node.contains(active) || card.node.classList.contains("focused") ||
-        (box.right >= rect.left - margin && box.left <= rect.right + margin) };
+      return {
+        card,
+        width: card.node.offsetWidth,
+        height: card.node.offsetHeight,
+        keep:
+          card.node === active ||
+          card.node.contains(active) ||
+          card.node.classList.contains("focused") ||
+          (box.right >= rect.left - margin && box.left <= rect.right + margin)
+      };
     });
   }
 
@@ -112,8 +131,13 @@ export class HomeRowVirtualizer {
       const node = record.detached ? record.spacer : record.row;
       const rect = node.getBoundingClientRect();
       const focused = record.row === activeRow || record.row === focusedRow;
-      return { record, height: rect.height, keep: focused ||
-        (rect.bottom >= viewportRect.top - margin && rect.top <= viewportRect.bottom + margin) };
+      return {
+        record,
+        height: rect.height,
+        keep:
+          focused ||
+          (rect.bottom >= viewportRect.top - margin && rect.top <= viewportRect.bottom + margin)
+      };
     });
     let changed = false;
     changes.forEach(({ record, height, keep }) => {
@@ -130,7 +154,7 @@ export class HomeRowVirtualizer {
         changed = true;
       }
     });
-    const cardChanges = this.records.flatMap(record => this.getCardChanges(record));
+    const cardChanges = this.records.flatMap((record) => this.getCardChanges(record));
     cardChanges.forEach(({ card, keep, width, height }) => {
       if (keep && card.detached) {
         card.spacer.replaceWith(card.node);
@@ -149,13 +173,21 @@ export class HomeRowVirtualizer {
 
   requestSync() {
     if (this.frame) return;
-    this.frame = requestAnimationFrame(() => { this.frame = 0; this.sync(); });
+    this.frame = requestAnimationFrame(() => {
+      this.frame = 0;
+      this.sync();
+    });
   }
 
   captureTrackStates() {
-    return Object.fromEntries(this.records.filter(({ track }) => track).map(({ row, track, detached, scrollLeft }) =>
-      [row.dataset.rowKey, detached ? scrollLeft : track.scrollLeft]
-    ));
+    return Object.fromEntries(
+      this.records
+        .filter(({ track }) => track)
+        .map(({ row, track, detached, scrollLeft }) => [
+          row.dataset.rowKey,
+          detached ? scrollLeft : track.scrollLeft
+        ])
+    );
   }
 
   restore() {

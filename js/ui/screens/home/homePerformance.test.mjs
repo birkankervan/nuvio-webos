@@ -4,17 +4,29 @@ import assert from "node:assert/strict";
 // Home shares browser-backed stores; use empty storage rather than real accounts.
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 const { Platform } = await import("../../../platform/index.js");
-const { resetTvRuntimePerformanceProfile } = await import("../../../platform/tvRuntimePerformance.js");
-const { createHomeScreenMethods03 } = await import("./homeScreenMethods-03-is-scroll-animation-active.js");
-const { createHomeScreenMethods04 } = await import("./homeScreenMethods-04-get-hero-focus-delay.js");
-const { createHomeScreenMethods24 } = await import("./homeScreenMethods-24-schedule-home-lazy-image-hydration.js");
-const { createHomeScreenMethods10 } = await import("./homeScreenMethods-10-schedule-modern-hero-update.js");
+const { resetTvRuntimePerformanceProfile } =
+  await import("../../../platform/tvRuntimePerformance.js");
+const { createHomeScreenMethods03 } =
+  await import("./homeScreenMethods-03-is-scroll-animation-active.js");
+const { createHomeScreenMethods04 } =
+  await import("./homeScreenMethods-04-get-hero-focus-delay.js");
+const { createHomeScreenMethods24 } =
+  await import("./homeScreenMethods-24-schedule-home-lazy-image-hydration.js");
+const { createHomeScreenMethods10 } =
+  await import("./homeScreenMethods-10-schedule-modern-hero-update.js");
 const { Router } = await import("../../navigation/routerState.js");
 
 test("detail module prefetch waits for idle and ignores departed Home generations", async () => {
-  const previous = { setTimeout, clearTimeout, idle: globalThis.requestIdleCallback,
-    cancelIdle: globalThis.cancelIdleCallback, browser: Platform.isBrowser, webos: Platform.isWebOS,
-    current: Router.getCurrent, routes: Router.routes };
+  const previous = {
+    setTimeout,
+    clearTimeout,
+    idle: globalThis.requestIdleCallback,
+    cancelIdle: globalThis.cancelIdleCallback,
+    browser: Platform.isBrowser,
+    webos: Platform.isWebOS,
+    current: Router.getCurrent,
+    routes: Router.routes
+  };
   const timers = new Map();
   const idle = new Map();
   let id = 0;
@@ -23,12 +35,24 @@ test("detail module prefetch waits for idle and ignores departed Home generation
     Platform.isBrowser = () => false;
     Platform.isWebOS = () => true;
     resetTvRuntimePerformanceProfile();
-    globalThis.setTimeout = callback => { timers.set(++id, callback); return id; };
-    globalThis.clearTimeout = id => timers.delete(id);
-    globalThis.requestIdleCallback = callback => { idle.set(++id, callback); return id; };
-    globalThis.cancelIdleCallback = id => idle.delete(id);
+    globalThis.setTimeout = (callback) => {
+      timers.set(++id, callback);
+      return id;
+    };
+    globalThis.clearTimeout = (id) => timers.delete(id);
+    globalThis.requestIdleCallback = (callback) => {
+      idle.set(++id, callback);
+      return id;
+    };
+    globalThis.cancelIdleCallback = (id) => idle.delete(id);
     Router.getCurrent = () => "home";
-    Router.routes = { detail: { async load() { imports++; } } };
+    Router.routes = {
+      detail: {
+        async load() {
+          imports++;
+        }
+      }
+    };
     const home = { ...createHomeScreenMethods10(), homeLoadToken: 1 };
     home.scheduleDetailScreenPrefetch();
     home.scheduleDetailScreenPrefetch();
@@ -118,19 +142,35 @@ test("image queue deduplicates, refreshes sources and drains two images per fram
   const previousRaf = globalThis.requestAnimationFrame;
   const frames = [];
   class Image {
-    constructor(src) { this.dataset = { src }; this.isConnected = true; }
-    closest() { return null; }
-    removeAttribute(name) { if (name === "data-src") delete this.dataset.src; }
+    constructor(src) {
+      this.dataset = { src };
+      this.isConnected = true;
+    }
+    closest() {
+      return null;
+    }
+    removeAttribute(name) {
+      if (name === "data-src") delete this.dataset.src;
+    }
   }
   globalThis.HTMLImageElement = Image;
-  globalThis.requestAnimationFrame = (callback) => { frames.push(callback); return frames.length; };
+  globalThis.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
   try {
     const row = {};
     const a = new Image("a");
     const b = new Image("b");
     const c = new Image("c");
     const context = createHomeScreenMethods24();
-    const entry = (image) => ({ image, src: image.dataset.src, row, isFocusedImage: image === a, priority: image === a ? 0 : 1 });
+    const entry = (image) => ({
+      image,
+      src: image.dataset.src,
+      row,
+      isFocusedImage: image === a,
+      priority: image === a ? 0 : 1
+    });
     context.commitHomeLazyImageSources([entry(a), entry(b), entry(a), entry(c)], a, row);
     assert.equal(context.homeLazyImageCommitQueue.length, 3);
     assert.equal(context.homeLazyImageCommitQueue[0].image, a);

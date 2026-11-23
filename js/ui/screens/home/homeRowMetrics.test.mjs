@@ -3,8 +3,12 @@ import assert from "node:assert/strict";
 import { HomeRowMetrics } from "./homeRowMetrics.js";
 
 const row = (rowKey, estimatedHeight) => ({ rowKey, estimatedHeight });
-const indexes = view => view.ranges.map(({ start, end }) => [start, end]);
-const exactSegments = view => assert.equal(view.segments.reduce((sum, segment) => sum + segment.extent, 0), view.totalExtent);
+const indexes = (view) => view.ranges.map(({ start, end }) => [start, end]);
+const exactSegments = (view) =>
+  assert.equal(
+    view.segments.reduce((sum, segment) => sum + segment.extent, 0),
+    view.totalExtent
+  );
 
 test("different CW/catalog heights, gaps, overscan and measured updates preserve exact geometry", () => {
   const metrics = new HomeRowMetrics({ gap: 20, layoutKey: "modern" });
@@ -17,7 +21,9 @@ test("different CW/catalog heights, gaps, overscan and measured updates preserve
   view = metrics.getWindow({ offset: 120, viewportExtent: 300 });
   assert.deepEqual(view.ranges, [{ start: 1, end: 2, offset: 120, extent: 300 }]);
   exactSegments(view);
-  assert.deepEqual(indexes(metrics.getWindow({ offset: 120, viewportExtent: 300, overscan: 21 })), [[0, 3]]);
+  assert.deepEqual(indexes(metrics.getWindow({ offset: 120, viewportExtent: 300, overscan: 21 })), [
+    [0, 3]
+  ]);
   const oldOffsets = metrics.offsets;
   assert.equal(metrics.setMeasuredHeight("cw", 150), true);
   assert.equal(metrics.setMeasuredHeight("movies", 250), true);
@@ -60,15 +66,28 @@ test("distant focus pins only one row and zero/invalid dimensions never allocate
   const metrics = new HomeRowMetrics({ gap: 10 });
   metrics.setRows(Array.from({ length: 10000 }, (_, index) => row(String(index), 90)));
   const view = metrics.getWindow({ viewportExtent: 300, focusedRowKey: "9000" });
-  assert.deepEqual(indexes(view), [[0, 3], [9000, 9001]]);
+  assert.deepEqual(indexes(view), [
+    [0, 3],
+    [9000, 9001]
+  ]);
   assert.equal(view.renderedCount, 4);
   assert.equal(view.segments.length, 4);
   exactSegments(view);
   assert.equal(metrics.getWindow({ viewportExtent: 0, focusedRowKey: "9000" }).renderedCount, 1);
-  assert.equal(metrics.getWindow({ viewportExtent: NaN, focusedRowKey: "unknown" }).renderedCount, 0);
+  assert.equal(
+    metrics.getWindow({ viewportExtent: NaN, focusedRowKey: "unknown" }).renderedCount,
+    0
+  );
   assert.equal(metrics.setMeasuredHeight("unknown", 100), false);
-  for (const value of [NaN, Infinity, -1]) assert.equal(metrics.setMeasuredHeight("0", value), false);
-  metrics.setRows([row("zero", 0), row("negative", -100), row("nan", NaN), row("infinite", Infinity), row("real", 50)]);
+  for (const value of [NaN, Infinity, -1])
+    assert.equal(metrics.setMeasuredHeight("0", value), false);
+  metrics.setRows([
+    row("zero", 0),
+    row("negative", -100),
+    row("nan", NaN),
+    row("infinite", Infinity),
+    row("real", 50)
+  ]);
   const safe = metrics.getWindow({ viewportExtent: 100, offset: -20, overscan: Infinity });
   assert.deepEqual(indexes(safe), [[4, 5]]);
   exactSegments(safe);
@@ -82,7 +101,11 @@ test("distant focus pins only one row and zero/invalid dimensions never allocate
   assert.equal(metrics.rows.length, 1);
   assert.equal(metrics.getRowMetrics("real").height, 50);
   metrics.setRows([row("huge", 1e308)], { gap: 1e308 });
-  assert.equal(metrics.getWindow().totalExtent, 1e308, "no trailing gap must overflow a single row");
+  assert.equal(
+    metrics.getWindow().totalExtent,
+    1e308,
+    "no trailing gap must overflow a single row"
+  );
   metrics.setRows([row("huge", 1e308), row("overflow", 1e308)]);
   assert.equal(metrics.getWindow({ viewportExtent: 100 }).renderedCount, 0);
 });
@@ -97,12 +120,22 @@ test("variable-height segment windows match exact intersections across offsets",
       const expected = new Set([4]);
       rows.forEach((entry, index) => {
         const geometry = metrics.getRowMetrics(entry.rowKey);
-        if (geometry.height > 0 && geometry.offset + geometry.height > view.offset && geometry.offset < view.offset + viewportExtent) expected.add(index);
+        if (
+          geometry.height > 0 &&
+          geometry.offset + geometry.height > view.offset &&
+          geometry.offset < view.offset + viewportExtent
+        )
+          expected.add(index);
       });
-      const actual = view.ranges.flatMap(({ start, end }) => Array.from({ length: end - start }, (_, index) => start + index));
-      assert.deepEqual(actual, [...expected].sort((a, b) => a - b));
+      const actual = view.ranges.flatMap(({ start, end }) =>
+        Array.from({ length: end - start }, (_, index) => start + index)
+      );
+      assert.deepEqual(
+        actual,
+        [...expected].sort((a, b) => a - b)
+      );
       exactSegments(view);
-      assert.ok(view.segments.every(segment => segment.extent > 0));
+      assert.ok(view.segments.every((segment) => segment.extent > 0));
     }
   }
 });

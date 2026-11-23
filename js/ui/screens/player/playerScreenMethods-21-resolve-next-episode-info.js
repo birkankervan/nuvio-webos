@@ -277,7 +277,8 @@ export function createPlayerScreenMethods21() {
       const shouldReturnToIptv = !forceDetail && Boolean(this.params?.playIptv);
       const shouldReturnToLibrary = !forceDetail && this.params?.returnToLibraryOnBack === true;
       const shouldReturnToHome = !forceDetail && this.params?.returnToHomeOnBack === true;
-      const shouldReturnToStream = !shouldReturnToIptv && !shouldReturnToLibrary && !shouldReturnToHome && !forceDetail && this.shouldReturnToStreamOnBack();
+      const shouldReturnToStream =
+        !shouldReturnToIptv && !shouldReturnToLibrary && !shouldReturnToHome && !forceDetail && this.shouldReturnToStreamOnBack();
       const targetRoute = shouldReturnToIptv
         ? "iptv"
         : shouldReturnToHome

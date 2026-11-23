@@ -3,27 +3,53 @@ import assert from "node:assert/strict";
 
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.HTMLElement ||= class HTMLElement {};
-const { createHomeScreenMethods14 } = await import("./homeScreenMethods-14-activate-focused-poster-flow.js");
+const { createHomeScreenMethods14 } =
+  await import("./homeScreenMethods-14-activate-focused-poster-flow.js");
 
 class FakeDescription extends HTMLElement {
   constructor(text) {
     super();
     this.textContent = text;
     this.dataset = {};
-    this.classList = { contains: name => name === "home-hero-description", toggle() {}, add() {} };
+    this.classList = {
+      contains: (name) => name === "home-hero-description",
+      toggle() {},
+      add() {}
+    };
     this.textWrites = 0;
   }
-  set textContent(value) { this._text = value; this.textWrites++; }
-  get textContent() { return this._text; }
-  closest() { return {}; }
+  set textContent(value) {
+    this._text = value;
+    this.textWrites++;
+  }
+  get textContent() {
+    return this._text;
+  }
+  closest() {
+    return {};
+  }
   // registerHomeDomNodes snapshots the node after truncation.
-  get childNodes() { return []; }
-  cloneNode() { return {}; }
-  get ownerDocument() { return { implementation: { createHTMLDocument: () => ({ importNode: () => ({}) }) } }; }
-  get clientWidth() { return 400; }
-  get clientHeight() { return 40; }
-  get scrollWidth() { return 400; }
-  get scrollHeight() { return this._text.length > 20 ? 80 : 40; } // only short text fits
+  get childNodes() {
+    return [];
+  }
+  cloneNode() {
+    return {};
+  }
+  get ownerDocument() {
+    return { implementation: { createHTMLDocument: () => ({ importNode: () => ({}) }) } };
+  }
+  get clientWidth() {
+    return 400;
+  }
+  get clientHeight() {
+    return 40;
+  }
+  get scrollWidth() {
+    return 400;
+  }
+  get scrollHeight() {
+    return this._text.length > 20 ? 80 : 40;
+  } // only short text fits
 }
 
 test("hero description truncation is skipped when text and box are unchanged", () => {

@@ -262,7 +262,9 @@ export function createHomeScreenMethods06() {
       const itemId = String(pending.itemId || "");
       if (this.homeDataWindow) {
         const row = this.homeDataWindow.rowByKey.get(rowKey)?.row;
-        const logicalIndex = row?.items.findIndex(item => item.itemId === itemId || (!itemId && item.itemIndex === Number(pending.index || 0)));
+        const logicalIndex = row?.items.findIndex(
+          (item) => item.itemId === itemId || (!itemId && item.itemIndex === Number(pending.index || 0))
+        );
         return row ? this.getDataHomeTarget(rowKey, logicalIndex >= 0 ? logicalIndex : 0, itemId ? { itemId } : null) : null;
       }
       const rowSection = rowKey

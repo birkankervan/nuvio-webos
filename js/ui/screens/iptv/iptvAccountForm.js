@@ -11,11 +11,15 @@ function field(id, label, type, placeholder) {
 }
 
 function escapeAttr(value) {
-  return String(value ?? "").replace(/[&"<>]/g, (c) => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" })[c]);
+  return String(value ?? "").replace(
+    /[&"<>]/g,
+    (c) => ({ "&": "&amp;", '"': "&quot;", "<": "&lt;", ">": "&gt;" })[c]
+  );
 }
 
 // English fallbacks keep the form working until the screen passes the i18n labels.
-const adultLabel = (labels, on) => `${labels.showAdult || "Show adult content"}: ${on ? labels.on || "On" : labels.off || "Off"}`;
+const adultLabel = (labels, on) =>
+  `${labels.showAdult || "Show adult content"}: ${on ? labels.on || "On" : labels.off || "Off"}`;
 
 export function renderAccountFormMarkup(labels) {
   return `
@@ -48,7 +52,8 @@ export function createAccountForm(root, labels) {
     adultToggle.setAttribute("aria-pressed", String(showAdult));
   };
 
-  const paint = () => nodes.forEach((node, i) => node.classList.toggle("focused", i === focusIndex));
+  const paint = () =>
+    nodes.forEach((node, i) => node.classList.toggle("focused", i === focusIndex));
 
   return {
     nodes,
@@ -59,7 +64,12 @@ export function createAccountForm(root, labels) {
       showAdult = values.showAdult === true;
       paintAdult();
     },
-    getValues: () => ({ server: server.value, username: username.value, password: password.value, showAdult }),
+    getValues: () => ({
+      server: server.value,
+      username: username.value,
+      password: password.value,
+      showAdult
+    }),
     toggleAdult() {
       showAdult = !showAdult;
       paintAdult();

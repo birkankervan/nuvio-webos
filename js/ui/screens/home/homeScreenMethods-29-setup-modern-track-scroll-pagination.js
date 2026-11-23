@@ -46,14 +46,16 @@ export function createHomeScreenMethods29() {
           if (this._trackPaginationInFlight?.has(rowKey)) {
             return;
           }
-          const cards = (this.homeRowVirtualizer?.getTrackCards(track)?.filter(card => !card.classList.contains("home-poster-card-loading")) || Array.from(track.querySelectorAll(".home-content-card.focusable:not(.home-poster-card-loading)")));
+          const cards =
+            this.homeRowVirtualizer?.getTrackCards(track)?.filter((card) => !card.classList.contains("home-poster-card-loading")) ||
+            Array.from(track.querySelectorAll(".home-content-card.focusable:not(.home-poster-card-loading)"));
           const totalVisible = cards.length;
           if (!totalVisible) {
             return;
           }
           if (!assumeNearEnd) {
             // Estimate card width from first real card or fallback to CSS variable
-            const firstCard = cards.find(card => card.isConnected);
+            const firstCard = cards.find((card) => card.isConnected);
             const cardWidth = firstCard ? firstCard.offsetWidth : 212;
             const gapApprox = 24; // --home-poster-gap
             const nearEndThreshold = (cardWidth + gapApprox) * 4;
@@ -105,7 +107,7 @@ export function createHomeScreenMethods29() {
             const frag = document.createRange().createContextualFragment(newMarkup);
             const appendedCards = Array.from(frag.querySelectorAll(".home-content-card.focusable"));
             registerHomeDomNodes(appendedCards);
-            const navigationRowIndex = (this.navModel?.rows || []).findIndex(rowNodes => this.getNodeRowKey(rowNodes[0]) === rowKey);
+            const navigationRowIndex = (this.navModel?.rows || []).findIndex((rowNodes) => this.getNodeRowKey(rowNodes[0]) === rowKey);
             appendedCards.forEach((card, index) => {
               card.dataset.navZone = "main";
               card.dataset.navRow = String(Math.max(0, navigationRowIndex));
@@ -267,7 +269,9 @@ export function createHomeScreenMethods29() {
               const requestContext = pendingPrefetchContext;
               pendingPrefetchContext = null;
               if (requestContext?.focusedNode?.isConnected) {
-                const cards = this.homeRowVirtualizer?.getTrackCards(track)?.filter((card) => !card.classList.contains("home-poster-card-loading")) || track.querySelectorAll(".home-content-card:not(.home-poster-card-loading)");
+                const cards =
+                  this.homeRowVirtualizer?.getTrackCards(track)?.filter((card) => !card.classList.contains("home-poster-card-loading")) ||
+                  track.querySelectorAll(".home-content-card:not(.home-poster-card-loading)");
                 const mountedCount = cards.length;
                 const trackWidth = Number(track.clientWidth || 0);
                 if (trackWidth !== measuredTrackWidth) {

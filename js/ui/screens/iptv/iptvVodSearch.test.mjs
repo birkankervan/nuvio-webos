@@ -3,7 +3,16 @@ import assert from "node:assert/strict";
 import { buildSearchIndex, searchChannels } from "./iptvChannelFilter.js";
 
 test("24k VOD fixture: index build and search stay interactive", () => {
-  const words = ["Matrix", "Inception", "Avatar", "Godfather", "Alien", "Titanic", "Gladiator", "Fargo"];
+  const words = [
+    "Matrix",
+    "Inception",
+    "Avatar",
+    "Godfather",
+    "Alien",
+    "Titanic",
+    "Gladiator",
+    "Fargo"
+  ];
   const items = Array.from({ length: 24000 }, (_, i) => ({
     id: String(i),
     name: `${words[i % words.length]} ${i} (${1980 + (i % 45)})`,

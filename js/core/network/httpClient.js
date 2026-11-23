@@ -104,7 +104,8 @@ async function fetchWithBackendRetry(url, fetchInit, method) {
   // The cooldown protects the Nuvio backend only; a third-party 429 (addon,
   // IPTV provider) must neither start it nor wait for it.
   const backendRequest = isSupabaseBackendRequest(url);
-  if (backendRequest) await waitWithAbort(Math.max(0, backendCooldownUntilMs - Date.now()), fetchInit.signal);
+  if (backendRequest)
+    await waitWithAbort(Math.max(0, backendCooldownUntilMs - Date.now()), fetchInit.signal);
   let response =
     (await fetchViaWebOsSupabaseProxy(url, fetchInit)) || (await fetch(url, fetchInit));
   if (backendRequest) recordBackendCooldown(response);

@@ -35,7 +35,8 @@ export function moveFocus(focus, direction, ctx) {
       if (direction === "left") {
         return focus.header > 0 ? move({ header: focus.header - 1 }) : move({ zone: ZONE.SIDEBAR });
       }
-      if (direction === "right") return move({ header: clamp(focus.header + 1, 0, Math.max(0, headerCount - 1)) });
+      if (direction === "right")
+        return move({ header: clamp(focus.header + 1, 0, Math.max(0, headerCount - 1)) });
       if (direction === "down") {
         if (categoryCount > 0) return move({ zone: ZONE.CATEGORIES });
         if (channelCount > 0) return move({ zone: ZONE.GRID });
@@ -43,11 +44,15 @@ export function moveFocus(focus, direction, ctx) {
       return stay();
     case ZONE.CATEGORIES:
       if (direction === "up") {
-        return focus.category > 0 ? move({ category: focus.category - 1 }) : move({ zone: ZONE.HEADER });
+        return focus.category > 0
+          ? move({ category: focus.category - 1 })
+          : move({ zone: ZONE.HEADER });
       }
-      if (direction === "down") return move({ category: clamp(focus.category + 1, 0, Math.max(0, categoryCount - 1)) });
+      if (direction === "down")
+        return move({ category: clamp(focus.category + 1, 0, Math.max(0, categoryCount - 1)) });
       if (direction === "left") return move({ zone: ZONE.SIDEBAR });
-      if (direction === "right" && channelCount > 0) return move({ zone: ZONE.GRID }, { selectCategory: true });
+      if (direction === "right" && channelCount > 0)
+        return move({ zone: ZONE.GRID }, { selectCategory: true });
       return stay();
     case ZONE.GRID: {
       const index = clamp(focus.channel, 0, Math.max(0, channelCount - 1));
@@ -57,10 +62,14 @@ export function moveFocus(focus, direction, ctx) {
         return categoryCount > 0 ? move({ zone: ZONE.CATEGORIES }) : move({ zone: ZONE.SIDEBAR });
       }
       if (direction === "right") {
-        return col < columns - 1 && index + 1 < channelCount ? move({ channel: index + 1 }) : stay();
+        return col < columns - 1 && index + 1 < channelCount
+          ? move({ channel: index + 1 })
+          : stay();
       }
       if (direction === "up") {
-        return index - columns >= 0 ? move({ channel: index - columns }) : move({ zone: ZONE.HEADER });
+        return index - columns >= 0
+          ? move({ channel: index - columns })
+          : move({ zone: ZONE.HEADER });
       }
       if (direction === "down") {
         if (index + columns < channelCount) return move({ channel: index + columns });

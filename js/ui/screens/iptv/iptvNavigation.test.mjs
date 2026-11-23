@@ -7,12 +7,19 @@ const at = (zone, patch = {}) => createFocus({ zone, ...patch });
 
 test("grid moves by logical index and crosses zones at the edges", () => {
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 5 }), "right", ctx).focus.channel, 6);
-  assert.equal(moveFocus(at(ZONE.GRID, { channel: 7 }), "right", ctx).focus.channel, 7, "row end stays");
+  assert.equal(
+    moveFocus(at(ZONE.GRID, { channel: 7 }), "right", ctx).focus.channel,
+    7,
+    "row end stays"
+  );
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 5 }), "down", ctx).focus.channel, 9);
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 5 }), "up", ctx).focus.channel, 1);
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 2 }), "up", ctx).focus.zone, ZONE.HEADER);
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 4 }), "left", ctx).focus.zone, ZONE.CATEGORIES);
-  assert.equal(moveFocus(at(ZONE.GRID, { channel: 4 }), "left", { ...ctx, categoryCount: 0 }).focus.zone, ZONE.SIDEBAR);
+  assert.equal(
+    moveFocus(at(ZONE.GRID, { channel: 4 }), "left", { ...ctx, categoryCount: 0 }).focus.zone,
+    ZONE.SIDEBAR
+  );
 });
 
 test("down from a full row onto a partial last row lands on the last item", () => {
@@ -25,7 +32,10 @@ test("categories hand off to the grid with a selection request", () => {
   assert.equal(result.focus.zone, ZONE.GRID);
   assert.equal(result.selectCategory, true);
   assert.equal(moveFocus(at(ZONE.CATEGORIES, { category: 0 }), "up", ctx).focus.zone, ZONE.HEADER);
-  assert.equal(moveFocus(at(ZONE.CATEGORIES, { category: 0 }), "left", ctx).focus.zone, ZONE.SIDEBAR);
+  assert.equal(
+    moveFocus(at(ZONE.CATEGORIES, { category: 0 }), "left", ctx).focus.zone,
+    ZONE.SIDEBAR
+  );
 });
 
 test("header walks left/right then down; empty channel list falls back", () => {
@@ -49,18 +59,38 @@ test("tabs are the first header nodes: left/right walk them, down enters the rai
   const withTabs = { ...ctx, headerCount: 9, columns: 5 };
   assert.equal(moveFocus(at(ZONE.HEADER, { header: 0 }), "right", withTabs).focus.header, 1);
   assert.equal(moveFocus(at(ZONE.HEADER, { header: 2 }), "left", withTabs).focus.header, 1);
-  assert.equal(moveFocus(at(ZONE.HEADER, { header: 0 }), "left", withTabs).focus.zone, ZONE.SIDEBAR);
-  assert.equal(moveFocus(at(ZONE.HEADER, { header: 1 }), "down", withTabs).focus.zone, ZONE.CATEGORIES);
+  assert.equal(
+    moveFocus(at(ZONE.HEADER, { header: 0 }), "left", withTabs).focus.zone,
+    ZONE.SIDEBAR
+  );
+  assert.equal(
+    moveFocus(at(ZONE.HEADER, { header: 1 }), "down", withTabs).focus.zone,
+    ZONE.CATEGORIES
+  );
 });
 
 test("5-column poster grid: window math and navigation", async () => {
   const { computeChannelWindow } = await import("./iptvChannelWindow.js");
-  const win = computeChannelWindow({ count: 2079, columns: 5, rowStride: 340, viewportHeight: 850, scrollTop: 340 * 100 });
+  const win = computeChannelWindow({
+    count: 2079,
+    columns: 5,
+    rowStride: 340,
+    viewportHeight: 850,
+    scrollTop: 340 * 100
+  });
   assert.ok(win.mountedCount <= 5 * 6, `mounted ${win.mountedCount}`);
   assert.equal(win.ranges[0].start % 5, 0);
   const five = { ...ctx, channelCount: 12, columns: 5 };
-  assert.equal(moveFocus(at(ZONE.GRID, { channel: 4 }), "right", five).focus.channel, 4, "row end stays");
+  assert.equal(
+    moveFocus(at(ZONE.GRID, { channel: 4 }), "right", five).focus.channel,
+    4,
+    "row end stays"
+  );
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 3 }), "down", five).focus.channel, 8);
-  assert.equal(moveFocus(at(ZONE.GRID, { channel: 9 }), "down", five).focus.channel, 11, "partial last row");
+  assert.equal(
+    moveFocus(at(ZONE.GRID, { channel: 9 }), "down", five).focus.channel,
+    11,
+    "partial last row"
+  );
   assert.equal(moveFocus(at(ZONE.GRID, { channel: 5 }), "left", five).focus.zone, ZONE.CATEGORIES);
 });

@@ -8,7 +8,9 @@ test("lazy route imports once, including overlapping requests", async () => {
   const screen = { mount() {} };
   const route = createLazyRoute(() => {
     imports++;
-    return new Promise((done) => { resolve = done; });
+    return new Promise((done) => {
+      resolve = done;
+    });
   }, "Screen");
   const first = route.load();
   const second = route.load();

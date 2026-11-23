@@ -11,7 +11,10 @@ function el(tag, className, parent) {
   return node;
 }
 
-const initialOf = (name) => String(name || "").match(/[\p{L}\p{N}]/u)?.[0].toUpperCase() || "#";
+const initialOf = (name) =>
+  String(name || "")
+    .match(/[\p{L}\p{N}]/u)?.[0]
+    .toUpperCase() || "#";
 
 export function createPosterCardNode() {
   const node = el("div", "iptv-poster");
@@ -25,7 +28,8 @@ export function createPosterCardNode() {
   // Providers send 1x1 placeholders; only a real image hides the initial tile.
   img.onload = () => {
     const current = img.getAttribute("src");
-    if (current && current === img._poster && img.naturalWidth >= MIN_POSTER_SIZE_PX) node.classList.add("has-poster");
+    if (current && current === img._poster && img.naturalWidth >= MIN_POSTER_SIZE_PX)
+      node.classList.add("has-poster");
   };
   img.onerror = () => node.classList.remove("has-poster");
   const rating = el("div", "iptv-poster-rating", box);

@@ -52,7 +52,7 @@ git diff --check
 ```
 
 Upstream npm test eksik/ignored tests/test-plugin-system.mjs ve
- tests/test-plugin-localization.mjs çağırır; genel kabul kanıtı olarak kullanma.
+tests/test-plugin-localization.mjs çağırır; genel kabul kanıtı olarak kullanma.
 Build `.cache/module-build-meta.json` üretir; check-performance-build paket staging
 çıktısını da doğruladığından package:webos sonrasında çalıştır.
 
@@ -184,15 +184,16 @@ sections ayrı planlandı. RENDER-02/NAV-01 henüz atanmadı ve runtime'a bağl�
   ölçüm sınırları geçerli. AGENTS.md upstream ignore kuralıyla yerel dosyadır.
 
 Tam sonraki iş RENDER-02: Modern renderer'ın homeVirtualRows + homeVirtualWindow
-+ HomeRowMetrics + homeLogicalFocus sözleşmelerini tüketmesini sağla. Kaynak
-item.itemIndex ile logical cursor.itemIndex farkını koru. İlk 20×100 markup
-bütün kartları oluşturmasın; distant focus prefix mount etmesin; spacer parent
-CSS gap sıfır olmalı. Sadece mounted DOM ve onun observer/image işlerini tut.
-Ardından NAV-01 ile DOM refs taşıyan navModel/snapshots/pagination sayımını veri
-modeline geçir; eski cached detached renderer'ı iki otorite olarak bırakma.
-İlgili dosya sınırlarını panoda belirle, çakışmadan ajanlara ata. Bu işleri
-runtime entegre ve TV doğrulandı durumlarına ayrı geçir. Mevcut testleri ve
-önceki kirli değişiklikleri koru; commit/stage/push istenmedi.
+
+- HomeRowMetrics + homeLogicalFocus sözleşmelerini tüketmesini sağla. Kaynak
+  item.itemIndex ile logical cursor.itemIndex farkını koru. İlk 20×100 markup
+  bütün kartları oluşturmasın; distant focus prefix mount etmesin; spacer parent
+  CSS gap sıfır olmalı. Sadece mounted DOM ve onun observer/image işlerini tut.
+  Ardından NAV-01 ile DOM refs taşıyan navModel/snapshots/pagination sayımını veri
+  modeline geçir; eski cached detached renderer'ı iki otorite olarak bırakma.
+  İlgili dosya sınırlarını panoda belirle, çakışmadan ajanlara ata. Bu işleri
+  runtime entegre ve TV doğrulandı durumlarına ayrı geçir. Mevcut testleri ve
+  önceki kirli değişiklikleri koru; commit/stage/push istenmedi.
 
 ## Kontrol noktası 6 — runtime entegrasyonu başladı
 
@@ -400,6 +401,7 @@ Shared helper edit gerekirse koordinasyon; önceki SRC01 kayıt düzeltmeleri ko
 İlk değişenler: HomeDataWindow, HomeRowMetrics, methods04 requestBackgroundRender
 dirty batching, methods30 cleanup. Root kendi baseline ile yalnız yeni farkı okudu.
 Henüz source tamamlanmış/çalışır teslim değil. Root Luna'dan şu düzeltmeleri istedi:
+
 1. previousTrackMetrics=this.trackMetrics + trackMetrics.clear aynı Map'i siler;
    ölçüm reuse çalışmaz. Eski Map'i koru, yeni Map veya snapshot kullan.
 2. metrics.setRows estimatedHeight/closure satırı eksik, edit sonrası parse check.
@@ -407,21 +409,22 @@ Henüz source tamamlanmış/çalışır teslim değil. Root Luna'dan şu düzelt
    dedup nedeniyle extent/offset kaybına yol açabilir. Index metric keys'i koru
    (dirtycollection reset var) veya duplicate-safe meaningful check. Cache duplicate
    identity/logical index case'ini de koru. Root bu kısmı kabul etmedi, rewrite istedi.
-Aktif Luna uygulama/revizyon; root source editlemedi. Test/package/TV henüz yok.
+   Aktif Luna uygulama/revizyon; root source editlemedi. Test/package/TV henüz yok.
 
 ## Kontrol noktası 20 — devam eden code review ek bulguları
 
 Luna setRows syntax/oldMap sorununu düzeltti ve collection metrics index keys'i
 korudu (source hâlâ editleniyor). Root yeni iki kabul noktası iletti:
+
 - cardMarkupCache row+mediaidentity tek slotla duplicate logical itemlarda
   her frame yeniden render eder; logical index'i cache key'e eklemek küçük çözüm.
 - setRows default invalidation={} eski public API'de aynı kimliğin değişmiş
   içerik alanlarını cache'de stale bırakabilir; unknown/default conservative
   invalidation veya mounted snapshot, pagination updatedrow dirty hint gerekli.
-Ek gerçek akış: catalog onRow refreshWatchedTitleState tetikler; aynı watched
-membership yeniSet'i unknown/full veya invalidate-all'a çevirirse targeted fayda
-kaybolur. Root değişmeyen membership'te render gerekmemesini, profile flag
-batching deadguard kalmamasını söyledi. Henüz finaltest/sourcefreeze yok.
+  Ek gerçek akış: catalog onRow refreshWatchedTitleState tetikler; aynı watched
+  membership yeniSet'i unknown/full veya invalidate-all'a çevirirse targeted fayda
+  kaybolur. Root değişmeyen membership'te render gerekmemesini, profile flag
+  batching deadguard kalmamasını söyledi. Henüz finaltest/sourcefreeze yok.
 
 Aktif tek builder /root/luna_patch01 gpt-6-luna/max. Root bu tur implementation
 yazmıyor, useristeği gereği review ve rewrite istekleri Luna'ya gidiyor. Değişen
@@ -508,7 +511,6 @@ Eski52752/62034page artık stale. Hash/router probe yolları metafile'dan yenile
 Root actual-app PATCH-01 reversible metadata/renderer/DOM/counter probe'unu
 başlattı; ardından legacy21/source17, nav ve detail/Back/source tekrar smoke.
 Kaynak agent tamamlandı/frozen. Commit/stage/push yok.
-
 
 ## Kontrol noktası 26 — kurulu runtime kabulünde açık bulgu ve araç limiti
 
@@ -997,7 +999,7 @@ aktif. Inspector wrapper PATH hatası verdi; mevcut proje bundled CLI bağlantı
 başarılı. Sonraki fix teslim/review, fixture bundle ve TV üzerinde çalıştırma.
 
 - SCROLL-01 gerçek TV izole DOM regression eski kaynakla başarısız: `metadata
-  commit discarded measured geometry before sync`. 350px kart/76.4px header
+commit discarded measured geometry before sync`. 350px kart/76.4px header
   ölçüsü commit anında kayboluyor; sonraki frame ölçümü sorunu gizleyebilir.
   Fixture finally temizlendi. Ajan fix/review aktif; sonraki yeni kaynakla aynı
   fixture + Node/lint/strict paket ve installed Home kabulü.
@@ -1786,17 +1788,17 @@ ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açı
 
 - 2026-10-08 / IPTV logo fallback (Sonnet, done; not yet on TV).
   scripts/buildIptvLogoIndex.mjs -> assets/data/iptv-logos.json (tv-logos TR
-  + iptv-org TR only, 531 entries, 43.7 KB; global iptv-org dropped: +76
-  matches for +1.36 MB). js/core/iptv/logoMatcher.js (+test): exact-key
-  normalization (Turkish fold, prefix/quality strip, keeps 4k/tv tokens).
-  iptvRepository loads the index once, sets channel.fallbackLogo (and logo
-  when empty). iptvCards.js: setLogoSrc routes imgur via the webOS image
-  proxy (waits for ready), placeholder/failed logo tries fallbackLogo once.
-  298/1693 channels get a fallback (251 of 1577 missing). Tests 35/35, lint ok.
-  Risk to check on TV: proxy never ready -> has-logo with empty src (blank
-  box instead of initial); earlier TV note said imgur rendered directly.
-  Separator restyle (Haiku): transparent + bottom rule + muted uppercase.
-  Waiting for PLAYER-RES agent before one package/install.
+  - iptv-org TR only, 531 entries, 43.7 KB; global iptv-org dropped: +76
+    matches for +1.36 MB). js/core/iptv/logoMatcher.js (+test): exact-key
+    normalization (Turkish fold, prefix/quality strip, keeps 4k/tv tokens).
+    iptvRepository loads the index once, sets channel.fallbackLogo (and logo
+    when empty). iptvCards.js: setLogoSrc routes imgur via the webOS image
+    proxy (waits for ready), placeholder/failed logo tries fallbackLogo once.
+    298/1693 channels get a fallback (251 of 1577 missing). Tests 35/35, lint ok.
+    Risk to check on TV: proxy never ready -> has-logo with empty src (blank
+    box instead of initial); earlier TV note said imgur rendered directly.
+    Separator restyle (Haiku): transparent + bottom rule + muted uppercase.
+    Waiting for PLAYER-RES agent before one package/install.
 
 - 2026-10-08 / Logo root cause found: the main logo host (1329/1693) is
   blocked by the user's NextDNS (response header blocked-by: NextDNS, cert
@@ -1819,7 +1821,7 @@ ve son remote SHA doğrulaması; geliştirmede LOAD-04..06 ve geniş TV-01 açı
   (U+2500-27BF glyphs, 3+ run of # = - _ ~ * . •, decoration-framed names,
   no letters/digits; "+" never decoration). live.json: exactly 14 matches.
   PLAYER-RES fix (root): label stayed empty on TV because `video.width ?? 
-  video.videoWidth` read the element attribute (0); now reads videoWidth /
+video.videoWidth` read the element attribute (0); now reads videoWidth /
   videoHeight (AVPlay dims on Tizen). TV before fix: video 1920x1080, label
   display none. Installed; awaiting check. NextDNS: Mac now resolves the logo
   host to Cloudflare, but on TV https still fails and http still returns the
@@ -2157,6 +2159,7 @@ origin/main` (25b984f..cee232e, 30 commit, 1.2.4+1.2.5). Commit/push yapılmadı
 main dokunulmadı.
 
 7 text conflict, hepsi iki tarafı birleştirerek çözüldü:
+
 - homeDomUpdate.js: yerel re-export (`keyedDomUpdate.js`) korundu; upstream
   row/card-only `signature` perf fix'i `js/ui/components/keyedDomUpdate.js`'e
   taşındı (stream/addon key'leri de boundary).
@@ -2203,9 +2206,9 @@ Tüm turlar 1:0 → 1:15 ×2, dikey 11:0'a ulaştı; Back sonrası odak 1:0; hat
   LT max A 80-116 / B 74-98. Gürültü içinde eşit.
 - Back (Detail → Home odak boyanana kadar): A 602/667/707 ms, B 419/413/430 ms
   (~%35 hızlı; kaynak doğrulanmadı, olası aday upstream 28692204 Home layer stall fix).
-Karar: 1.2.5 merge performans regresyonu yok; Back iyileşti. TV'de B (1.2.5) kurulu.
-Kalan: dikey long task 12-16/20 tuş (satır mount maliyeti, PERF-04/06 sonrası
-bilinen boşluk); fiziksel kumanda/soğuk başlangıç ölçülmedi.
+  Karar: 1.2.5 merge performans regresyonu yok; Back iyileşti. TV'de B (1.2.5) kurulu.
+  Kalan: dikey long task 12-16/20 tuş (satır mount maliyeti, PERF-04/06 sonrası
+  bilinen boşluk); fiziksel kumanda/soğuk başlangıç ölçülmedi.
 
 ## TIZEN-1.2.5 — Samsung kurulum — 15 Ekim 2026
 
@@ -2224,6 +2227,7 @@ Sahip: root. Branch `merge/upstream-1.3.11`, `git merge --no-commit 1.3.11`
 Merge commit EDİLMEDİ; kullanıcı kararı bekleniyor.
 
 22 dosyada 30 conflict çözüldü:
+
 - router: fork lazy route'ları korundu; upstream'in collections,
   collectionEditor, watchParty ekranları lazy route olarak eklendi.
 - homeDomUpdate: fork re-export'u korundu; upstream'in inert document
@@ -2258,6 +2262,7 @@ Samsung'a 1.3.11 kurulmadı.
 - 2026-11-17: LG Developer Mode oturumu dolmuş, sideload Nuvio silinmişti (9922/9991 kapalı). Kullanıcı Dev Mode + Key Server açtı; 1.3.11 ipk yeniden kuruldu ve başlatıldı. Uygulama verisi (giriş/profil/addon) sıfırlanmış olabilir. Merge hâlâ commitsiz.
 
 ## SYNC-04 upstream 1.4.3 (2026-11-17, devam ediyor)
+
 - 1.3.11 merge yerel commit `28319299` (main/push yok). 1.4.3 merge'ü aynı branch'te, commitsiz.
 - Çakışmalar: .gitignore (birleşim), metaRepository import birleşimi, homeDomUpdate (upstream WeakMap→node property, sibling-walk children, UNCHANGED_ROW stand-in keyedDomUpdate.js'e taşındı; homeDomUpdate re-export'a unchangedHomeRowMarkup eklendi), modernHomeLayout (virtualRowsMarkup varken "\u0000" split yerine doğrudan markup), Home-06 (data window erken dönüş + upstream prepareHomeRowsForRestore), Home-20 (upstream watched-set kimliği + invalidateMountedCatalogCards), Home-23 import birleşimi, Home-29 (upstream dwell prefetch + virtualizer kart listesi).
 - Home-18 syncHomeRowWindow: homeDataWindow aktifken upstream homeRowWindow kapatılıyor (çift sanallaştırma çakışmasın).
@@ -2273,6 +2278,7 @@ Samsung'a 1.3.11 kurulmadı.
   - Karar bekliyor: hibrit hedef = data window Back hızını koru, dikeyde satır mount/unmount long task'ını azalt (veya B + hızlı Back). Örnek küçük, kesin hüküm değil.
 
 ## HOME-RATING — poster puan rozeti (2026-11-23)
+
 - Sahip: root. Dosyalar: `homeScreenHelpers-15-create-poster-card-markup.js` (`.home-poster-rating` ★ x.x, sağ üst; `homeImdbRatingsVisibility` HIDE_ALL ise yok), `css/components-11.css` (izlendi rozeti varsa rozet altına kayar), `catalogRepository.mapMeta` artık addon `imdbRating`'ini koruyor (önceden atılıyordu, kök neden).
 - Kontroller: repository+home testleri 122/122, lint, package:webos OK. LG'ye 1.4.4 kuruldu: Home 10/10 kartta rozet (top/right 12px, 67x28), `birkan` yok. Performans ölçümü yapılmadı; commit yok.
 - 2026-11-23 macOS (NuvioDesktop, Dev, commitsiz): `NuvioPosterCard` yeni `ratingText` parametresi (★ x.x, TopEnd; izlendi rozeti varsa TopStart). `HomePosterCard` `MetaPreview.imdbRating`'i geçiyor (parser zaten okuyordu). Release build + /Applications kurulum; Home'da Trending Movies/Series rozetleri ekran görüntüsüyle doğrulandı. macOS'ta home puan gizleme ayarı yok, eklenmedi.

@@ -1,7 +1,11 @@
 // Pure logic of the IPTV detail view (movie / series). No DOM, no storage:
 // callers pass progress lookups so everything here is unit-testable.
 
-export const DZONE = Object.freeze({ BUTTONS: "buttons", SEASONS: "seasons", EPISODES: "episodes" });
+export const DZONE = Object.freeze({
+  BUTTONS: "buttons",
+  SEASONS: "seasons",
+  EPISODES: "episodes"
+});
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -22,7 +26,10 @@ export function seasonLabel(season, format) {
 // Movie buttons: resume + restart when progress exists, else a single play.
 export function movieActions(progress) {
   return progress?.posMs > 0
-    ? [{ action: "resume", posMs: progress.posMs }, { action: "restart", posMs: 0 }]
+    ? [
+        { action: "resume", posMs: progress.posMs },
+        { action: "restart", posMs: 0 }
+      ]
     : [{ action: "play", posMs: 0 }];
 }
 
@@ -109,7 +116,8 @@ export function moveDetailFocus(focus, direction, ctx) {
       break;
     }
     case DZONE.EPISODES:
-      if (direction === "down") return to({ episode: clamp(focus.episode + 1, 0, episodeCount - 1) });
+      if (direction === "down")
+        return to({ episode: clamp(focus.episode + 1, 0, episodeCount - 1) });
       if (direction === "up") {
         if (focus.episode > 0) return to({ episode: focus.episode - 1 });
         if (seasonCount) return to({ zone: DZONE.SEASONS });

@@ -221,16 +221,19 @@ export function renderModernHomeLayout({
         }
         <div class="home-modern-rows-viewport">
           <div class="home-modern-rows-scroll">
-            ${virtualRowsMarkup !== null ? virtualRowsMarkup : `${renderContinueWatchingSection(continueWatchingItems, {
-              rowKey: "continue_watching",
-              loading: continueWatchingLoading,
-              loadingCount: continueWatchingLoadingCount,
-              itemLimit: continueWatchingRenderLimit,
-              useEpisodeThumbnails: useEpisodeThumbnailsInCw,
-              blurNextUp: blurContinueWatchingNextUp,
-              cardStyle: continueWatchingCardStyle,
-              posterSettings
-            })}
+            ${
+              virtualRowsMarkup !== null
+                ? virtualRowsMarkup
+                : `${renderContinueWatchingSection(continueWatchingItems, {
+                    rowKey: "continue_watching",
+                    loading: continueWatchingLoading,
+                    loadingCount: continueWatchingLoadingCount,
+                    itemLimit: continueWatchingRenderLimit,
+                    useEpisodeThumbnails: useEpisodeThumbnailsInCw,
+                    blurNextUp: blurContinueWatchingNextUp,
+                    cardStyle: continueWatchingCardStyle,
+                    posterSettings
+                  })}
             ${renderContinueWatchingSection(upcomingItems, {
               rowKey: "upcoming_section",
               titleKey: "upcoming_section_title",
@@ -244,7 +247,8 @@ export function renderModernHomeLayout({
             })}
             <div class="home-modern-catalogs">
               ${catalogSections}
-            </div>`}
+            </div>`
+            }
           </div>
         </div>
       </section>

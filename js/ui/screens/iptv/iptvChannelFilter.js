@@ -9,7 +9,9 @@ export const VIEW_FAVORITES = "fav";
 export const categoryViewKey = (categoryId) => `cat:${categoryId}`;
 
 export function normalizeQuery(query) {
-  return String(query ?? "").trim().toLowerCase();
+  return String(query ?? "")
+    .trim()
+    .toLowerCase();
 }
 
 // Built once per channel list (not per key press).
@@ -45,7 +47,11 @@ export function buildCategoryEntries({ categories = [], mode = "full", labels = 
   if (mode === "full") entries.push({ key: VIEW_ALL, name: labels.all || "All" });
   entries.push({ key: VIEW_FAVORITES, name: labels.favorites || "Favorites" });
   for (const category of categories) {
-    entries.push({ key: categoryViewKey(category.id), name: category.name, categoryId: category.id });
+    entries.push({
+      key: categoryViewKey(category.id),
+      name: category.name,
+      categoryId: category.id
+    });
   }
   return entries;
 }
@@ -53,8 +59,10 @@ export function buildCategoryEntries({ categories = [], mode = "full", labels = 
 export function createResultCache(limit = 24) {
   const cache = new BoundedCache(limit);
   return {
-    get: (viewKey, query, version = 0) => cache.get(`${viewKey}|${normalizeQuery(query)}|${version}`),
-    set: (viewKey, query, version, value) => cache.set(`${viewKey}|${normalizeQuery(query)}|${version}`, value),
+    get: (viewKey, query, version = 0) =>
+      cache.get(`${viewKey}|${normalizeQuery(query)}|${version}`),
+    set: (viewKey, query, version, value) =>
+      cache.set(`${viewKey}|${normalizeQuery(query)}|${version}`, value),
     clear: () => cache.clear()
   };
 }

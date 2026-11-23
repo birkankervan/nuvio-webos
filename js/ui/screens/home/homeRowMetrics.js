@@ -1,5 +1,6 @@
-const nonNegative = value => Number.isFinite(value) ? Math.max(0, value) : 0;
-const keyOf = value => typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
+const nonNegative = (value) => (Number.isFinite(value) ? Math.max(0, value) : 0);
+const keyOf = (value) =>
+  typeof value === "string" || typeof value === "number" ? String(value).trim() : "";
 
 function firstIndex(values, predicate) {
   let left = 0;
@@ -72,7 +73,9 @@ export class HomeRowMetrics {
     this.ends = [];
     let cursor = 0;
     for (const row of this.rows) {
-      const height = this.measuredHeights.has(row.rowKey) ? this.measuredHeights.get(row.rowKey) : row.estimatedHeight;
+      const height = this.measuredHeights.has(row.rowKey)
+        ? this.measuredHeights.get(row.rowKey)
+        : row.estimatedHeight;
       this.offsets.push(cursor);
       this.ends.push(cursor + height);
       cursor += height;
@@ -95,7 +98,8 @@ export class HomeRowMetrics {
   getWindow({ offset = 0, viewportExtent = 0, overscan = 0, focusedRowKey = "" } = {}) {
     this._ensureOffsets();
     const totalExtent = this.totalExtent;
-    if (!totalExtent) return { offset: 0, totalExtent: 0, renderedCount: 0, ranges: [], segments: [] };
+    if (!totalExtent)
+      return { offset: 0, totalExtent: 0, renderedCount: 0, ranges: [], segments: [] };
     viewportExtent = nonNegative(viewportExtent);
     overscan = nonNegative(overscan);
     offset = Math.min(nonNegative(offset), Math.max(0, totalExtent - viewportExtent));
@@ -103,8 +107,8 @@ export class HomeRowMetrics {
     if (viewportExtent > 0) {
       const from = Math.max(0, offset - overscan);
       const to = Math.min(totalExtent, offset + viewportExtent + overscan);
-      const start = firstIndex(this.ends, value => value > from);
-      const end = firstIndex(this.offsets, value => value >= to);
+      const start = firstIndex(this.ends, (value) => value > from);
+      const end = firstIndex(this.offsets, (value) => value >= to);
       for (let index = start; index < end; index++) {
         if (this.ends[index] <= this.offsets[index]) continue;
         const last = ranges[ranges.length - 1];

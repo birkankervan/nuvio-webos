@@ -14,16 +14,32 @@ Her satırın benzersiz, kararlı `rowKey` değeri ve **yalnız görünür pence
 
 ```js
 const rows = [
-  { rowKey: "continue_watching", kind: "continue", items: [
-    { itemId: "tt-series", itemType: "series", videoId: "tt-series:1:2", season: "1", episode: "2" }
-  ] },
-  { rowKey: "addon:movie:popular", kind: "catalog", items: [
-    { itemId: "tt-movie", itemType: "movie" },
-    { itemId: "__see_all__:addon:movie:popular", itemType: "action" }
-  ] }
+  {
+    rowKey: "continue_watching",
+    kind: "continue",
+    items: [
+      {
+        itemId: "tt-series",
+        itemType: "series",
+        videoId: "tt-series:1:2",
+        season: "1",
+        episode: "2"
+      }
+    ]
+  },
+  {
+    rowKey: "addon:movie:popular",
+    kind: "catalog",
+    items: [
+      { itemId: "tt-movie", itemType: "movie" },
+      { itemId: "__see_all__:addon:movie:popular", itemType: "action" }
+    ]
+  }
 ];
 const state = {
-  rowKey: "addon:movie:popular", rowIndex: 1, itemIndex: 0,
+  rowKey: "addon:movie:popular",
+  rowIndex: 1,
+  itemIndex: 0,
   itemIdentity: { itemId: "tt-movie", itemType: "movie" },
   preferredItemIndexByRowKey: { continue_watching: 0 }
 };
@@ -41,19 +57,19 @@ Modern hero dekoratiftir; navigasyon satırlarına **eklenmez**. Classic hero te
 
 ## Mevcut DOM bağımlılıkları ve geçiş sırası
 
-| Nokta | Mevcut bağımlılık | Gereken değişim |
-| --- | --- | --- |
+| Nokta                             | Mevcut bağımlılık                                                                                                                                        | Gereken değişim                                                                                                                       |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | methods-18 `buildNavigationModel` | Bütün `.focusable` kartları tarar; `rows`, `rowNodesByRowKey`, `lastMainFocus` DOM tutar; eski virtualizer `restore()` ile bütün düğümleri geçici bağlar | Veri adapter'ından mantıksal satırları oluştur. DOM haritası yalnız mounted pencereyi gösteren ikincil görünüm olsun; otorite olmasın |
-| methods-19 `handleHomeDpad` | `dataset.navRow/navCol` ile `nav.rows[row][col]` seçer | Mantıksal hareket → pencereyi hedef indeks etrafında oluştur → mounted hedefi bul → mevcut focus effects uygula |
-| methods-05 | `rememberMainRowFocus`, `resolvePreferredNodeForRow`, `getNavigationRowNodes`, `currentFocusedNode` | Tercih/odak kayıtlarını mantıksal state'e taşı; DOM getter'ları yalnız mevcut pencere için kullan |
-| methods-01/02 | Back state yakalama `.isConnected` ister; restore DOM'da identity arar | Mantıksal state + scroll/pencere bilgisi sakla. Önce identity ile veride çöz, sonra pencere oluştur ve DOM'a odak ver |
-| methods-06 | Hero kaynağı, bekleyen CW/menu dönüşü DOM satırından hedef bulur | Aynı logical identity üzerinden kaynak veri ve eylem payload'ını bul |
-| methods-15 | Sidebar dönüşünde `lastMainFocus` DOM referansı kullanır | Son content logical state'i koru; sidebar kapanırken pencereyi oluştur |
-| methods-16/17 | Wheel/fast-scroll landing görünür DOM `getBoundingClientRect` tarar | Satır ölçüm modelinden hedef satırı bul, önce render et. Çizilen hedefin geometri doğrulaması kalabilir |
-| methods-28 | CW render-ahead DOM kart sayısı hesaplar, `nav.rows` dizisine append eder | CW veri uzunluğu/yüklenmiş sayfa ve window indeksleri esas olsun; yeni veri odağı kimlikle korusun |
-| methods-29 | Catalog pagination DOM sayısı, track handler ve append üzerinden yürür | `loadedCount/hasMore/nextSkip` veri alanlarına bağla. İstek token'ı korunur; append yerine pencere güncellenir |
-| methods-07/08/09 | Hold menu, watched/remove işlem dönüşü DOM node'u veya satır/indeks saklar | Item identity + rowKey sakla; silinen içerikten sonra logical fallback uygula |
-| `homeRowVirtualizer` | Detached satır/kart DOM'u bellekte saklar | Yalnız sayısal ölçümler, veri state'i ve mounted DOM tut. Uzak kartlar için DOM referansı bırakma |
+| methods-19 `handleHomeDpad`       | `dataset.navRow/navCol` ile `nav.rows[row][col]` seçer                                                                                                   | Mantıksal hareket → pencereyi hedef indeks etrafında oluştur → mounted hedefi bul → mevcut focus effects uygula                       |
+| methods-05                        | `rememberMainRowFocus`, `resolvePreferredNodeForRow`, `getNavigationRowNodes`, `currentFocusedNode`                                                      | Tercih/odak kayıtlarını mantıksal state'e taşı; DOM getter'ları yalnız mevcut pencere için kullan                                     |
+| methods-01/02                     | Back state yakalama `.isConnected` ister; restore DOM'da identity arar                                                                                   | Mantıksal state + scroll/pencere bilgisi sakla. Önce identity ile veride çöz, sonra pencere oluştur ve DOM'a odak ver                 |
+| methods-06                        | Hero kaynağı, bekleyen CW/menu dönüşü DOM satırından hedef bulur                                                                                         | Aynı logical identity üzerinden kaynak veri ve eylem payload'ını bul                                                                  |
+| methods-15                        | Sidebar dönüşünde `lastMainFocus` DOM referansı kullanır                                                                                                 | Son content logical state'i koru; sidebar kapanırken pencereyi oluştur                                                                |
+| methods-16/17                     | Wheel/fast-scroll landing görünür DOM `getBoundingClientRect` tarar                                                                                      | Satır ölçüm modelinden hedef satırı bul, önce render et. Çizilen hedefin geometri doğrulaması kalabilir                               |
+| methods-28                        | CW render-ahead DOM kart sayısı hesaplar, `nav.rows` dizisine append eder                                                                                | CW veri uzunluğu/yüklenmiş sayfa ve window indeksleri esas olsun; yeni veri odağı kimlikle korusun                                    |
+| methods-29                        | Catalog pagination DOM sayısı, track handler ve append üzerinden yürür                                                                                   | `loadedCount/hasMore/nextSkip` veri alanlarına bağla. İstek token'ı korunur; append yerine pencere güncellenir                        |
+| methods-07/08/09                  | Hold menu, watched/remove işlem dönüşü DOM node'u veya satır/indeks saklar                                                                               | Item identity + rowKey sakla; silinen içerikten sonra logical fallback uygula                                                         |
+| `homeRowVirtualizer`              | Detached satır/kart DOM'u bellekte saklar                                                                                                                | Yalnız sayısal ölçümler, veri state'i ve mounted DOM tut. Uzak kartlar için DOM referansı bırakma                                     |
 
 Önerilen sıralama: (1) canonical veri satırları, (2) renderer'ın hedef logical focus indeksini oluşturması, (3) D-pad ve capture/restore bağlantısı, (4) CW/catalog pagination'ın veri esasına geçmesi, (5) sidebar/hold/wheel/fast-scroll ve Grid migrasyonu, (6) eski DOM cache yolunun kaldırılması. İki farklı authoritative odak modeli aynı anda kalmamalı; geçişte eski alanlar yalnız compatibility projection olmalı.
 
@@ -86,7 +102,9 @@ metrics.setRows([
 ]);
 metrics.setMeasuredHeight("continue_watching", 312);
 const view = metrics.getWindow({
-  offset: 0, viewportExtent: 800, overscan: 300,
+  offset: 0,
+  viewportExtent: 800,
+  overscan: 300,
   focusedRowKey: "addon:movie:popular"
 });
 ```

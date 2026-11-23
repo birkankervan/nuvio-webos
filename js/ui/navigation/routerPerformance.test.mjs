@@ -3,27 +3,56 @@ import assert from "node:assert/strict";
 
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 globalThis.window = {};
-const { createRouterMethods02 } = await import("./routerMethods-02-complete-route-return-back-guard.js");
+const { createRouterMethods02 } =
+  await import("./routerMethods-02-complete-route-return-back-guard.js");
 
 test("a late lazy screen cannot replace a newer navigation or clean up twice", async () => {
   let finishFirst;
   const mounts = [];
   let cleanups = 0;
   const router = {
-    ...createRouterMethods02(), current: "home", currentParams: {}, stack: [],
+    ...createRouterMethods02(),
+    current: "home",
+    currentParams: {},
+    stack: [],
     routes: {
-      home: { cleanup() { cleanups++; } },
-      first: { load: () => new Promise(resolve => { finishFirst = resolve; }) },
-      second: { load: async () => ({ mount: async () => { mounts.push("second"); } }) }
+      home: {
+        cleanup() {
+          cleanups++;
+        }
+      },
+      first: {
+        load: () =>
+          new Promise((resolve) => {
+            finishFirst = resolve;
+          })
+      },
+      second: {
+        load: async () => ({
+          mount: async () => {
+            mounts.push("second");
+          }
+        })
+      }
     },
-    beginRouteReturnBackGuard() {}, captureCurrentRouteState() {},
-    resolveNavigationContext() { return {}; }, completeRouteReturnBackGuard() {},
+    beginRouteReturnBackGuard() {},
+    captureCurrentRouteState() {},
+    resolveNavigationContext() {
+      return {};
+    },
+    completeRouteReturnBackGuard() {},
     persistWebOsResumeRoute() {},
-    getCurrent() { return this.current; }
+    getCurrent() {
+      return this.current;
+    }
   };
   const first = router.navigate("first");
   await router.navigate("second");
-  finishFirst({ mount: async () => { mounts.push("first"); } });
+  finishFirst({
+    mount: async () => {
+      mounts.push("first");
+    }
+  });
   await first;
   assert.equal(router.current, "second");
   assert.deepEqual(mounts, ["second"]);
@@ -39,12 +68,22 @@ test("same-route replace (IPTV zap) keeps the history predecessor", async () => 
     replaceState: (s) => writes.push(["replace", s])
   };
   const router = {
-    ...createRouterMethods02(), current: "player", currentParams: {}, stack: [], historyInitialized: true,
+    ...createRouterMethods02(),
+    current: "player",
+    currentParams: {},
+    stack: [],
+    historyInitialized: true,
     routes: { player: { cleanup() {}, mount: async () => {} } },
-    beginRouteReturnBackGuard() {}, captureCurrentRouteState() {},
-    resolveNavigationContext() { return {}; }, completeRouteReturnBackGuard() {},
+    beginRouteReturnBackGuard() {},
+    captureCurrentRouteState() {},
+    resolveNavigationContext() {
+      return {};
+    },
+    completeRouteReturnBackGuard() {},
     persistWebOsResumeRoute() {},
-    getCurrent() { return this.current; }
+    getCurrent() {
+      return this.current;
+    }
   };
   await router.navigate("player", { a: 1 }, { replaceHistory: true });
   assert.equal(writes[0][0], "replace");

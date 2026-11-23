@@ -4,17 +4,41 @@ import { renderModernHomeLayout } from "./modernHomeLayout.js";
 
 test("Modern shell consumes window markup without generating catalog or CW cards", () => {
   const rows = Array.from({ length: 20 }, (_, rowIndex) => ({
-    homeCatalogKey: `row-${rowIndex}`, addonId: "fixture", catalogId: `catalog-${rowIndex}`,
-    type: "movie", catalogName: "Fixture", supportsSkip: true,
-    result: { status: "success", data: { items: Array.from({ length: 100 }, (_, index) => ({ id: `item-${index}` })), nextSkip: 100, hasMore: true } }
+    homeCatalogKey: `row-${rowIndex}`,
+    addonId: "fixture",
+    catalogId: `catalog-${rowIndex}`,
+    type: "movie",
+    catalogName: "Fixture",
+    supportsSkip: true,
+    result: {
+      status: "success",
+      data: {
+        items: Array.from({ length: 100 }, (_, index) => ({ id: `item-${index}` })),
+        nextSkip: 100,
+        hasMore: true
+      }
+    }
   }));
   let cards = 0;
   let continueSections = 0;
-  const options = { rows, continueWatchingItems: [{ id: "continue" }], upcomingItems: [{ id: "upcoming" }],
-    createPosterCardMarkup: () => { cards++; return "<article></article>"; },
-    renderContinueWatchingSection: () => { continueSections++; return ""; },
-    formatCatalogRowTitle: name => name, escapeHtml: String, escapeAttribute: String };
-  const windowMarkup = '<div class="home-data-window"><article data-window-index="200"></article></div>';
+  const options = {
+    rows,
+    continueWatchingItems: [{ id: "continue" }],
+    upcomingItems: [{ id: "upcoming" }],
+    createPosterCardMarkup: () => {
+      cards++;
+      return "<article></article>";
+    },
+    renderContinueWatchingSection: () => {
+      continueSections++;
+      return "";
+    },
+    formatCatalogRowTitle: (name) => name,
+    escapeHtml: String,
+    escapeAttribute: String
+  };
+  const windowMarkup =
+    '<div class="home-data-window"><article data-window-index="200"></article></div>';
   const bounded = renderModernHomeLayout({ ...options, virtualRowsMarkup: windowMarkup });
   assert.equal(cards, 0, "the full catalog must never be generated before windowing");
   assert.equal(continueSections, 0, "CW rows must use the same bounded renderer");

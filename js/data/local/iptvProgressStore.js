@@ -18,7 +18,12 @@ function normalizeState(value) {
     const posMs = Number(entry?.posMs);
     const durMs = Number(entry?.durMs);
     if (key && posMs >= MIN_POS_MS && durMs > 0) {
-      entries[key] = { posMs, durMs, updatedAt: Number(entry.updatedAt) || 0, title: String(entry.title || "") };
+      entries[key] = {
+        posMs,
+        durMs,
+        updatedAt: Number(entry.updatedAt) || 0,
+        title: String(entry.title || "")
+      };
     }
   });
   const keys = Object.keys(entries);
@@ -31,7 +36,11 @@ function normalizeState(value) {
   return { entries };
 }
 
-const store = createProfileScopedStore({ key: KEY, normalize: normalizeState, seedFromPrimary: false });
+const store = createProfileScopedStore({
+  key: KEY,
+  normalize: normalizeState,
+  seedFromPrimary: false
+});
 
 function write(profileId, mutate) {
   const state = store.getForProfile(profileId);
@@ -54,7 +63,12 @@ export const IptvProgressStore = {
       if (pos / dur >= COMPLETED_RATIO) {
         delete entries[key];
       } else {
-        entries[key] = { posMs: Math.trunc(pos), durMs: Math.trunc(dur), updatedAt: Date.now(), title: String(title || "") };
+        entries[key] = {
+          posMs: Math.trunc(pos),
+          durMs: Math.trunc(dur),
+          updatedAt: Date.now(),
+          title: String(title || "")
+        };
       }
     });
   },

@@ -36,6 +36,7 @@ kaldığı yerden devam vardır, canlıda yoktur.
 Kapsam dışı (bilinçli): kayıt, catch-up/timeshift, haftalık
 iki eksenli rehber, cloud sync. Aşağıdakiler MVP dışı ama sonraki sürüm adayıdır,
 gerekçe: önce temel liste/oynatma kararlılığı ölçülecek.
+
 - Player içinde CH+/CH- zapping ve kanal numarası girişi (kodda kanal tuşu desteği yok).
 - Yetişkin kategori gizleme / ebeveyn kilidi.
 - Birden fazla kaynak arasında geçiş UI'ı (veri modeli çoklu kaynağı baştan destekler,
@@ -51,10 +52,10 @@ Discover açıkken `[0], [1], DISCOVER, ...slice(2)` döndürür. IPTV
 `ROOT_SIDEBAR_ITEMS` içinde Library'nin önüne eklenir ve `slice(2)` mantığı
 korunur:
 
-| Discover | Sıra |
-| --- | --- |
-| in_search (varsayılan) | Home, Search, IPTV, Library, Settings |
-| in_sidebar | Home, Search, Discover, IPTV, Library, Settings |
+| Discover               | Sıra                                            |
+| ---------------------- | ----------------------------------------------- |
+| in_search (varsayılan) | Home, Search, IPTV, Library, Settings           |
+| in_sidebar             | Home, Search, Discover, IPTV, Library, Settings |
 
 Bayrak kapalıysa IPTV listeden çıkar. Sidebar sıra testi eklenir; aktif öğe
 vurgusu, action/shell eşleşmesi ve i18n anahtarı (`sidebar.iptv`) aynı işte.
@@ -201,7 +202,7 @@ uyumlu sayılmaz.
   kimlik taşır.
 - Route/history/snapshot yalnız profileId, sourceId, channelId, kategori, arama,
   logical index ve sayısal scroll tutar. Player route paramı `playIptv:{sourceId,
-  channelId}`; player mount URL'yi aktif profilden çözer ve `streamCandidates`,
+channelId}`; player mount URL'yi aktif profilden çözer ve `streamCandidates`,
   stream persist, diagnostic snapshot ve loglara yazmaz. Profil geçişi ve kaynak
   silme generation/token ile eski sonucu geçersiz kılar.
 - Liste: veriden görünür pencere + küçük overscan; odak logical identity/index ile,
@@ -261,20 +262,20 @@ MVP'ye bağlı değil; IPTV-05 sonrası veya paralel yürür. TV formu her zaman
 Ajan ataması yok. Atamada gerçek ajan adı ve kesin dosya listesi panoya yazılır;
 ortak player/router/sidebar/build/i18n dosyalarında aynı anda tek edit sahibi.
 
-| ID | Teslim | Sahip / dosya sınırı | Bağımlılık | Çıkış ölçütü |
-| --- | --- | --- | --- | --- |
-| IPTV-01 | Plan | root | — | Bu belge |
-| IPTV-S | S1-S3 spike'ları | root (TV ölçüm), kaynak edit yok | TV-01 | Transport kararı, liste tavanı, varsayılan akış formatı; iki platform |
-| IPTV-02 | Xtream veri/credential/transport | data ajanı: `js/data/local/iptvSourcesStore.js`, `js/data/repository/iptvRepository.js`, Xtream adapter/normalizer + test | IPTV-S, D1 | Hesap/kategori/kanal fixture; auth/expired/limit; boyut/timeout/abort; atomik refresh; profil/sync izolasyonu testi |
-| IPTV-03 | IPTV ekranı + TV hesap formu | UI ajanı: yeni `js/ui/screens/iptv/*` + ekran CSS | IPTV-02 | Görünür pencere, uzak odak, Back, loading/empty/error |
-| IPTV-03R | Ortak entegrasyon | root: `router.js`, `sidebarNavigationHelpers-01-root-sidebar-items.js`, sidebar action/shell, i18n, `js/config.js` bayrağı, build wiring | IPTV-03 | Sidebar sıra testi (iki Discover modu), bayrak kapalı/açık, lazy route |
-| IPTV-04 | Player canlı entegrasyonu | player ajanı: `playerScreenMethods-01-mount.js`, controller methods-17/-20, scrobble start, test | IPTV-02/03 | Live progress/CW/scrobble çağrı sayısı 0; URL route/history/candidates/persist/diagnostic'te yok; VOD regresyonu |
-| IPTV-05 | Xtream MVP TV kabulü | root: test/lint/paket/install, webOS + Tizen | IPTV-03R, IPTV-04 | Kabul bölümündeki MVP maddeleri iki platformda |
-| IPTV-10 | Xtream VOD + dizi kataloğu ve oynatma | data + UI ajanları; player root review | IPTV-05 | Kategori/arama, mkv/mp4 oynatma, VOD resume, büyük liste stratejisi (24k film) |
-| IPTV-06 | M3U import | data ajanı parser/test; UI formu ayrı sahip | IPTV-10 | BOM/CRLF/EXTINF/kimlik/limit/iptal fixture + gerçek M3U TV kabulü |
-| IPTV-07 | EPG şimdi/sonraki + günlük liste | data ajanı XMLTV/API adapter/test; UI ayrı sahip | IPTV-06 | Eşleme, timezone/DST, bounded data, EPG'den bağımsız playback |
-| IPTV-08 | Tam regresyon | root | IPTV-07 | Xtream + M3U + EPG ve auth/profil/addon/VOD birlikte, iki platform |
-| IPTV-09 | QR/telefon kurulumu (ayrı) | service ajanı (spike sonrası dosya listesi); UI/bridge ayrı sahip | IPTV-05 | QR kabul maddeleri, gerçek telefon + iki platform |
+| ID       | Teslim                                | Sahip / dosya sınırı                                                                                                                     | Bağımlılık        | Çıkış ölçütü                                                                                                        |
+| -------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------- |
+| IPTV-01  | Plan                                  | root                                                                                                                                     | —                 | Bu belge                                                                                                            |
+| IPTV-S   | S1-S3 spike'ları                      | root (TV ölçüm), kaynak edit yok                                                                                                         | TV-01             | Transport kararı, liste tavanı, varsayılan akış formatı; iki platform                                               |
+| IPTV-02  | Xtream veri/credential/transport      | data ajanı: `js/data/local/iptvSourcesStore.js`, `js/data/repository/iptvRepository.js`, Xtream adapter/normalizer + test                | IPTV-S, D1        | Hesap/kategori/kanal fixture; auth/expired/limit; boyut/timeout/abort; atomik refresh; profil/sync izolasyonu testi |
+| IPTV-03  | IPTV ekranı + TV hesap formu          | UI ajanı: yeni `js/ui/screens/iptv/*` + ekran CSS                                                                                        | IPTV-02           | Görünür pencere, uzak odak, Back, loading/empty/error                                                               |
+| IPTV-03R | Ortak entegrasyon                     | root: `router.js`, `sidebarNavigationHelpers-01-root-sidebar-items.js`, sidebar action/shell, i18n, `js/config.js` bayrağı, build wiring | IPTV-03           | Sidebar sıra testi (iki Discover modu), bayrak kapalı/açık, lazy route                                              |
+| IPTV-04  | Player canlı entegrasyonu             | player ajanı: `playerScreenMethods-01-mount.js`, controller methods-17/-20, scrobble start, test                                         | IPTV-02/03        | Live progress/CW/scrobble çağrı sayısı 0; URL route/history/candidates/persist/diagnostic'te yok; VOD regresyonu    |
+| IPTV-05  | Xtream MVP TV kabulü                  | root: test/lint/paket/install, webOS + Tizen                                                                                             | IPTV-03R, IPTV-04 | Kabul bölümündeki MVP maddeleri iki platformda                                                                      |
+| IPTV-10  | Xtream VOD + dizi kataloğu ve oynatma | data + UI ajanları; player root review                                                                                                   | IPTV-05           | Kategori/arama, mkv/mp4 oynatma, VOD resume, büyük liste stratejisi (24k film)                                      |
+| IPTV-06  | M3U import                            | data ajanı parser/test; UI formu ayrı sahip                                                                                              | IPTV-10           | BOM/CRLF/EXTINF/kimlik/limit/iptal fixture + gerçek M3U TV kabulü                                                   |
+| IPTV-07  | EPG şimdi/sonraki + günlük liste      | data ajanı XMLTV/API adapter/test; UI ayrı sahip                                                                                         | IPTV-06           | Eşleme, timezone/DST, bounded data, EPG'den bağımsız playback                                                       |
+| IPTV-08  | Tam regresyon                         | root                                                                                                                                     | IPTV-07           | Xtream + M3U + EPG ve auth/profil/addon/VOD birlikte, iki platform                                                  |
+| IPTV-09  | QR/telefon kurulumu (ayrı)            | service ajanı (spike sonrası dosya listesi); UI/bridge ayrı sahip                                                                        | IPTV-05           | QR kabul maddeleri, gerçek telefon + iki platform                                                                   |
 
 ## Kabul ve ölçüm
 

@@ -6,20 +6,38 @@ const { HomeDataWindow } = await import("./homeDataWindow.js");
 const { createHomeScreenMethods30 } = await import("./homeScreenMethods-30-cleanup.js");
 const { Platform } = await import("./homeScreenContext.js");
 
-const noopScreen = (base) => new Proxy(base, {
-  get(target, key) {
-    if (key in target) return target[key];
-    // Methods are verbs; state fields such as homeRowVirtualizer stay undefined.
-    return typeof key === "string" && /^(cancel|clear|collapse|destroy|end|persist|release|stop|teardown|unbind|unlock)/.test(key) ? () => {} : undefined;
-  }
-});
+const noopScreen = (base) =>
+  new Proxy(base, {
+    get(target, key) {
+      if (key in target) return target[key];
+      // Methods are verbs; state fields such as homeRowVirtualizer stay undefined.
+      return typeof key === "string" &&
+        /^(cancel|clear|collapse|destroy|end|persist|release|stop|teardown|unbind|unlock)/.test(key)
+        ? () => {}
+        : undefined;
+    }
+  });
 
 test("suspended data window keeps measurements and never syncs hidden DOM", () => {
-  const row = { rowKey: "catalog", kind: "catalog", items: [{ source: { id: "one" } }], loadingItems: [], source: { catalogName: "Movies" } };
-  const renderer = new HomeDataWindow({ rows: [row], renderCard: () => "", renderTitle: () => "Movies", escapeAttribute: String });
+  const row = {
+    rowKey: "catalog",
+    kind: "catalog",
+    items: [{ source: { id: "one" } }],
+    loadingItems: [],
+    source: { catalogName: "Movies" }
+  };
+  const renderer = new HomeDataWindow({
+    rows: [row],
+    renderCard: () => "",
+    renderTitle: () => "Movies",
+    escapeAttribute: String
+  });
   renderer.metrics.setMeasuredHeight("catalog", 500);
   let markupCalls = 0;
-  renderer.markup = () => { markupCalls++; return ""; };
+  renderer.markup = () => {
+    markupCalls++;
+    return "";
+  };
   renderer.content = { isConnected: true };
   renderer.suspend();
   renderer.sync();
@@ -47,11 +65,24 @@ test("TV cleanup with preserved DOM suspends the renderer instead of destroying 
     const container = { style, childNodes: [1], classList: { add() {}, remove() {} } };
     let destroyed = 0;
     let suspended = 0;
-    const renderer = { destroy() { destroyed++; }, suspend() { suspended++; } };
+    const renderer = {
+      destroy() {
+        destroyed++;
+      },
+      suspend() {
+        suspended++;
+      }
+    };
     const run = (isTv) => {
       Platform.isWebOS = () => isTv;
       Platform.isTizen = () => false;
-      const screen = noopScreen({ ...createHomeScreenMethods30(), container, hasLoadedOnce: true, rows: [{}], homeDataWindow: renderer });
+      const screen = noopScreen({
+        ...createHomeScreenMethods30(),
+        container,
+        hasLoadedOnce: true,
+        rows: [{}],
+        homeDataWindow: renderer
+      });
       screen.cleanup();
       return screen;
     };
@@ -71,13 +102,30 @@ test("TV cleanup with preserved DOM suspends the renderer instead of destroying 
 });
 
 test("scroll frames skip row measurement unless markup changed; explicit syncs always measure", () => {
-  const row = { rowKey: "catalog", kind: "catalog", items: [{ source: { id: "one" } }], loadingItems: [], source: { catalogName: "Movies" } };
-  const renderer = new HomeDataWindow({ rows: [row], renderCard: () => "", renderTitle: () => "Movies", escapeAttribute: String });
+  const row = {
+    rowKey: "catalog",
+    kind: "catalog",
+    items: [{ source: { id: "one" } }],
+    loadingItems: [],
+    source: { catalogName: "Movies" }
+  };
+  const renderer = new HomeDataWindow({
+    rows: [row],
+    renderCard: () => "",
+    renderTitle: () => "Movies",
+    escapeAttribute: String
+  });
   let measurePasses = 0;
   renderer.markup = () => "same";
   renderer.lastMarkup = "same";
   renderer.viewport = { clientHeight: 500, scrollTop: 0 };
-  renderer.content = { isConnected: true, querySelectorAll: () => { measurePasses++; return []; } };
+  renderer.content = {
+    isConnected: true,
+    querySelectorAll: () => {
+      measurePasses++;
+      return [];
+    }
+  };
   renderer.captureTrackStates = () => ({});
 
   renderer.sync({ scrollFrame: true });
@@ -88,7 +136,10 @@ test("scroll frames skip row measurement unless markup changed; explicit syncs a
 
   const savedRaf = globalThis.requestAnimationFrame;
   const frames = [];
-  globalThis.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+  globalThis.requestAnimationFrame = (callback) => {
+    frames.push(callback);
+    return frames.length;
+  };
   try {
     renderer.requestSync({ scrollFrame: true });
     renderer.requestSync(); // a measuring request joins the pending scroll frame
@@ -109,15 +160,36 @@ test("scroll frames skip row measurement unless markup changed; explicit syncs a
 });
 
 test("scroll frames inside an unchanged window skip markup and scrollLeft reads", () => {
-  const rows = Array.from({ length: 20 }, (_, index) => ({ rowKey: `row-${index}`, kind: "catalog",
-    items: [{ itemId: `item-${index}`, source: { id: `item-${index}` } }], loadingItems: [], source: { catalogName: "Movies" } }));
-  const renderer = new HomeDataWindow({ rows, renderCard: () => "<article></article>", renderTitle: () => "Movies", escapeAttribute: String });
+  const rows = Array.from({ length: 20 }, (_, index) => ({
+    rowKey: `row-${index}`,
+    kind: "catalog",
+    items: [{ itemId: `item-${index}`, source: { id: `item-${index}` } }],
+    loadingItems: [],
+    source: { catalogName: "Movies" }
+  }));
+  const renderer = new HomeDataWindow({
+    rows,
+    renderCard: () => "<article></article>",
+    renderTitle: () => "Movies",
+    escapeAttribute: String
+  });
   const realMarkup = renderer.markup.bind(renderer);
   let markupCalls = 0;
   let captures = 0;
-  renderer.markup = options => { markupCalls++; return realMarkup(options); };
-  renderer.captureTrackStates = () => { captures++; return {}; };
-  renderer.viewport = { clientHeight: 560, clientWidth: 900, scrollTop: 0, querySelector: () => null };
+  renderer.markup = (options) => {
+    markupCalls++;
+    return realMarkup(options);
+  };
+  renderer.captureTrackStates = () => {
+    captures++;
+    return {};
+  };
+  renderer.viewport = {
+    clientHeight: 560,
+    clientWidth: 900,
+    scrollTop: 0,
+    querySelector: () => null
+  };
   renderer.content = { isConnected: true, querySelectorAll: () => [] };
   renderer.patchWindowRows = () => true;
   renderer.bindTracks = () => {};
@@ -134,7 +206,10 @@ test("scroll frames inside an unchanged window skip markup and scrollLeft reads"
   renderer.sync({ scrollFrame: true });
   assert.equal(markupCalls, 2, "a changed window rebuilds markup");
 
-  renderer.trackStates.set(renderer.rows[renderer.verticalWindow(4000, 560).ranges[0].start].rowKey, 300);
+  renderer.trackStates.set(
+    renderer.rows[renderer.verticalWindow(4000, 560).ranges[0].start].rowKey,
+    300
+  );
   renderer.sync({ scrollFrame: true });
   assert.equal(markupCalls, 3, "a horizontal offset change rebuilds markup");
 });

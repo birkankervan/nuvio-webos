@@ -337,9 +337,10 @@ export function createHomeScreenMethods03() {
         // the existing vertical and constrained-runtime throttles.
         return 48;
       }
-      const baseline = !Platform.isBrowser() && (direction === "up" || direction === "down")
-        ? MODERN_HOME_CONSTANTS.verticalKeyRepeatThrottleMs
-        : MODERN_HOME_CONSTANTS.keyRepeatThrottleMs;
+      const baseline =
+        !Platform.isBrowser() && (direction === "up" || direction === "down")
+          ? MODERN_HOME_CONSTANTS.verticalKeyRepeatThrottleMs
+          : MODERN_HOME_CONSTANTS.keyRepeatThrottleMs;
       if (this.isLegacyTvRuntime()) {
         return Math.max(baseline, 120);
       }

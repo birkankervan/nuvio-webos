@@ -29,13 +29,16 @@ function groupByCategory(channels) {
 
 // Adult content is hidden unless the source opts in (source.showAdult === true).
 const hidesAdult = (source) => source?.showAdult !== true;
-const adultIdSet = (categories) => new Set(categories.filter((c) => isAdultCategoryName(c.name)).map((c) => String(c.id)));
+const adultIdSet = (categories) =>
+  new Set(categories.filter((c) => isAdultCategoryName(c.name)).map((c) => String(c.id)));
 const keepItems = (items, hiddenIds) =>
   items.filter((item) => !hiddenIds.has(String(item.categoryId)) && !isAdultItemName(item.name));
 // Live only: decorated separator rows ("█ ADULTS CHANNELS █", name starts with a symbol)
 // are category labels, so test them as such; plain titles like "Sex Education" stay.
 const keepLive = (items, hiddenIds) =>
-  keepItems(items, hiddenIds).filter((item) => /^[\p{L}\p{N}]/u.test(item.name) || !isAdultCategoryName(item.name));
+  keepItems(items, hiddenIds).filter(
+    (item) => /^[\p{L}\p{N}]/u.test(item.name) || !isAdultCategoryName(item.name)
+  );
 
 export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi } = {}) {
   const catalogs = new BoundedCache(MAX_CACHED_CATALOGS);
@@ -126,7 +129,9 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
         hiddenIds,
         hideAdult,
         channels,
-        channelsByCategory: channels ? groupByCategory(channels) : new BoundedCache(MAX_CACHED_CATEGORIES),
+        channelsByCategory: channels
+          ? groupByCategory(channels)
+          : new BoundedCache(MAX_CACHED_CATEGORIES),
         fetchedAt: Date.now()
       };
       catalogs.set(key, catalog); // atomic swap; any earlier throw kept the old catalog.
@@ -144,7 +149,9 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
     const catalog = catalogs.get(key);
     if (!catalog) throw new IptvError("not_found");
     if (catalog.mode === "full") {
-      return categoryId == null ? catalog.channels : catalog.channelsByCategory.get(String(categoryId)) || [];
+      return categoryId == null
+        ? catalog.channels
+        : catalog.channelsByCategory.get(String(categoryId)) || [];
     }
     if (categoryId == null) throw new IptvError("too_large");
     if (catalog.hiddenIds.has(String(categoryId))) return [];
@@ -180,7 +187,12 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
   function vodAccessors(kind, listName, listApi) {
     const rawCats = (sourceId, opts) => {
       const key = `${keyOf(opts.profileId, sourceId)}|${kind}|cats`;
-      return cached(vod, key, opts, () => api[kind === "vod" ? "getVodCategories" : "getSeriesCategories"](requireSource(sourceId, opts.profileId), { signal: opts.signal }));
+      return cached(vod, key, opts, () =>
+        api[kind === "vod" ? "getVodCategories" : "getSeriesCategories"](
+          requireSource(sourceId, opts.profileId),
+          { signal: opts.signal }
+        )
+      );
     };
     const memo = new WeakMap();
     const filtered = (raw, build) => {
@@ -200,12 +212,19 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
         const hide = hidesAdult(requireSource(sourceId, opts.profileId));
         const hiddenIds = hide ? adultIdSet(await rawCats(sourceId, opts)) : null;
         if (hiddenIds && !all && hiddenIds.has(String(categoryId))) return [];
-        const raw = await cached(all ? fullLists : vod, key, opts, () => api[listName](requireSource(sourceId, opts.profileId), { categoryId: all ? undefined : categoryId, signal: opts.signal }));
+        const raw = await cached(all ? fullLists : vod, key, opts, () =>
+          api[listName](requireSource(sourceId, opts.profileId), {
+            categoryId: all ? undefined : categoryId,
+            signal: opts.signal
+          })
+        );
         return hide ? filtered(raw, () => keepItems(raw, hiddenIds)) : raw;
       },
       info(sourceId, id, opts = {}) {
         const key = `${keyOf(opts.profileId, sourceId)}|${kind}|info|${id}`;
-        return cached(vod, key, opts, () => api[listApi](requireSource(sourceId, opts.profileId), id, { signal: opts.signal }));
+        return cached(vod, key, opts, () =>
+          api[listApi](requireSource(sourceId, opts.profileId), id, { signal: opts.signal })
+        );
       }
     };
   }
@@ -229,7 +248,10 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
       const source = store.get(sourceId, profileId);
       const prefix = `${sourceId}:`;
       if (!source || !String(channelId || "").startsWith(prefix)) throw new IptvError("not_found");
-      return api.resolvePlaybackUrl(source, { sourceId: source.id, streamId: String(channelId).slice(prefix.length) });
+      return api.resolvePlaybackUrl(source, {
+        sourceId: source.id,
+        streamId: String(channelId).slice(prefix.length)
+      });
     },
     getVodCategories: movies.categories,
     getVodStreams: movies.list,

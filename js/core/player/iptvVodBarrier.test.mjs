@@ -7,21 +7,30 @@ globalThis.localStorage = {
   setItem: (key, value) => data.set(key, String(value)),
   removeItem: (key) => data.delete(key)
 };
-const { createPlayerControllerMethods20 } = await import("./playerControllerMethods-20-flush-progress.js");
-const { createPlayerControllerMethods11 } = await import("./playerControllerMethods-11-get-av-play-diagnostic-snapshot.js");
-const { createPlayerScreenMethods07 } = await import("../../ui/screens/player/playerScreenMethods-07-build-subtitle-lookup-context.js");
-const { createPlayerScreenMethods01 } = await import("../../ui/screens/player/playerScreenMethods-01-mount.js");
+const { createPlayerControllerMethods20 } =
+  await import("./playerControllerMethods-20-flush-progress.js");
+const { createPlayerControllerMethods11 } =
+  await import("./playerControllerMethods-11-get-av-play-diagnostic-snapshot.js");
+const { createPlayerScreenMethods07 } =
+  await import("../../ui/screens/player/playerScreenMethods-07-build-subtitle-lookup-context.js");
+const { createPlayerScreenMethods01 } =
+  await import("../../ui/screens/player/playerScreenMethods-01-mount.js");
 const { IptvProgressStore } = await import("../../data/local/iptvProgressStore.js");
 const { iptvProgressKey } = await import("../../data/local/iptvProgressStore.js");
-const { watchProgressRepository } = await import("../../data/repository/watchProgressRepository.js");
+const { watchProgressRepository } =
+  await import("../../data/repository/watchProgressRepository.js");
 const { watchedItemsRepository } = await import("../../data/repository/watchedItemsRepository.js");
 
 const controller = {
   ...createPlayerControllerMethods11(),
   ...createPlayerControllerMethods20(),
   recordProgressSnapshot() {},
-  flushCloudLibraryProgress() { throw new Error("cloud"); },
-  pushProgressIfDue() { throw new Error("push"); }
+  flushCloudLibraryProgress() {
+    throw new Error("cloud");
+  },
+  pushProgressIfDue() {
+    throw new Error("push");
+  }
 };
 
 test("iptvvod is local-only, not live", () => {
@@ -63,7 +72,13 @@ test("mount resolves VOD url via repository and keeps live path", async () => {
   IptvRepository.resolveVodPlaybackUrl = async (...args) => (seen.push(args), "http://x/y.mp4");
   IptvRepository.resolveChannelPlaybackUrl = async () => "http://live";
   const screen = createPlayerScreenMethods01();
-  assert.equal(await screen.resolveIptvStreamUrl({ sourceId: "s", kind: "episode", streamId: 3, ext: "mkv" }), "http://x/y.mp4");
+  assert.equal(
+    await screen.resolveIptvStreamUrl({ sourceId: "s", kind: "episode", streamId: 3, ext: "mkv" }),
+    "http://x/y.mp4"
+  );
   assert.deepEqual(seen[0], ["s", "episode", 3, "mkv"]);
-  assert.equal(await screen.resolveIptvStreamUrl({ sourceId: "s", channelId: "s:1" }), "http://live");
+  assert.equal(
+    await screen.resolveIptvStreamUrl({ sourceId: "s", channelId: "s:1" }),
+    "http://live"
+  );
 });

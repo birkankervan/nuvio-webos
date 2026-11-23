@@ -219,7 +219,9 @@ export function createHomeScreenMethods28() {
         return false;
       }
 
-      const mountedCards = (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-continue-card"))).filter(card => !card.classList.contains("home-continue-card-loading"));
+      const mountedCards = (
+        this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-continue-card"))
+      ).filter((card) => !card.classList.contains("home-continue-card-loading"));
       const startIndex = mountedCards.length;
       if (startIndex >= items.length) {
         return false;
@@ -244,7 +246,7 @@ export function createHomeScreenMethods28() {
       const fragment = document.createRange().createContextualFragment(markup);
       const appendedCards = Array.from(fragment.querySelectorAll(".home-content-card.focusable"));
       registerHomeDomNodes(appendedCards);
-      const navigationRowIndex = (this.navModel?.rows || []).findIndex(rowNodes => this.getNodeRowKey(rowNodes[0]) === rowKey);
+      const navigationRowIndex = (this.navModel?.rows || []).findIndex((rowNodes) => this.getNodeRowKey(rowNodes[0]) === rowKey);
       appendedCards.forEach((card, index) => {
         card.dataset.navZone = "main";
         card.dataset.navRow = String(Math.max(0, navigationRowIndex));
@@ -276,7 +278,9 @@ export function createHomeScreenMethods28() {
       if (!track) {
         return false;
       }
-      const mountedCount = (this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-continue-card"))).filter(card => !card.classList.contains("home-continue-card-loading")).length;
+      const mountedCount = (
+        this.homeRowVirtualizer?.getTrackCards(track) || Array.from(track.querySelectorAll(".home-continue-card"))
+      ).filter((card) => !card.classList.contains("home-continue-card-loading")).length;
       const focusedIndex = Math.max(0, Number(target.dataset.cwIndex || 0));
       if (
         !shouldAppendContinueWatchingItems({
@@ -343,7 +347,10 @@ export function createHomeScreenMethods28() {
       this.continueWatchingProgressiveCancel = null;
     },
     scheduleModernTrackPaginationForFocus(target) {
-      if (this.homeDataWindow) { this.scheduleDataHomePagination(this.getNodeRowKey(target)); return; }
+      if (this.homeDataWindow) {
+        this.scheduleDataHomePagination(this.getNodeRowKey(target));
+        return;
+      }
       if (this.layoutMode !== "modern" || !target?.matches?.(".home-poster-card.focusable")) {
         return;
       }

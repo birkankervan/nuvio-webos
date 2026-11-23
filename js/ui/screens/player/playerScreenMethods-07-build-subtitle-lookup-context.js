@@ -254,7 +254,11 @@ export function createPlayerScreenMethods07() {
     },
     buildScrobbleContext() {
       // Trakt/Simkl have nothing to scrobble for a live channel.
-      if (PlayerController.isLivePlaybackItemType(this.params?.itemType) || PlayerController.isLocalOnlyProgressItemType(this.params?.itemType)) return null;
+      if (
+        PlayerController.isLivePlaybackItemType(this.params?.itemType) ||
+        PlayerController.isLocalOnlyProgressItemType(this.params?.itemType)
+      )
+        return null;
       const identity = this.buildPlaybackIdentityContext();
       const currentSec = this.getPlaybackCurrentSeconds();
       const durationSec = this.getPlaybackDurationSeconds();

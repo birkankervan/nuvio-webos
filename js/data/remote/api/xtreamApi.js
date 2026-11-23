@@ -94,25 +94,40 @@ function normalizeMedia(raw, idKey, mapItem, limit) {
     if (!/^[\w-]+$/.test(id) || seen.has(id)) continue;
     seen.add(id);
     if (seen.size > limit) throw new IptvError("too_large");
-    items.push({ id, name: text(item.name) || id, categoryId: text(item.category_id), ...mapItem(item) });
+    items.push({
+      id,
+      name: text(item.name) || id,
+      categoryId: text(item.category_id),
+      ...mapItem(item)
+    });
   }
   return items;
 }
 
 export function normalizeVodStreams(raw, { limit = XTREAM_MAX_VOD } = {}) {
-  return normalizeMedia(raw, "stream_id", (item) => ({
-    ext: extOrDefault(item.container_extension),
-    rating: numberOrNull(item.rating),
-    added: Number(item.added) || 0,
-    poster: posterUrl(item.stream_icon)
-  }), limit);
+  return normalizeMedia(
+    raw,
+    "stream_id",
+    (item) => ({
+      ext: extOrDefault(item.container_extension),
+      rating: numberOrNull(item.rating),
+      added: Number(item.added) || 0,
+      poster: posterUrl(item.stream_icon)
+    }),
+    limit
+  );
 }
 
 export function normalizeSeries(raw, { limit = XTREAM_MAX_VOD } = {}) {
-  return normalizeMedia(raw, "series_id", (item) => ({
-    rating: numberOrNull(item.rating),
-    poster: posterUrl(item.cover)
-  }), limit);
+  return normalizeMedia(
+    raw,
+    "series_id",
+    (item) => ({
+      rating: numberOrNull(item.rating),
+      poster: posterUrl(item.cover)
+    }),
+    limit
+  );
 }
 
 const firstOf = (value) => (Array.isArray(value) ? value[0] : value);
@@ -216,7 +231,9 @@ export function resolvePlaybackUrl(source, channel, allowedFormats) {
   if (!source || !channel || channel.sourceId !== source.id) {
     throw new IptvError("bad_response");
   }
-  const formats = (allowedFormats ?? source.lastAccount?.allowedFormats ?? []).map((format) => text(format).toLowerCase());
+  const formats = (allowedFormats ?? source.lastAccount?.allowedFormats ?? []).map((format) =>
+    text(format).toLowerCase()
+  );
   // HLS by default: webOS plays a progressive live .ts as a finite file and
   // fires "ended" after a few seconds. Use ts only when the account has no HLS.
   const ext = formats.length && !formats.includes("m3u8") && formats.includes("ts") ? "ts" : "m3u8";
@@ -333,7 +350,8 @@ async function requestJson(source, params, options = {}) {
     try {
       return await requestOnce(source, params, options);
     } catch (error) {
-      const retryable = error.code === "timeout" || (error.code === "network" && error.status >= 500);
+      const retryable =
+        error.code === "timeout" || (error.code === "network" && error.status >= 500);
       if (!retryable || attempt >= delays.length) throw error;
       await waitMs(delays[attempt], options.signal);
     }
@@ -364,27 +382,39 @@ export const XtreamApi = {
   },
 
   async getVodCategories(source, options = {}) {
-    return normalizeCategories(await requestJson(source, { action: "get_vod_categories" }, options));
+    return normalizeCategories(
+      await requestJson(source, { action: "get_vod_categories" }, options)
+    );
   },
 
   async getVodStreams(source, options = {}) {
-    return normalizeVodStreams(await requestJson(source, withCategory("get_vod_streams", options.categoryId), options));
+    return normalizeVodStreams(
+      await requestJson(source, withCategory("get_vod_streams", options.categoryId), options)
+    );
   },
 
   async getSeriesCategories(source, options = {}) {
-    return normalizeCategories(await requestJson(source, { action: "get_series_categories" }, options));
+    return normalizeCategories(
+      await requestJson(source, { action: "get_series_categories" }, options)
+    );
   },
 
   async getSeries(source, options = {}) {
-    return normalizeSeries(await requestJson(source, withCategory("get_series", options.categoryId), options));
+    return normalizeSeries(
+      await requestJson(source, withCategory("get_series", options.categoryId), options)
+    );
   },
 
   async getVodInfo(source, vodId, options = {}) {
-    return normalizeVodInfo(await requestJson(source, { action: "get_vod_info", vod_id: String(vodId) }, options));
+    return normalizeVodInfo(
+      await requestJson(source, { action: "get_vod_info", vod_id: String(vodId) }, options)
+    );
   },
 
   async getSeriesInfo(source, seriesId, options = {}) {
-    return normalizeSeriesInfo(await requestJson(source, { action: "get_series_info", series_id: String(seriesId) }, options));
+    return normalizeSeriesInfo(
+      await requestJson(source, { action: "get_series_info", series_id: String(seriesId) }, options)
+    );
   },
 
   resolvePlaybackUrl,

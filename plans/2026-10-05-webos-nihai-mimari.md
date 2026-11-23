@@ -15,8 +15,8 @@ korunur. IPTV bu kabul tamamlandıktan sonra başlar.
 ## Mimari kararlar
 
 1. İçerik ve navigasyon kaynağı veri modelidir: stable rowKey + media identity
-   + logical index. Navigation model, route state, pagination ve cache DOM
-   düğümlerini taşımaz. Modern hero dekoratif; Classic hero navigable.
+   - logical index. Navigation model, route state, pagination ve cache DOM
+     düğümlerini taşımaz. Modern hero dekoratif; Classic hero navigable.
 2. Renderer yalnız görünür satır/kart aralıklarını ve küçük overscan'ı oluşturur.
    Odaklı uzak öğe gerektiğinde ayrı küçük aralıkla pin edilir; 200. karta
    dönmek 0..200 prefix'ini oluşturmamalı. Çıkan kartın DOM/observer/medya
@@ -35,15 +35,15 @@ korunur. IPTV bu kabul tamamlandıktan sonra başlar.
 
 ## Aşamalar ve bağımlılıklar
 
-| Aşama | İçerik | Bağımlılık | Çıkış ölçütü |
-| --- | --- | --- | --- |
-| A0 | Kaynak sözleşmeleri, DOM bağımlılık haritası, başlangıç testleri | Yok | Ajan raporları + takip tablosu |
-| A1 | Saf pencere hesapları ve mantıksal odak modeli | A0 | Reorder/remove/empty/200. öğe/boundary/gap testleri |
-| A2 | Row/item veri adapter'ı, ölçüm ledger'ı, renderer | A1 | İlk render 20×100 fixture'da bütün kartları oluşturmaz |
-| A3 | Kumanda/scroll/return/hold/sidebar/pagination entegrasyonu | A2 | Nav ve snapshots DOM referansı tutmaz; kimlik dönüşü korunur |
-| A4 | Full render yolunun kaldırılması, veri geldiğinde küçük güncelleme | A3 | Katalog chunk'ı yalnız etkilenen satırı değiştirir |
-| A5 | Detail/stream öncelik, cancellation, bounded caches | A0 bulguları; A2 ile bağımsız alt işler | İlk paint opsiyonel veriyi beklemez; stale iş veri yazmaz |
-| A6 | Classic/Grid/collections/CW split kapsamı ve gerçek TV kabulü | A3/A4/A5 | Kumanda, bellek ve frame ölçümleri + regresyonlar |
+| Aşama | İçerik                                                             | Bağımlılık                              | Çıkış ölçütü                                                 |
+| ----- | ------------------------------------------------------------------ | --------------------------------------- | ------------------------------------------------------------ |
+| A0    | Kaynak sözleşmeleri, DOM bağımlılık haritası, başlangıç testleri   | Yok                                     | Ajan raporları + takip tablosu                               |
+| A1    | Saf pencere hesapları ve mantıksal odak modeli                     | A0                                      | Reorder/remove/empty/200. öğe/boundary/gap testleri          |
+| A2    | Row/item veri adapter'ı, ölçüm ledger'ı, renderer                  | A1                                      | İlk render 20×100 fixture'da bütün kartları oluşturmaz       |
+| A3    | Kumanda/scroll/return/hold/sidebar/pagination entegrasyonu         | A2                                      | Nav ve snapshots DOM referansı tutmaz; kimlik dönüşü korunur |
+| A4    | Full render yolunun kaldırılması, veri geldiğinde küçük güncelleme | A3                                      | Katalog chunk'ı yalnız etkilenen satırı değiştirir           |
+| A5    | Detail/stream öncelik, cancellation, bounded caches                | A0 bulguları; A2 ile bağımsız alt işler | İlk paint opsiyonel veriyi beklemez; stale iş veri yazmaz    |
+| A6    | Classic/Grid/collections/CW split kapsamı ve gerçek TV kabulü      | A3/A4/A5                                | Kumanda, bellek ve frame ölçümleri + regresyonlar            |
 
 A1 modüllerinin testinin geçmesi A2/A3'ün uygulanması veya TV'nin iyileştiği
 anlamına gelmez. Takipte her aşama ayrı durum taşır.
@@ -54,7 +54,7 @@ anlamına gelmez. Takipte her aşama ayrı durum taşır.
   sınırlı; uzak kartlar önce oluşturulup detach edilmez. Büyük veri artışıyla
   mounted/retained DOM sayısı artmamalı. Veri belleği ayrıca ölçülür.
 - 200. öğe → detail → Back: aynı row/media identity, logical index ve track/main
-  scroll; prefix remount yok. Reorder sonrası identity, silinince mantıksal fallback.
+       scroll; prefix remount yok. Reorder sonrası identity, silinince mantıksal fallback.
 - Sona/başa, boş satır, append/duplicate API sayfası, CW/upcoming split,
   collections, hold menü, sidebar, Magic Remote hover/wheel ve hızlı dikey kaydırma.
 - Navigation/cache/route state içinde Element/Node referansı yok; çıkan pencerenin

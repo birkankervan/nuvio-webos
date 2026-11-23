@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
 const { Router } = await import("../../navigation/routerState.js");
-const { createMetaDetailsScreenMethods08 } = await import("./metaDetailsScreenMethods-08-render-external-ratings-row.js");
-const { createMetaDetailsScreenMethods27 } = await import("./metaDetailsScreenMethods-27-on-pointer-move.js");
+const { createMetaDetailsScreenMethods08 } =
+  await import("./metaDetailsScreenMethods-08-render-external-ratings-row.js");
+const { createMetaDetailsScreenMethods27 } =
+  await import("./metaDetailsScreenMethods-27-on-pointer-move.js");
 
 test("detail section updates coalesce and departed callbacks cannot affect the next detail", () => {
   const originalRaf = globalThis.requestAnimationFrame;
@@ -18,7 +20,10 @@ test("detail section updates coalesce and departed callbacks cannot affect the n
   let nextId = 0;
   let route = "detail";
   try {
-    globalThis.requestAnimationFrame = callback => { callbacks.set(++nextId, callback); return nextId; };
+    globalThis.requestAnimationFrame = (callback) => {
+      callbacks.set(++nextId, callback);
+      return nextId;
+    };
     globalThis.cancelAnimationFrame = function (id) {
       // Mirrors the browser: a native cancelAnimationFrame bound to another object throws.
       if (this && this !== globalThis) throw new TypeError("Illegal invocation");
@@ -31,9 +36,14 @@ test("detail section updates coalesce and departed callbacks cannot affect the n
       container: { style: {}, querySelector: () => ({}) },
       detailLoadToken: 1,
       _renderDetailSectionsNow: (meta, focus) => applied.push({ meta, focus }),
-      cancelTraktCommentsRequest() {}, cancelPendingEpisodeHold() {}, cancelPendingSeasonHold() {},
-      cancelPendingPosterHold() {}, cancelPendingHeroHold() {}, destroyDetailHoldDialog() {},
-      clearEpisodeTitleMarquee() {}, stopTrailerPlayback() {}
+      cancelTraktCommentsRequest() {},
+      cancelPendingEpisodeHold() {},
+      cancelPendingSeasonHold() {},
+      cancelPendingPosterHold() {},
+      cancelPendingHeroHold() {},
+      destroyDetailHoldDialog() {},
+      clearEpisodeTitleMarquee() {},
+      stopTrailerPlayback() {}
     };
     const a = { id: "a" };
     const latestA = { id: "latest-a" };
@@ -70,8 +80,11 @@ test("detail section updates coalesce and departed callbacks cannot affect the n
 
     route = "detail";
     globalThis.requestAnimationFrame = undefined;
-    globalThis.setTimeout = callback => { callbacks.set(++nextId, callback); return nextId; };
-    globalThis.clearTimeout = id => cancelled.push(id);
+    globalThis.setTimeout = (callback) => {
+      callbacks.set(++nextId, callback);
+      return nextId;
+    };
+    globalThis.clearTimeout = (id) => cancelled.push(id);
     ctx.updateRenderedDetailSections({ id: "timer-fallback" });
     const timer = ctx._sectionsUpdateRaf;
     ctx.cleanup();

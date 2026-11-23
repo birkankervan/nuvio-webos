@@ -6,15 +6,29 @@ const geo = (count) => ({ count, columns: 4, rowStride: 156, viewportHeight: 800
 
 test("mounted cards stay bounded for 1k, 10k and 50k channels", () => {
   const counts = [1000, 10_000, 50_000];
-  const mounted = counts.map((count) =>
-    computeChannelWindow({ ...geo(count), scrollTop: 156 * 40, overscanRows: 1, focusedIndex: 160 }).mountedCount
+  const mounted = counts.map(
+    (count) =>
+      computeChannelWindow({
+        ...geo(count),
+        scrollTop: 156 * 40,
+        overscanRows: 1,
+        focusedIndex: 160
+      }).mountedCount
   );
-  assert.ok(mounted.every((n) => n <= 40), `mounted ${mounted}`);
+  assert.ok(
+    mounted.every((n) => n <= 40),
+    `mounted ${mounted}`
+  );
   assert.equal(new Set(mounted).size, 1);
 });
 
 test("window covers the viewport plus overscan in logical indexes", () => {
-  const win = computeChannelWindow({ ...geo(1000), scrollTop: 156 * 10, overscanRows: 1, focusedIndex: 40 });
+  const win = computeChannelWindow({
+    ...geo(1000),
+    scrollTop: 156 * 10,
+    overscanRows: 1,
+    focusedIndex: 40
+  });
   assert.equal(win.ranges.length, 1);
   assert.equal(win.ranges[0].start, 9 * 4);
   assert.ok(win.ranges[0].end >= (10 + 5) * 4);

@@ -18,22 +18,37 @@ const channels = [
 
 test("search matches name case-insensitively and number prefixes", () => {
   const index = buildSearchIndex(channels);
-  assert.deepEqual(searchChannels(index, " trt ").map((c) => c.id), ["s:1"]);
-  assert.deepEqual(searchChannels(index, "12").map((c) => c.id), ["s:2", "s:3"]);
+  assert.deepEqual(
+    searchChannels(index, " trt ").map((c) => c.id),
+    ["s:1"]
+  );
+  assert.deepEqual(
+    searchChannels(index, "12").map((c) => c.id),
+    ["s:2", "s:3"]
+  );
   assert.equal(searchChannels(index, ""), channels, "empty query returns the same array (no copy)");
   assert.deepEqual(searchChannels(index, "zzz"), []);
 });
 
 test("favorites projection keeps provider order", () => {
-  assert.deepEqual(pickFavorites(channels, ["s:3", "s:1"]).map((c) => c.id), ["s:1", "s:3"]);
+  assert.deepEqual(
+    pickFavorites(channels, ["s:3", "s:1"]).map((c) => c.id),
+    ["s:1", "s:3"]
+  );
 });
 
 test("category entries put All and Favorites first; All is absent in per-category mode", () => {
   const categories = [{ id: "9", name: "News" }];
   const full = buildCategoryEntries({ categories, mode: "full" });
-  assert.deepEqual(full.map((e) => e.key), [VIEW_ALL, VIEW_FAVORITES, "cat:9"]);
+  assert.deepEqual(
+    full.map((e) => e.key),
+    [VIEW_ALL, VIEW_FAVORITES, "cat:9"]
+  );
   const partial = buildCategoryEntries({ categories, mode: "byCategory" });
-  assert.deepEqual(partial.map((e) => e.key), [VIEW_FAVORITES, "cat:9"]);
+  assert.deepEqual(
+    partial.map((e) => e.key),
+    [VIEW_FAVORITES, "cat:9"]
+  );
 });
 
 test("result cache keys by view, normalized query and version", () => {

@@ -32,6 +32,7 @@ github.com/birkankervan/NuvioDesktop). Adım bitince bu dosyada durumu güncelle
 Sorun: önizlemedeki HUD büyük ve hantal (normal player ölçüleri + 600px media query).
 
 Yapılacak:
+
 - `@media (max-width: 600px)` kompaktlaştırmasını kaldır (normal player'ı da
   etkiliyordu).
 - Native preview modunda controls sayfası yüklenince köke `preview` sınıfı ekle
@@ -90,6 +91,7 @@ yok; gerçek player-içi "sonraki bölüm" ortak player koduna yeni yol ister (r
 ertelendi).
 
 Yapılacak (hafif sürüm):
+
 - `IptvPlaybackProgress` (iptv paketi): key = launch parentMetaId
   ("iptv:<url hash>"), pozisyon/süre; ≥%90 veya isEnded = izlendi. StateFlow +
   IptvStorage'a kalıcı (desktop properties, yalnız key→pozisyon/süre/izlendi, URL yok).
@@ -144,14 +146,17 @@ yansır, dönüşte devir yeni kanalla eşleşir. Film/dizi IPTV'de buton gizli.
 - 2026-11-23: Adım 6 kullanıcı onaylı (panel anında ortada). Haiku sızıntı/perf incelemesi: büyüyen sızıntı yok; düzeltilen: ilerleme StateFlow'u yalnız kayıt/flush'ta yayınlar, handoff dispose monitor dışında. Bırakılan: açık panelde DOM yeniden kurulumu (upstream, seyrek), statik fullscreen observer (kullanılmayan yol), swapEventSink JNIEnv attach hatasında eski ref sızıntısı (nadir). Commit fbd74da (film ilerleme dahil), push yapıldı.
 
 ## Ek düzeltme — Canlı yayın ~60 dk sonra donuyor (durum: commit ed90545, uzun izleme testi bekliyor)
+
 - 2026-11-23: Belirti: canlı HLS ~60. dk eof'a ulaştı (pos==duration), keep-open ile durdu; play hemen yeniden pause. Neden: onSnapshot isEnded → shouldPlay=false; canlı için yeniden bağlanma yoktu.
 - Düzeltme (uncommitted, PlayerScreenRuntimeUi.kt): canlı IPTV'de isEnded → `playerController.retry()` (aynı core loadfile replace, pos 0), en fazla 5 sn'de bir; log "live eof -> reload". VOD/dizi değişmedi. Build+kurulum OK.
 - Açık: eof gerçek tetiği (sağlayıcı oturum kesmesi mi, playlist reload hatası mı) bilinmiyor; preview (küçük player) için aynı koruma yok. Doğrulama: uzun izleme sonrası logda "live eof -> reload" ve yayının devam etmesi.
 
 ## Ek — HUD çözünürlük etiketi (durum: TAMAM, commit 3347b5f)
+
 - 2026-11-23: Sağ alttaki süre etiketinin soluna çözünürlük: w>=3800 veya h>=2100 → "4K", aksi `${h}p`, video yoksa gizli. player_bridge.mm syncControls `video-params/w,h` → playerUpdate `resolution`; controls.{html,js,css}. Uncommitted, build+kurulum OK.
 
 ## Ek — Tam ekranda canlı yayın takılması (durum: TAMAM, kullanıcı akıcı dedi)
+
 - 2026-11-23: Neden: handoff ile tam ekran, preview core'unun ayarlarını devralıyordu (live_start_index=-1 → canlı uçta ~1.4s tampon, hls-bitrate=min, cache-pause-wait=1 → her takılmada 1s doldurup tekrar donma).
 - Düzeltme (player_bridge.mm, uncommitted): setLiveTuning — promote'ta hls-bitrate=max, live_start_index=-3, cache-pause-initial=yes, cache-pause-wait=4, readahead 10; demote'ta preview değerleri geri. Doğrudan tam ekran core'larda cache-pause-wait=4.
 - Not: createReleaseDistributable native değişiklikte eski dylib'i paketleyebiliyor (UP-TO-DATE). Kurulumdan önce `strings ... libplayer_bridge.dylib` ile kontrol et; gerekirse composeApp/build/compose/binaries/main-release sil.

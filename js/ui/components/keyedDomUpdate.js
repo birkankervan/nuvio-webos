@@ -61,7 +61,9 @@ function signature(node) {
   // wrapper and descendant repeats the same markup at each ancestor depth.
   // Other elements still reconcile attributes and children from source nodes.
   const { dataset } = node;
-  return dataset.rowKey || dataset.streamKey != null || dataset.addon != null ||
+  return dataset.rowKey ||
+    dataset.streamKey != null ||
+    dataset.addon != null ||
     node.classList.contains("home-content-card")
     ? node.outerHTML
     : undefined;
@@ -295,7 +297,11 @@ export function createKeyedNode(document, markup) {
   return node;
 }
 
-export function updateKeyedDom(container, markup, { incremental = false, focusedNode = null, shellSelector = ".home-shell" } = {}) {
+export function updateKeyedDom(
+  container,
+  markup,
+  { incremental = false, focusedNode = null, shellSelector = ".home-shell" } = {}
+) {
   const source = getInertDocument(container.ownerDocument).createElement("div");
   source.innerHTML = markup;
   const canUpdate = incremental && hasMountedKeyedDom(container, shellSelector);

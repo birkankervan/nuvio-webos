@@ -70,7 +70,10 @@ export const iptvDataMethods = {
     this.entries = buildCategoryEntries({
       categories: catalog.categories,
       mode: catalog.mode,
-      labels: { all: t("iptv_category_all", "All"), favorites: t("iptv_category_favorites", "Favorites") }
+      labels: {
+        all: t("iptv_category_all", "All"),
+        favorites: t("iptv_category_favorites", "Favorites")
+      }
     });
     const wanted = restore?.viewKey;
     const viewKey = this.entries.some((entry) => entry.key === wanted)
@@ -93,7 +96,8 @@ export const iptvDataMethods = {
       scroll: restore?.channelScroll || 0
     });
     // A tab switch keeps the focus on the tab buttons.
-    if (!restore && !this.keepZone) this.focus.zone = this.channels.length || this.statusAction ? ZONE.GRID : ZONE.HEADER;
+    if (!restore && !this.keepZone)
+      this.focus.zone = this.channels.length || this.statusAction ? ZONE.GRID : ZONE.HEADER;
     this.keepZone = false;
     this.applyFocus();
   },
@@ -107,15 +111,23 @@ export const iptvDataMethods = {
     const retry = () => this.loadVodTab({ restore });
     this.setStatus("loading");
     try {
-      const fetchCategories = movies ? IptvRepository.getVodCategories : IptvRepository.getSeriesCategories;
+      const fetchCategories = movies
+        ? IptvRepository.getVodCategories
+        : IptvRepository.getSeriesCategories;
       const categories = await fetchCategories(this.source.id, { signal: controller.signal });
       if (run !== this.loadRun) return;
       this.entries = [
         { key: VIEW_ALL, name: t("iptv_category_all", "All") },
-        ...categories.map((category) => ({ key: categoryViewKey(category.id), name: category.name, categoryId: category.id }))
+        ...categories.map((category) => ({
+          key: categoryViewKey(category.id),
+          name: category.name,
+          categoryId: category.id
+        }))
       ];
       const wanted = restore?.viewKey;
-      const viewKey = this.entries.some((entry) => entry.key === wanted) ? wanted : (this.entries[1] || this.entries[0]).key;
+      const viewKey = this.entries.some((entry) => entry.key === wanted)
+        ? wanted
+        : (this.entries[1] || this.entries[0]).key;
       this.viewKey = viewKey;
       await this.showEntries(viewKey, restore);
     } catch (error) {
@@ -170,7 +182,8 @@ export const iptvDataMethods = {
   async baseFor(viewKey, signal) {
     if (viewKey === VIEW_FAVORITES) return this.favoritesList();
     if (this.bases.has(viewKey)) return this.bases.get(viewKey);
-    const categoryId = viewKey === VIEW_ALL ? null : this.entries.find((entry) => entry.key === viewKey)?.categoryId;
+    const categoryId =
+      viewKey === VIEW_ALL ? null : this.entries.find((entry) => entry.key === viewKey)?.categoryId;
     const fetchList = {
       [TAB_LIVE]: IptvRepository.getChannels,
       [TAB_MOVIES]: IptvRepository.getVodStreams,
@@ -187,7 +200,10 @@ export const iptvDataMethods = {
   // map to the store when per-category mode needs complete favorites).
   favoritesList() {
     if (this.favoritesBase?.version === this.favVersion) return this.favoritesBase.list;
-    const source = this.catalog?.mode === "full" ? this.catalog.channels : Array.from(this.bases.values()).flat();
+    const source =
+      this.catalog?.mode === "full"
+        ? this.catalog.channels
+        : Array.from(this.bases.values()).flat();
     this.favoritesBase = { version: this.favVersion, list: pickFavorites(source, this.favorites) };
     return this.favoritesBase.list;
   },
@@ -249,7 +265,9 @@ export const iptvDataMethods = {
         if (this.entries.length) void this.selectView(this.viewKey, { focusIndex: 0 });
         return;
       }
-      const base = this.bases.get(this.viewKey) || (this.viewKey === VIEW_FAVORITES ? this.favoritesList() : null);
+      const base =
+        this.bases.get(this.viewKey) ||
+        (this.viewKey === VIEW_FAVORITES ? this.favoritesList() : null);
       if (!base) return;
       this.setChannels(this.visibleChannels(this.viewKey, base), {
         focusId: this.currentChannelId(),

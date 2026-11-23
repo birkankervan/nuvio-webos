@@ -17,8 +17,12 @@ export function createHomeScreenMethods10() {
         const preload = () => {
           this.detailScreenPrefetchIdle = 0;
           if (loadToken !== this.homeLoadToken || Router.getCurrent() !== "home") return;
-          void Router.routes.detail.load?.().then(() => { this.detailScreenPrefetchComplete = true; })
-            .catch(error => console.warn("Detail screen preload failed", error));
+          void Router.routes.detail
+            .load?.()
+            .then(() => {
+              this.detailScreenPrefetchComplete = true;
+            })
+            .catch((error) => console.warn("Detail screen preload failed", error));
         };
         if (globalThis.requestIdleCallback) {
           this.detailScreenPrefetchIdle = requestIdleCallback(preload);

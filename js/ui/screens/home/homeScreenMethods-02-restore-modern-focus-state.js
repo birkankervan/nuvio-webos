@@ -118,8 +118,10 @@ export function createHomeScreenMethods02() {
       if (this.homeHoldFocusLocked) {
         return false;
       }
-      const target = this.homeDataWindow && this.homeDataWindow.rowByKey.has("continue_watching")
-        ? this.getDataHomeTarget("continue_watching", 0) : this.getNavigationRowNodes("continue_watching")[0] || null;
+      const target =
+        this.homeDataWindow && this.homeDataWindow.rowByKey.has("continue_watching")
+          ? this.getDataHomeTarget("continue_watching", 0)
+          : this.getNavigationRowNodes("continue_watching")[0] || null;
       if (!target) {
         return false;
       }

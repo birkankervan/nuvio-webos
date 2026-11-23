@@ -12,7 +12,13 @@ const { IptvSourcesStore } = await import("../local/iptvSourcesStore.js");
 const { IptvError } = await import("../remote/api/xtreamApi.js");
 
 const credentials = { name: "A", server: "http://h.tv", username: "u", password: "p" };
-const account = { status: "Active", expDate: null, maxConnections: 1, allowedFormats: ["ts"], timezone: "" };
+const account = {
+  status: "Active",
+  expDate: null,
+  maxConnections: 1,
+  allowedFormats: ["ts"],
+  timezone: ""
+};
 
 function setup(overrides = {}) {
   data.clear();
@@ -26,7 +32,9 @@ function setup(overrides = {}) {
     },
     getLiveStreams: async (source, { categoryId } = {}) => {
       log.streams.push(categoryId ?? null);
-      return [{ id: `${source.id}:1`, sourceId: source.id, streamId: "1", categoryId: "1", name: "A" }];
+      return [
+        { id: `${source.id}:1`, sourceId: source.id, streamId: "1", categoryId: "1", name: "A" }
+      ];
     },
     resolvePlaybackUrl: () => "mem://x",
     getVodCategories: async () => [{ id: "1", name: "V", order: 0 }],
@@ -53,10 +61,16 @@ const gate = () => {
 };
 
 test("addSource authenticates first; failure leaves the store unchanged", async () => {
-  const { repo } = setup({ authenticate: async () => { throw new IptvError("auth_failed"); } });
+  const { repo } = setup({
+    authenticate: async () => {
+      throw new IptvError("auth_failed");
+    }
+  });
   await assert.rejects(repo.addSource(credentials, { profileId: "1" }), { code: "auth_failed" });
   assert.equal(repo.listSources("1").length, 0);
-  await assert.rejects(repo.addSource({ ...credentials, server: "nope" }, { profileId: "1" }), { code: "bad_response" });
+  await assert.rejects(repo.addSource({ ...credentials, server: "nope" }, { profileId: "1" }), {
+    code: "bad_response"
+  });
 });
 
 test("addSource success stores account; updateSource keeps id", async () => {
@@ -138,7 +152,11 @@ test("aborting a signalled refresh does not cancel the shared one", async () => 
 });
 
 test("stale commit blocked after invalidate, removal and profile clear", async () => {
-  for (const kill of [(repo) => repo.invalidate(), (repo, id) => repo.removeSource(id, "1"), (repo) => repo.clearProfile("1")]) {
+  for (const kill of [
+    (repo) => repo.invalidate(),
+    (repo, id) => repo.removeSource(id, "1"),
+    (repo) => repo.clearProfile("1")
+  ]) {
     const hold = gate();
     const { repo } = setup({
       getLiveCategories: async () => {
@@ -178,21 +196,30 @@ test("too_large falls back to lazy per-category loading", async () => {
   const catalog = await repo.refreshCatalog(source.id, { profileId: "1" });
   assert.equal(catalog.mode, "byCategory");
   assert.equal(catalog.channels, null);
-  await assert.rejects(repo.getChannels(source.id, null, { profileId: "1" }), { code: "too_large" });
+  await assert.rejects(repo.getChannels(source.id, null, { profileId: "1" }), {
+    code: "too_large"
+  });
   const [a, b] = await Promise.all([
     repo.getChannels(source.id, "1", { profileId: "1" }),
     repo.getChannels(source.id, "1", { profileId: "1" })
   ]);
   assert.equal(a, b);
   await repo.getChannels(source.id, "1", { profileId: "1" });
-  assert.deepEqual(log.streams.filter((id) => id === "1"), ["1"], "loaded once, then cached");
+  assert.deepEqual(
+    log.streams.filter((id) => id === "1"),
+    ["1"],
+    "loaded once, then cached"
+  );
 });
 
 test("VOD/series: cached, deduped, invalidated; URL resolved in memory", async () => {
   const { repo, log } = setup();
   const source = await repo.addSource(credentials, { profileId: "1" });
   const o = { profileId: "1" };
-  const [a, b] = await Promise.all([repo.getVodStreams(source.id, "3", o), repo.getVodStreams(source.id, "3", o)]);
+  const [a, b] = await Promise.all([
+    repo.getVodStreams(source.id, "3", o),
+    repo.getVodStreams(source.id, "3", o)
+  ]);
   assert.equal(a, b);
   assert.equal(await repo.getVodStreams(source.id, "3", o), a);
   assert.equal(log.vod, 1);
@@ -206,8 +233,13 @@ test("VOD/series: cached, deduped, invalidated; URL resolved in memory", async (
   assert.equal((await repo.getVodCategories(source.id, o))[0].id, "1");
   assert.equal((await repo.getSeries(source.id, null, o))[0].id, "2");
   assert.deepEqual((await repo.getSeriesInfo(source.id, "9", o)).seasons, []);
-  assert.equal(repo.resolveVodPlaybackUrl(source.id, "movie", "7", "mkv", "1"), `mem://${source.id}/movie/7.mkv`);
-  assert.throws(() => repo.resolveVodPlaybackUrl("nope", "movie", "7", "mkv", "1"), { code: "not_found" });
+  assert.equal(
+    repo.resolveVodPlaybackUrl(source.id, "movie", "7", "mkv", "1"),
+    `mem://${source.id}/movie/7.mkv`
+  );
+  assert.throws(() => repo.resolveVodPlaybackUrl("nope", "movie", "7", "mkv", "1"), {
+    code: "not_found"
+  });
   repo.invalidate();
   await repo.getVodStreams(source.id, "3", o);
   assert.equal(log.vod, 3);
@@ -221,12 +253,17 @@ test("VOD: removal invalidates and in-flight stale result is discarded", async (
   repo.removeSource(source.id, "1");
   g.release();
   await assert.rejects(pending, { code: "aborted" });
-  await assert.rejects(repo.getVodStreams(source.id, "3", { profileId: "1" }), { code: "not_found" });
+  await assert.rejects(repo.getVodStreams(source.id, "3", { profileId: "1" }), {
+    code: "not_found"
+  });
   assert.equal(log.vod, undefined);
 });
 
 test("adult content hidden by default across live, VOD and series; showAdult exposes it", async () => {
-  const cats = [{ id: "1", name: "News" }, { id: "9", name: "XXX" }];
+  const cats = [
+    { id: "1", name: "News" },
+    { id: "9", name: "XXX" }
+  ];
   const items = [
     { id: "a", categoryId: "1", name: "BBC" },
     { id: "b", categoryId: "9", name: "Channel B" },
@@ -234,9 +271,11 @@ test("adult content hidden by default across live, VOD and series; showAdult exp
   ];
   const { repo } = setup({
     getLiveCategories: async () => cats,
-    getLiveStreams: async (_s, { categoryId } = {}) => (categoryId ? items.filter((i) => i.categoryId === categoryId) : items),
+    getLiveStreams: async (_s, { categoryId } = {}) =>
+      categoryId ? items.filter((i) => i.categoryId === categoryId) : items,
     getVodCategories: async () => cats,
-    getVodStreams: async (_s, { categoryId } = {}) => (categoryId ? items.filter((i) => i.categoryId === categoryId) : items),
+    getVodStreams: async (_s, { categoryId } = {}) =>
+      categoryId ? items.filter((i) => i.categoryId === categoryId) : items,
     getSeriesCategories: async () => cats,
     getSeries: async () => items
   });
@@ -245,12 +284,21 @@ test("adult content hidden by default across live, VOD and series; showAdult exp
   const names = (list) => list.map((i) => i.name || i.id);
 
   let catalog = await repo.refreshCatalog(source.id, o);
-  assert.deepEqual(catalog.categories.map((c) => c.id), ["1"]);
+  assert.deepEqual(
+    catalog.categories.map((c) => c.id),
+    ["1"]
+  );
   assert.deepEqual(names(await repo.getChannels(source.id, null, o)), ["BBC"]);
   assert.deepEqual(names(await repo.getChannels(source.id, "1", o)), ["BBC"]);
   assert.deepEqual(await repo.getChannels(source.id, "9", o), []);
-  for (const [cat, list] of [["getVodCategories", "getVodStreams"], ["getSeriesCategories", "getSeries"]]) {
-    assert.deepEqual((await repo[cat](source.id, o)).map((c) => c.id), ["1"]);
+  for (const [cat, list] of [
+    ["getVodCategories", "getVodStreams"],
+    ["getSeriesCategories", "getSeries"]
+  ]) {
+    assert.deepEqual(
+      (await repo[cat](source.id, o)).map((c) => c.id),
+      ["1"]
+    );
     assert.deepEqual(names(await repo[list](source.id, null, o)), ["BBC"]);
     assert.deepEqual(await repo[list](source.id, "9", o), []);
   }
@@ -287,5 +335,8 @@ test("live: orphan adult separator rows are hidden, similar titles stay", async 
   const { repo } = setup({ getLiveStreams: async () => items });
   const source = await repo.addSource(credentials, { profileId: "1" });
   await repo.refreshCatalog(source.id, { profileId: "1" });
-  assert.deepEqual((await repo.getChannels(source.id, null, { profileId: "1" })).map((i) => i.id), ["a"]);
+  assert.deepEqual(
+    (await repo.getChannels(source.id, null, { profileId: "1" })).map((i) => i.id),
+    ["a"]
+  );
 });

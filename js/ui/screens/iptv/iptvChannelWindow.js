@@ -36,7 +36,8 @@ export function computeChannelWindow({
 } = {}) {
   columns = Math.max(1, Math.floor(columns));
   const rows = rowCountFor(count, columns);
-  const focusedRow = focusedIndex >= 0 && focusedIndex < count ? rowOfIndex(focusedIndex, columns) : -1;
+  const focusedRow =
+    focusedIndex >= 0 && focusedIndex < count ? rowOfIndex(focusedIndex, columns) : -1;
   const window = calculateHomeVirtualWindow({
     count: rows,
     stride: rowStride,

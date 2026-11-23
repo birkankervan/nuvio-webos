@@ -29,7 +29,9 @@ function logoHost(url) {
 }
 
 function resolveLogoUrl(url) {
-  return url && url.startsWith("https://") && hostsWithBrokenHttps.has(logoHost(url)) ? `http://${url.slice(8)}` : url;
+  return url && url.startsWith("https://") && hostsWithBrokenHttps.has(logoHost(url))
+    ? `http://${url.slice(8)}`
+    : url;
 }
 
 export function createChannelCardNode() {

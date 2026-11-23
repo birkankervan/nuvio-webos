@@ -47,7 +47,10 @@ test("removeSource and source/profile removal clean progress", () => {
   store.removeSource("a", "1");
   assert.equal(store.get("a:movie:1", "1"), null);
   assert.ok(store.get("ab:movie:1", "1"));
-  const src = IptvSourcesStore.upsert({ name: "A", server: "http://h.tv", username: "u", password: "p" }, "1");
+  const src = IptvSourcesStore.upsert(
+    { name: "A", server: "http://h.tv", username: "u", password: "p" },
+    "1"
+  );
   store.save(`${src.id}:ep:9`, { posMs: 20000, durMs: 100000 }, "1");
   IptvSourcesStore.remove(src.id, "1");
   assert.equal(store.get(`${src.id}:ep:9`, "1"), null);

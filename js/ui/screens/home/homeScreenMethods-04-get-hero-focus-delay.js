@@ -204,10 +204,16 @@ export function createHomeScreenMethods04() {
       });
     },
     requestBackgroundRender(change = null) {
-      const pending = this.pendingHomeDataChanges || (this.pendingHomeDataChanges = {
-        dirtyRows: new Set(), dirtyItems: new Set(), invalidateMountedCatalogCards: false,
-        continueWatching: false, hero: false, full: false
-      });
+      const pending =
+        this.pendingHomeDataChanges ||
+        (this.pendingHomeDataChanges = {
+          dirtyRows: new Set(),
+          dirtyItems: new Set(),
+          invalidateMountedCatalogCards: false,
+          continueWatching: false,
+          hero: false,
+          full: false
+        });
       if (!change || change.full) pending.full = true;
       for (const key of change?.dirtyRows || []) pending.dirtyRows.add(String(key));
       for (const key of change?.dirtyItems || []) pending.dirtyItems.add(String(key));

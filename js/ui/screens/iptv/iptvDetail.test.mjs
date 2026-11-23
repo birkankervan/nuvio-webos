@@ -26,8 +26,14 @@ test("season label localizes provider default, keeps custom names", () => {
 });
 
 test("movie actions and clock", () => {
-  assert.deepEqual(movieActions(null).map((a) => a.action), ["play"]);
-  assert.deepEqual(movieActions({ posMs: 83000 }).map((a) => a.action), ["resume", "restart"]);
+  assert.deepEqual(
+    movieActions(null).map((a) => a.action),
+    ["play"]
+  );
+  assert.deepEqual(
+    movieActions({ posMs: 83000 }).map((a) => a.action),
+    ["resume", "restart"]
+  );
   assert.equal(formatClock(83000), "1:23");
   assert.equal(formatClock(3723000), "1:02:03");
   assert.equal(releaseYear("2021-05-04"), "2021");
@@ -38,13 +44,21 @@ test("default episode: latest touched season, first episode with progress", () =
   const progress = { b: { updatedAt: 5 }, d: { updatedAt: 9 }, e: { updatedAt: 3 } };
   const get = (episode) => progress[episode.id] || null;
   assert.deepEqual(pickDefaultEpisode(seasons, get), { season: 1, episode: 1 });
-  assert.deepEqual(pickDefaultEpisode(seasons, () => null), { season: 0, episode: 0 });
+  assert.deepEqual(
+    pickDefaultEpisode(seasons, () => null),
+    { season: 0, episode: 0 }
+  );
   delete progress.d;
   assert.deepEqual(pickDefaultEpisode(seasons, get), { season: 0, episode: 1 });
 });
 
 test("detail route state round trip", () => {
-  const detail = { kind: "series", item: { id: "9", name: "X" }, seasons, focus: { zone: DZONE.EPISODES, season: 1, episode: 2 } };
+  const detail = {
+    kind: "series",
+    item: { id: "9", name: "X" },
+    seasons,
+    focus: { zone: DZONE.EPISODES, season: 1, episode: 2 }
+  };
   const saved = captureDetailState(detail);
   assert.deepEqual(saved, { kind: "series", item: detail.item, season: 2, episodeId: "e" });
   assert.deepEqual(resolveDetailFocus(seasons, saved), { season: 1, episode: 2 });
@@ -62,11 +76,23 @@ test("detail focus moves between buttons, seasons and episodes", () => {
   assert.deepEqual([r.focus.season, r.focus.episode, r.seasonChanged], [1, 0, true]);
   assert.equal(moveDetailFocus(at(DZONE.SEASONS), "left", ctx).seasonChanged, false);
   assert.equal(moveDetailFocus(at(DZONE.SEASONS), "down", ctx).focus.zone, DZONE.EPISODES);
-  assert.equal(moveDetailFocus(at(DZONE.EPISODES, { episode: 119 }), "down", ctx).focus.episode, 120);
-  assert.equal(moveDetailFocus(at(DZONE.EPISODES, { episode: 120 }), "down", ctx).focus.episode, 120);
+  assert.equal(
+    moveDetailFocus(at(DZONE.EPISODES, { episode: 119 }), "down", ctx).focus.episode,
+    120
+  );
+  assert.equal(
+    moveDetailFocus(at(DZONE.EPISODES, { episode: 120 }), "down", ctx).focus.episode,
+    120
+  );
   assert.equal(moveDetailFocus(at(DZONE.EPISODES), "up", ctx).focus.zone, DZONE.SEASONS);
-  assert.equal(moveDetailFocus(at(DZONE.SEASONS), "up", { ...ctx, buttonCount: 0 }).focus.zone, DZONE.SEASONS);
-  assert.equal(moveDetailFocus(at(DZONE.BUTTONS), "down", { buttonCount: 1 }).focus.zone, DZONE.BUTTONS);
+  assert.equal(
+    moveDetailFocus(at(DZONE.SEASONS), "up", { ...ctx, buttonCount: 0 }).focus.zone,
+    DZONE.SEASONS
+  );
+  assert.equal(
+    moveDetailFocus(at(DZONE.BUTTONS), "down", { buttonCount: 1 }).focus.zone,
+    DZONE.BUTTONS
+  );
 });
 
 import { plotSizeClass } from "./iptvDetail.js";

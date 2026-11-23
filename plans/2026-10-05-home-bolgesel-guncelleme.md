@@ -39,7 +39,6 @@ Kabul: normal Modern veri gelişinde full shell üretimi ve renderer replacement
 yok; değişmeyen satırda kart markup üretimi yok; odak/scroll/pagination ve
 yeni verinin görünürlüğü korunur. Sadece mock testi runtime kabulü sayılmaz.
 
-
 Güncel kabul durumu: 1–6 uygulandı, root source review/rewrite ve 39 Node/lint/
 paket/buildgraph kontrolleri geçti; izole TV fixture114/114. Adım7 kurulum
 başarılı fakat gerçek Home probe'daki unchanged-row yeniden çizimi araştırılacak.

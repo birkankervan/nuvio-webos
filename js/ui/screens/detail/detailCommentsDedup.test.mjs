@@ -2,7 +2,8 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 
 globalThis.localStorage = { getItem: () => null, setItem() {}, removeItem() {} };
-const { createMetaDetailsScreenMethods04 } = await import("./metaDetailsScreenMethods-04-fetch-more-like-this.js");
+const { createMetaDetailsScreenMethods04 } =
+  await import("./metaDetailsScreenMethods-04-fetch-more-like-this.js");
 const { TraktSettingsStore, TraktAuthService } = await import("./metaDetailsScreenContext.js");
 
 test("same comments target loads page 1 once; changed target, force and failure reload", async () => {

@@ -48,24 +48,24 @@ Tarih: 2026-10-08. Aktif plan. Üst plan: `plans/2026-10-06-iptv-plani.md`
     `getSeriesCategories(sourceId)`, `getSeries(sourceId, categoryId | null)`,
     `getVodInfo(sourceId, vodId)`, `getSeriesInfo(sourceId, seriesId)` ->
     `{ info, seasons: [{ number, name, episodes: [{ id, number, title, ext,
-    durationSecs, plot, image }] }] }`.
+durationSecs, plot, image }] }] }`.
   - `resolveVodPlaybackUrl(sourceId, kind, id, ext)`; kind `movie` |
     `episode`. URL yalnız bellekte döner, loglanmaz.
 - Player route params (T2/T3 üretir, T4 tüketir):
   `playIptv: { sourceId, kind: "movie" | "episode", streamId, ext, title,
-  seriesId?, season?, episode? }`, `itemType: "iptvvod"`,
+seriesId?, season?, episode? }`, `itemType: "iptvvod"`,
   `resumePositionMs`. Canlı `playIptv` şekli (channelId) aynen korunur.
 - İlerleme anahtarı: `${sourceId}:movie:${id}` / `${sourceId}:ep:${id}`.
 
 ## İşler ve dosya sahipliği
 
-| İş | Sahip | Dosyalar | Bağımlılık | Test |
-|---|---|---|---|---|
-| T1 veri | Sonnet | `xtreamApi.js` (+test), `iptvRepository.js` (+test) | - | normalizer fixture, retry 520/5xx/timeout, too_large, URL builder, dup id |
-| T4 player ilerleme | Sonnet | yeni `iptvProgressStore.js` (+test), `playerScreenMethods-01-mount.js`, `playerControllerMethods-20-flush-progress.js`, scrobble context dosyası, Back hedefi dosyası, `playerControllerMethods-11-*` predicate | sözleşme | sync guard, barrier, %90 tamamlanma, resume |
-| T2 liste UI | Sonnet | yeni `iptvPosterCards.js`, `iptvVodScreenData.js`, `iptvScreen.js`, `iptvScreenFocus.js`, `iptvNavigation.js`, `css/iptv.css` | T1 | 5 sütun pencere, sekme navigasyonu, 24k arama süresi, odak geri yükleme |
-| T3 detay + dizi | Sonnet | yeni `iptvDetail*.js`, CSS bölümü T2 sonrası | T1, T2 | sezon gruplama, boş sezon, 121 bölüm penceresi |
-| T5 entegrasyon | root | paket, kurulum, TV kabulü | hepsi | aşağıdaki kabul |
+| İş                 | Sahip  | Dosyalar                                                                                                                                                                                                        | Bağımlılık | Test                                                                      |
+| ------------------ | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------- |
+| T1 veri            | Sonnet | `xtreamApi.js` (+test), `iptvRepository.js` (+test)                                                                                                                                                             | -          | normalizer fixture, retry 520/5xx/timeout, too_large, URL builder, dup id |
+| T4 player ilerleme | Sonnet | yeni `iptvProgressStore.js` (+test), `playerScreenMethods-01-mount.js`, `playerControllerMethods-20-flush-progress.js`, scrobble context dosyası, Back hedefi dosyası, `playerControllerMethods-11-*` predicate | sözleşme   | sync guard, barrier, %90 tamamlanma, resume                               |
+| T2 liste UI        | Sonnet | yeni `iptvPosterCards.js`, `iptvVodScreenData.js`, `iptvScreen.js`, `iptvScreenFocus.js`, `iptvNavigation.js`, `css/iptv.css`                                                                                   | T1         | 5 sütun pencere, sekme navigasyonu, 24k arama süresi, odak geri yükleme   |
+| T3 detay + dizi    | Sonnet | yeni `iptvDetail*.js`, CSS bölümü T2 sonrası                                                                                                                                                                    | T1, T2     | sezon gruplama, boş sezon, 121 bölüm penceresi                            |
+| T5 entegrasyon     | root   | paket, kurulum, TV kabulü                                                                                                                                                                                       | hepsi      | aşağıdaki kabul                                                           |
 
 T1 ve T4 paralel başlar. T2, T1 bitince; T3, T2'nin ızgara sözleşmesinden sonra.
 

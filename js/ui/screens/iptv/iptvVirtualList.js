@@ -42,7 +42,12 @@ export function createVirtualList({
   }
 
   function sync() {
-    const win = computeChannelWindow({ ...geometry(), scrollTop, overscanRows, focusedIndex: focusIndex });
+    const win = computeChannelWindow({
+      ...geometry(),
+      scrollTop,
+      overscanRows,
+      focusedIndex: focusIndex
+    });
     scrollTop = win.scrollTop;
     track.style.height = `${win.totalHeight}px`;
     track.style.transform = `translate3d(0,${-scrollTop}px,0)`;
@@ -90,7 +95,8 @@ export function createVirtualList({
       measure();
       scrollTop = clampScroll(scroll, geometry());
       const target = focusIndex >= 0 ? focusIndex : reveal;
-      if (target >= 0 && target < items.length) scrollTop = scrollToReveal(scrollTop, target, geometry());
+      if (target >= 0 && target < items.length)
+        scrollTop = scrollToReveal(scrollTop, target, geometry());
       pool = Array.from(mounted.values());
       mounted = new Map();
       focusedNode?.classList.remove("focused");

@@ -15,7 +15,12 @@ import { TABS, TAB_LIVE, TAB_MOVIES, TAB_SERIES, ZONE, createFocus } from "./ipt
 import { validateAccountInput } from "./iptvFormLogic.js";
 import { createVirtualList } from "./iptvVirtualList.js";
 import { createPosterCardNode, bindPosterCard } from "./iptvPosterCards.js";
-import { bindCategory, bindChannelCard, createCategoryNode, createChannelCardNode } from "./iptvCards.js";
+import {
+  bindCategory,
+  bindChannelCard,
+  createCategoryNode,
+  createChannelCardNode
+} from "./iptvCards.js";
 import { createAccountForm, renderAccountFormMarkup } from "./iptvAccountForm.js";
 import { iptvDetailMethods } from "./iptvDetailView.js";
 import { iptvDataMethods } from "./iptvScreenData.js";
@@ -98,7 +103,8 @@ export const IptvScreen = {
     const source = sources.find((item) => item.id === restored?.sourceId) || sources[0];
     const restore = restored?.sourceId === source.id ? restored : null;
     this.enterChannels(source, restore);
-    if (restore?.detail) void this.openDetail(restore.detail.kind, restore.detail.item, restore.detail);
+    if (restore?.detail)
+      void this.openDetail(restore.detail.kind, restore.detail.item, restore.detail);
   },
 
   cleanup() {
@@ -157,7 +163,8 @@ export const IptvScreen = {
       columns: 1,
       rowHeight: CATEGORY_ROW_HEIGHT,
       createNode: createCategoryNode,
-      bindNode: (node, entry, index) => bindCategory(node, entry, index, { isSelected: (key) => key === this.viewKey })
+      bindNode: (node, entry, index) =>
+        bindCategory(node, entry, index, { isSelected: (key) => key === this.viewKey })
     });
     this.chanList = createVirtualList({
       viewport: root.querySelector(".iptv-channel-viewport"),
@@ -166,7 +173,8 @@ export const IptvScreen = {
       createNode: poster ? createPosterCardNode : createChannelCardNode,
       bindNode: poster
         ? (node, item) => bindPosterCard(node, item)
-        : (node, channel, index) => bindChannelCard(node, channel, index, { isFavorite: (id) => this.favorites.has(id) })
+        : (node, channel, index) =>
+            bindChannelCard(node, channel, index, { isFavorite: (id) => this.favorites.has(id) })
     });
   },
 
@@ -239,7 +247,8 @@ export const IptvScreen = {
       [TAB_SERIES]: t("iptv_tab_series", "Series")
     };
     const tabs = TABS.map(
-      (tab) => `<button type="button" class="iptv-tab" role="tab" data-action="tab" data-tab="${tab}">${escapeHtml(tabLabels[tab])}</button>`
+      (tab) =>
+        `<button type="button" class="iptv-tab" role="tab" data-action="tab" data-tab="${tab}">${escapeHtml(tabLabels[tab])}</button>`
     ).join("");
     this.container.innerHTML = `
       <div class="home-shell iptv-shell">
@@ -273,7 +282,10 @@ export const IptvScreen = {
       </div>`;
     const root = this.container;
     this.searchInput = root.querySelector(".iptv-search");
-    this.headerNodes = [...root.querySelectorAll(".iptv-tab"), ...root.querySelectorAll(".iptv-toolbar > *")];
+    this.headerNodes = [
+      ...root.querySelectorAll(".iptv-tab"),
+      ...root.querySelectorAll(".iptv-toolbar > *")
+    ];
     this.statusNode = root.querySelector(".iptv-status");
     this.noticeNode = root.querySelector(".iptv-notice");
     this.searchInput.value = this.query;
@@ -289,11 +301,15 @@ export const IptvScreen = {
     const { source } = this;
     const count = IptvRepository.listSources().length;
     const parts = [source.name];
-    if (count > 1) parts.push(`${IptvRepository.listSources().findIndex((item) => item.id === source.id) + 1}/${count}`);
+    if (count > 1)
+      parts.push(
+        `${IptvRepository.listSources().findIndex((item) => item.id === source.id) + 1}/${count}`
+      );
     const expDate = source.lastAccount?.expDate;
     if (expDate) {
       const days = Math.ceil((expDate * 1000 - Date.now()) / 86_400_000);
-      if (days >= 0 && days <= EXPIRY_WARNING_DAYS) parts.push(t("iptv_expires_in", `Expires in ${days} days`, { days }));
+      if (days >= 0 && days <= EXPIRY_WARNING_DAYS)
+        parts.push(t("iptv_expires_in", `Expires in ${days} days`, { days }));
     }
     return parts.join(" · ");
   },
@@ -327,8 +343,12 @@ export const IptvScreen = {
     } else {
       const live = this.tab === TAB_LIVE;
       const messages = {
-        empty: live ? t("iptv_empty", "This category has no channels.") : t("iptv_vod_empty", "This category is empty."),
-        no_results: live ? t("iptv_no_results", "No channels match your search.") : t("iptv_vod_no_results", "Nothing matches your search."),
+        empty: live
+          ? t("iptv_empty", "This category has no channels.")
+          : t("iptv_vod_empty", "This category is empty."),
+        no_results: live
+          ? t("iptv_no_results", "No channels match your search.")
+          : t("iptv_vod_no_results", "Nothing matches your search."),
         no_favorites: t("iptv_no_favorites", "No favorites yet. Hold OK on a channel to add one."),
         error: error ? this.messageFor(error) : ""
       };
@@ -343,7 +363,9 @@ export const IptvScreen = {
             }`;
       if (status === "error") {
         this.statusAction = host.querySelector("[data-action='retry']");
-        this.statusRetry = retry || (() => (this.tab === TAB_LIVE ? this.loadCatalog({ force: true }) : this.loadVodTab()));
+        this.statusRetry =
+          retry ||
+          (() => (this.tab === TAB_LIVE ? this.loadCatalog({ force: true }) : this.loadVodTab()));
       }
     }
     if (this.focus.zone === ZONE.GRID && !this.channels.length) this.applyFocus();
@@ -356,7 +378,9 @@ export const IptvScreen = {
     this.editing = source;
     this.formCanCancel = Boolean(this.source && IptvRepository.getSource(this.source.id));
     const labels = {
-      title: source ? t("iptv_form_edit_title", "Edit IPTV account") : t("iptv_form_title", "Sign in to IPTV"),
+      title: source
+        ? t("iptv_form_edit_title", "Edit IPTV account")
+        : t("iptv_form_title", "Sign in to IPTV"),
       hint: t("iptv_form_hint", "Enter the details from your IPTV provider."),
       server: t("iptv_form_server", "Server address"),
       username: t("iptv_form_username", "Username"),
@@ -375,7 +399,16 @@ export const IptvScreen = {
         <main class="home-main iptv-main iptv-form-main">${renderAccountFormMarkup(labels)}</main>
       </div>`;
     this.form = createAccountForm(this.container.querySelector(".iptv-form"), labels);
-    this.form.setValues(source ? { server: source.server, username: source.username, password: source.password, showAdult: source.showAdult } : {});
+    this.form.setValues(
+      source
+        ? {
+            server: source.server,
+            username: source.username,
+            password: source.password,
+            showAdult: source.showAdult
+          }
+        : {}
+    );
     this.focus = createFocus({ zone: FORM_ZONE });
     this.bindSidebar();
     this.applyFocus();

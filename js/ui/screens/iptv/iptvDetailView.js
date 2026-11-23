@@ -25,7 +25,8 @@ const MIN_THUMB_PX = 8;
 const OK = 13;
 const KEYS = { 37: "left", 38: "up", 39: "right", 40: "down" };
 
-const minutes = (secs) => (secs > 0 ? t("iptv_min_short", `${Math.round(secs / 60)} dk`, { n: Math.round(secs / 60) }) : "");
+const minutes = (secs) =>
+  secs > 0 ? t("iptv_min_short", `${Math.round(secs / 60)} dk`, { n: Math.round(secs / 60) }) : "";
 const seasonName = (season) => seasonLabel(season, (n) => t("iptv_season_n", `Sezon ${n}`, { n }));
 
 function createEpisodeNode() {
@@ -37,7 +38,8 @@ function createEpisodeNode() {
     '<div class="iptv-ep-bar"><div class="iptv-ep-fill"></div></div></div>';
   const img = node.querySelector("img");
   img.onload = () => {
-    if (img.getAttribute("src") === img._src && img.naturalWidth >= MIN_THUMB_PX) node.classList.add("has-thumb");
+    if (img.getAttribute("src") === img._src && img.naturalWidth >= MIN_THUMB_PX)
+      node.classList.add("has-thumb");
   };
   img.onerror = () => node.classList.remove("has-thumb");
   node._parts = {
@@ -75,7 +77,10 @@ export const iptvDetailMethods = {
   progressOf(kind, id) {
     const detail = this.detail;
     if (!detail.progress.has(id)) {
-      detail.progress.set(id, IptvProgressStore.get(iptvProgressKey({ sourceId: this.source.id, kind, streamId: id })));
+      detail.progress.set(
+        id,
+        IptvProgressStore.get(iptvProgressKey({ sourceId: this.source.id, kind, streamId: id }))
+      );
     }
     return detail.progress.get(id);
   },
@@ -101,7 +106,9 @@ export const iptvDetailMethods = {
     this.renderDetail();
     try {
       if (series) {
-        const data = await IptvRepository.getSeriesInfo(this.source.id, item.id, { signal: controller.signal });
+        const data = await IptvRepository.getSeriesInfo(this.source.id, item.id, {
+          signal: controller.signal
+        });
         if (this.detail !== detail) return;
         detail.info = data.info;
         detail.seasons = (data.seasons || []).filter((season) => season.episodes?.length);
@@ -112,7 +119,9 @@ export const iptvDetailMethods = {
         detail.focus = { ...detail.focus, ...at };
       } else {
         // A failed info call still leaves Play usable with the list data.
-        detail.info = await IptvRepository.getVodInfo(this.source.id, item.id, { signal: controller.signal }).catch(() => null);
+        detail.info = await IptvRepository.getVodInfo(this.source.id, item.id, {
+          signal: controller.signal
+        }).catch(() => null);
         if (this.detail !== detail) return;
       }
     } catch (error) {
@@ -145,7 +154,9 @@ export const iptvDetailMethods = {
       ...entry,
       label:
         entry.action === "resume"
-          ? t("iptv_detail_resume", `Devam et (${formatClock(entry.posMs)})`, { time: formatClock(entry.posMs) })
+          ? t("iptv_detail_resume", `Devam et (${formatClock(entry.posMs)})`, {
+              time: formatClock(entry.posMs)
+            })
           : entry.action === "restart"
             ? t("iptv_detail_restart", "Baştan oynat")
             : t("iptv_detail_play", "Oynat")
@@ -165,7 +176,8 @@ export const iptvDetailMethods = {
       meta.genre
     ].filter(Boolean);
     const crew = [
-      meta.director && t("iptv_detail_director", `Yönetmen: ${meta.director}`, { v: meta.director }),
+      meta.director &&
+        t("iptv_detail_director", `Yönetmen: ${meta.director}`, { v: meta.director }),
       meta.cast && t("iptv_detail_cast", `Oyuncular: ${meta.cast}`, { v: meta.cast })
     ].filter(Boolean);
     const rows =
@@ -175,7 +187,10 @@ export const iptvDetailMethods = {
             [t("iptv_detail_label_cast", "Oyuncular"), meta.cast, "is-cast"],
             [t("iptv_detail_label_genre", "Tür"), meta.genre],
             [t("iptv_detail_label_duration", "Süre"), minutes(meta.durationSecs)],
-            [t("iptv_detail_label_release", "Çıkış tarihi"), formatReleaseDate(meta.releaseDate, I18n.getLocale() || "tr-TR")]
+            [
+              t("iptv_detail_label_release", "Çıkış tarihi"),
+              formatReleaseDate(meta.releaseDate, I18n.getLocale() || "tr-TR")
+            ]
           ].filter((row) => row[1])
         : [];
     const actions = this.detailActions();
@@ -194,7 +209,9 @@ export const iptvDetailMethods = {
           <div class="iptv-detail-actions">${actions
             .map((a, i) => {
               const ratio = a.action === "resume" ? progressRatio(progress) : 0;
-              const bar = ratio ? `<span class="iptv-btn-bar"><span style="width:${Math.round(ratio * 100)}%"></span></span>` : "";
+              const bar = ratio
+                ? `<span class="iptv-btn-bar"><span style="width:${Math.round(ratio * 100)}%"></span></span>`
+                : "";
               return `<button type="button" class="iptv-btn iptv-btn-hero${i === 0 ? " iptv-btn-primary" : ""}" data-detail-action="${a.action}" data-i="${i}">${i === 0 ? '<span class="iptv-btn-icon">&#9654;</span>' : ""}${escapeHtml(a.label)}${bar}</button>`;
             })
             .join("")}</div>
@@ -202,7 +219,10 @@ export const iptvDetailMethods = {
         <div class="iptv-detail-side">
           <div class="iptv-detail-poster-slot"></div>
           <dl class="iptv-detail-facts-list">${rows
-            .map(([label, value, cls]) => `<div class="iptv-detail-row ${cls || ""}"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`)
+            .map(
+              ([label, value, cls]) =>
+                `<div class="iptv-detail-row ${cls || ""}"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
+            )
             .join("")}</dl>
         </div>
       </div>
@@ -243,7 +263,10 @@ export const iptvDetailMethods = {
     const { detail } = this;
     const bar = detail.node.querySelector(".iptv-detail-seasons");
     bar.innerHTML = detail.seasons
-      .map((season, i) => `<button type="button" class="iptv-chip" data-season="${i}">${escapeHtml(seasonName(season))}</button>`)
+      .map(
+        (season, i) =>
+          `<button type="button" class="iptv-chip" data-season="${i}">${escapeHtml(seasonName(season))}</button>`
+      )
       .join("");
     detail.epList = createVirtualList({
       viewport: detail.node.querySelector(".iptv-detail-episodes"),
@@ -263,14 +286,21 @@ export const iptvDetailMethods = {
     const { detail } = this;
     const { zone, season, episode } = detail.focus;
     const episodes = detail.seasons[season].episodes;
-    detail.epList.setItems(episodes, { focus: zone === DZONE.EPISODES ? episode : -1, reveal: episode });
+    detail.epList.setItems(episodes, {
+      focus: zone === DZONE.EPISODES ? episode : -1,
+      reveal: episode
+    });
   },
 
   applyDetailFocus() {
     const { detail } = this;
     if (!detail) return;
     const { zone, button, season, episode } = detail.focus;
-    detail.node.querySelectorAll("[data-detail-action]").forEach((node, i) => node.classList.toggle("focused", zone === DZONE.BUTTONS && i === button));
+    detail.node
+      .querySelectorAll("[data-detail-action]")
+      .forEach((node, i) =>
+        node.classList.toggle("focused", zone === DZONE.BUTTONS && i === button)
+      );
     detail.node.querySelectorAll(".iptv-chip").forEach((node, i) => {
       node.classList.toggle("is-selected", i === season);
       node.classList.toggle("focused", zone === DZONE.SEASONS && i === season);
@@ -307,7 +337,8 @@ export const iptvDetailMethods = {
     if (!detail.ready) return;
     const { zone, button, season, episode } = detail.focus;
     if (zone === DZONE.BUTTONS) return this.playDetailMovie(detail.actions[button]);
-    if (zone === DZONE.EPISODES) return this.playEpisode(detail.seasons[season].episodes[episode], detail.seasons[season]);
+    if (zone === DZONE.EPISODES)
+      return this.playEpisode(detail.seasons[season].episodes[episode], detail.seasons[season]);
   },
 
   playDetailMovie(action) {
@@ -316,7 +347,13 @@ export const iptvDetailMethods = {
     Router.navigate("player", {
       itemType: "iptvvod",
       itemId: iptvProgressKey({ sourceId, kind: "movie", streamId: item.id }),
-      playIptv: { sourceId, kind: "movie", streamId: item.id, ext: item.ext || this.detail.info?.ext, title: item.name },
+      playIptv: {
+        sourceId,
+        kind: "movie",
+        streamId: item.id,
+        ext: item.ext || this.detail.info?.ext,
+        title: item.name
+      },
       title: item.name,
       playerTitle: item.name,
       resumePositionMs: action?.posMs || 0
@@ -331,7 +368,16 @@ export const iptvDetailMethods = {
     Router.navigate("player", {
       itemType: "iptvvod",
       itemId: iptvProgressKey({ sourceId, kind: "episode", streamId: episode.id }),
-      playIptv: { sourceId, kind: "episode", streamId: episode.id, ext: episode.ext, title, seriesId: item.id, season: season.number, episode: episode.number },
+      playIptv: {
+        sourceId,
+        kind: "episode",
+        streamId: episode.id,
+        ext: episode.ext,
+        title,
+        seriesId: item.id,
+        season: season.number,
+        episode: episode.number
+      },
       title,
       playerTitle: title,
       resumePositionMs: this.progressOf("episode", episode.id)?.posMs || 0
@@ -345,17 +391,23 @@ export const iptvDetailMethods = {
     const button = target.closest?.("[data-detail-action]");
     const chip = target.closest?.("[data-season]");
     const row = target.closest?.("[data-iptv-episode]");
-    if (button) detail.focus = { ...detail.focus, zone: DZONE.BUTTONS, button: Number(button.dataset.i) };
+    if (button)
+      detail.focus = { ...detail.focus, zone: DZONE.BUTTONS, button: Number(button.dataset.i) };
     else if (chip) {
       const season = Number(chip.dataset.season);
       const changed = season !== detail.focus.season;
-      detail.focus = { ...detail.focus, zone: DZONE.SEASONS, season, episode: changed ? 0 : detail.focus.episode };
+      detail.focus = {
+        ...detail.focus,
+        zone: DZONE.SEASONS,
+        season,
+        episode: changed ? 0 : detail.focus.episode
+      };
       if (changed) this.showSeason();
-    } else if (row) detail.focus = { ...detail.focus, zone: DZONE.EPISODES, episode: Number(row.dataset.index) };
+    } else if (row)
+      detail.focus = { ...detail.focus, zone: DZONE.EPISODES, episode: Number(row.dataset.index) };
     else return true;
     this.applyDetailFocus();
     if (activate && !chip) this.activateDetail();
     return true;
   }
 };
-

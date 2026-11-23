@@ -1,4 +1,4 @@
-const nonNegative = (value) => Number.isFinite(value) ? Math.max(0, value) : 0;
+const nonNegative = (value) => (Number.isFinite(value) ? Math.max(0, value) : 0);
 
 /**
  * Fixed-size window for either axis; indexes are logical, not DOM positions.
@@ -8,8 +8,13 @@ const nonNegative = (value) => Number.isFinite(value) ? Math.max(0, value) : 0;
  * Variable-size rows need measured offsets and are not covered by this helper.
  */
 export function calculateHomeVirtualWindow({
-  count = 0, stride = 0, gap = 0, offset = 0,
-  viewportExtent = 0, overscan = 0, focusedIndex = -1
+  count = 0,
+  stride = 0,
+  gap = 0,
+  offset = 0,
+  viewportExtent = 0,
+  overscan = 0,
+  focusedIndex = -1
 } = {}) {
   count = Math.min(Number.MAX_SAFE_INTEGER, Math.floor(nonNegative(count)));
   stride = nonNegative(stride);

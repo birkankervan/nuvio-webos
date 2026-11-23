@@ -16,7 +16,8 @@ const OK = 13;
 const HOLD_MS = 650;
 export const FORM_ZONE = "form";
 
-const isTextField = (node) => ["input", "textarea", "select"].includes(String(node?.tagName || "").toLowerCase());
+const isTextField = (node) =>
+  ["input", "textarea", "select"].includes(String(node?.tagName || "").toLowerCase());
 
 // Focus + remote-control side of the screen. Every position is a logical
 // index/identity in `this.focus`; the DOM only mirrors it.
@@ -52,7 +53,10 @@ export const iptvFocusMethods = {
       this.catList?.setFocus(-1);
       if (zone === ZONE.SIDEBAR) {
         this.form.nodes.forEach((node) => node.classList.remove("focused"));
-        this.setManualFocus(this.sidebarNodes()[this.sidebarIndex] || getRootSidebarSelectedNode(this.container, this.layoutPrefs));
+        this.setManualFocus(
+          this.sidebarNodes()[this.sidebarIndex] ||
+            getRootSidebarSelectedNode(this.container, this.layoutPrefs)
+        );
       } else {
         this.setManualFocus(null);
         this.form.focus();
@@ -64,7 +68,8 @@ export const iptvFocusMethods = {
     let node = null;
     if (zone === ZONE.SIDEBAR) {
       const nodes = this.sidebarNodes();
-      node = nodes[this.sidebarIndex] || getRootSidebarSelectedNode(this.container, this.layoutPrefs);
+      node =
+        nodes[this.sidebarIndex] || getRootSidebarSelectedNode(this.container, this.layoutPrefs);
     } else if (zone === ZONE.HEADER) {
       node = this.headerNodes[this.focus.header];
     } else if (zone === ZONE.GRID && !this.channels.length) {
@@ -313,9 +318,16 @@ export const iptvFocusMethods = {
     }
     const card = target.closest?.("[data-iptv-card]");
     const category = target.closest?.("[data-iptv-category]");
-    const header = this.headerNodes.indexOf(target.closest?.(".iptv-header [data-action], .iptv-tab, .iptv-search"));
+    const header = this.headerNodes.indexOf(
+      target.closest?.(".iptv-header [data-action], .iptv-tab, .iptv-search")
+    );
     if (card) this.focus = { ...this.focus, zone: ZONE.GRID, channel: Number(card.dataset.index) };
-    else if (category) this.focus = { ...this.focus, zone: ZONE.CATEGORIES, category: Number(category.dataset.index) };
+    else if (category)
+      this.focus = {
+        ...this.focus,
+        zone: ZONE.CATEGORIES,
+        category: Number(category.dataset.index)
+      };
     else if (header >= 0) this.focus = { ...this.focus, zone: ZONE.HEADER, header };
     else return;
     this.applyFocus();

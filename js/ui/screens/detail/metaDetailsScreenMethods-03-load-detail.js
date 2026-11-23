@@ -197,7 +197,7 @@ export function createMetaDetailsScreenMethods03() {
       this.isLoadingDetail = false;
       // Let the base detail paint before cached enrichment results and optional
       // sections compete for the same main thread in this turn.
-      await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
+      await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
       if (token !== this.detailLoadToken) return;
       void this.refreshLibraryMembership(token);
       this.maybeAutoOpenContinueWatchingStream();

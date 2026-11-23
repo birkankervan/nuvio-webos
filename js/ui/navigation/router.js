@@ -145,26 +145,67 @@ Object.assign(Router, {
     profileSelection: ProfileSelectionScreen,
     experienceModeSelection: ExperienceModeSelectionScreen,
     essentialAddonSetup: EssentialAddonSetupScreen,
-    detail: createLazyRoute(() => import("../screens/detail/metaDetailsScreen.js"), "MetaDetailsScreen"),
-    ...(IPTV_ENABLED ? { iptv: createLazyRoute(() => import("../screens/iptv/iptvScreen.js"), "IptvScreen") } : {}),
+    detail: createLazyRoute(
+      () => import("../screens/detail/metaDetailsScreen.js"),
+      "MetaDetailsScreen"
+    ),
+    ...(IPTV_ENABLED
+      ? { iptv: createLazyRoute(() => import("../screens/iptv/iptvScreen.js"), "IptvScreen") }
+      : {}),
     library: createLazyRoute(() => import("../screens/library/libraryScreen.js"), "LibraryScreen"),
     search: createLazyRoute(() => import("../screens/search/searchScreen.js"), "SearchScreen"),
-    discover: createLazyRoute(() => import("../screens/search/discoverScreen.js"), "DiscoverScreen"),
-    settings: createLazyRoute(() => import("../screens/settings/settingsScreen.js"), "SettingsScreen"),
-    debugConsole: createLazyRoute(() => import("../screens/debug/consoleDebugScreen.js"), "ConsoleDebugScreen"),
+    discover: createLazyRoute(
+      () => import("../screens/search/discoverScreen.js"),
+      "DiscoverScreen"
+    ),
+    settings: createLazyRoute(
+      () => import("../screens/settings/settingsScreen.js"),
+      "SettingsScreen"
+    ),
+    debugConsole: createLazyRoute(
+      () => import("../screens/debug/consoleDebugScreen.js"),
+      "ConsoleDebugScreen"
+    ),
     trakt: createLazyRoute(() => import("../screens/trakt/traktScreen.js"), "TraktScreen"),
-    supportersContributors: createLazyRoute(() => import("../screens/supporters/supportersContributorsScreen.js"), "SupportersContributorsScreen"),
-    licensesAttributions: createLazyRoute(() => import("../screens/settings/licensesAttributionsScreen.js"), "LicensesAttributionsScreen"),
+    supportersContributors: createLazyRoute(
+      () => import("../screens/supporters/supportersContributorsScreen.js"),
+      "SupportersContributorsScreen"
+    ),
+    licensesAttributions: createLazyRoute(
+      () => import("../screens/settings/licensesAttributionsScreen.js"),
+      "LicensesAttributionsScreen"
+    ),
     plugin: createLazyRoute(() => import("../screens/plugin/pluginScreen.js"), "PluginScreen"),
     plugins: createLazyRoute(() => import("../screens/plugin/pluginsScreen.js"), "PluginsScreen"),
-    catalogOrder: createLazyRoute(() => import("../screens/plugin/catalogOrderScreen.js"), "CatalogOrderScreen"),
+    catalogOrder: createLazyRoute(
+      () => import("../screens/plugin/catalogOrderScreen.js"),
+      "CatalogOrderScreen"
+    ),
     stream: createLazyRoute(() => import("../screens/stream/streamScreen.js"), "StreamScreen"),
-    castDetail: createLazyRoute(() => import("../screens/cast/castDetailScreen.js"), "CastDetailScreen"),
-    catalogSeeAll: createLazyRoute(() => import("../screens/catalog/catalogSeeAllScreen.js"), "CatalogSeeAllScreen"),
-    tmdbEntityBrowse: createLazyRoute(() => import("../screens/tmdb/tmdbEntityBrowseScreen.js"), "TmdbEntityBrowseScreen"),
-    folderDetail: createLazyRoute(() => import("../screens/collection/folderDetailScreen.js"), "FolderDetailScreen"),
-    collections: createLazyRoute(() => import("../screens/collection/collectionsScreen.js"), "CollectionsScreen"),
-    collectionEditor: createLazyRoute(() => import("../screens/collection/collectionEditorScreen.js"), "CollectionEditorScreen"),
+    castDetail: createLazyRoute(
+      () => import("../screens/cast/castDetailScreen.js"),
+      "CastDetailScreen"
+    ),
+    catalogSeeAll: createLazyRoute(
+      () => import("../screens/catalog/catalogSeeAllScreen.js"),
+      "CatalogSeeAllScreen"
+    ),
+    tmdbEntityBrowse: createLazyRoute(
+      () => import("../screens/tmdb/tmdbEntityBrowseScreen.js"),
+      "TmdbEntityBrowseScreen"
+    ),
+    folderDetail: createLazyRoute(
+      () => import("../screens/collection/folderDetailScreen.js"),
+      "FolderDetailScreen"
+    ),
+    collections: createLazyRoute(
+      () => import("../screens/collection/collectionsScreen.js"),
+      "CollectionsScreen"
+    ),
+    collectionEditor: createLazyRoute(
+      () => import("../screens/collection/collectionEditorScreen.js"),
+      "CollectionEditorScreen"
+    ),
     watchParty: createLazyRoute(() => import("../screens/party/partyScreen.js"), "PartyScreen")
   },
   ...createRouterMethods01(),
