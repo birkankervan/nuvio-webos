@@ -1,0 +1,50 @@
+name: Main Release Notes
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: main-release-notes
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Create release with generated notes
+        run: |
+          set -euo pipefail
+          SHA7="${GITHUB_SHA:0:7}"
+          DATE="$(date -u +%Y%m%d)"
+          TAG="main-${DATE}-${SHA7}"
+
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${TAG}" >/dev/null 2>&1 \
+            || gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists, skipping."
+            exit 0
+          fi
+
+          PREV="$(gh release list --limit 50 --json tagName,createdAt \
+            --jq '[.[] | select(.tagName | startswith("main-"))] | sort_by(.createdAt) | reverse | .[0].tagName // empty')"
+
+          args=()
+          if [ -n "$PREV" ]; then
+            echo "Previous release: ${PREV}"
+            args+=(--notes-start-tag "$PREV")
+          fi
+
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "main $(date -u +%Y-%m-%d) (${SHA7})" \
+            --generate-notes \
+            --latest=false \
+            --prerelease \
+            "${args[@]}"
