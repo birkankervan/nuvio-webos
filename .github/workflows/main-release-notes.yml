@@ -35,15 +35,30 @@ jobs:
           PREV="$(gh release list --limit 50 --json tagName,createdAt \
             --jq '[.[] | select(.tagName | startswith("main-"))] | sort_by(.createdAt) | reverse | .[0].tagName // empty')"
 
+          FMT='.commits[] | "- \(.commit.message | split("\n")[0]) (\(.sha[0:7]))"'
           args=()
           if [ -n "$PREV" ]; then
             echo "Previous release: ${PREV}"
             args+=(--notes-start-tag "$PREV")
+            URL="repos/${GITHUB_REPOSITORY}/compare/${PREV}...${GITHUB_SHA}?per_page=100"
+            LIST="$(gh api "$URL" --jq "$FMT")"
+            TOTAL="$(gh api "$URL" --jq '.total_commits')"
+            SHOWN="$(printf '%s\n' "$LIST" | grep -c . || true)"
+            if [ "$TOTAL" -gt "$SHOWN" ]; then
+              LIST="${LIST}"$'\n'"- … and $((TOTAL - SHOWN)) more"
+            fi
+          else
+            LIST="$(gh api "repos/${GITHUB_REPOSITORY}/commits?sha=${GITHUB_SHA}&per_page=20" \
+              --jq '.[] | "- \(.commit.message | split("\n")[0]) (\(.sha[0:7]))"')"
           fi
+
+          NOTES_FILE="$(mktemp)"
+          printf '## Commits\n%s\n' "$LIST" > "$NOTES_FILE"
 
           gh release create "$TAG" \
             --target "$GITHUB_SHA" \
             --title "main $(date -u +%Y-%m-%d) (${SHA7})" \
+            --notes-file "$NOTES_FILE" \
             --generate-notes \
             --latest=false \
             --prerelease \
