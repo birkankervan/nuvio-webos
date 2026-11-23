@@ -2271,3 +2271,8 @@ Samsung'a 1.3.11 kurulmadı.
   - Dikey: A LT 9/10 (max 77/88 ms), rafP95 50/33; B LT 1/0, rafP95 16.8/16.8. B belirgin iyi.
   - Back: A 338/260 ms; B 1240/1205 ms. A ~4x iyi.
   - Karar bekliyor: hibrit hedef = data window Back hızını koru, dikeyde satır mount/unmount long task'ını azalt (veya B + hızlı Back). Örnek küçük, kesin hüküm değil.
+
+## HOME-RATING — poster puan rozeti (2026-11-23)
+- Sahip: root. Dosyalar: `homeScreenHelpers-15-create-poster-card-markup.js` (`.home-poster-rating` ★ x.x, sağ üst; `homeImdbRatingsVisibility` HIDE_ALL ise yok), `css/components-11.css` (izlendi rozeti varsa rozet altına kayar), `catalogRepository.mapMeta` artık addon `imdbRating`'ini koruyor (önceden atılıyordu, kök neden).
+- Kontroller: repository+home testleri 122/122, lint, package:webos OK. LG'ye 1.4.4 kuruldu: Home 10/10 kartta rozet (top/right 12px, 67x28), `birkan` yok. Performans ölçümü yapılmadı; commit yok.
+- 2026-11-23 macOS (NuvioDesktop, Dev, commitsiz): `NuvioPosterCard` yeni `ratingText` parametresi (★ x.x, TopEnd; izlendi rozeti varsa TopStart). `HomePosterCard` `MetaPreview.imdbRating`'i geçiyor (parser zaten okuyordu). Release build + /Applications kurulum; Home'da Trending Movies/Series rozetleri ekran görüntüsüyle doğrulandı. macOS'ta home puan gizleme ayarı yok, eklenmedi.

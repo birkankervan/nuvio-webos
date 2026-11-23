@@ -203,6 +203,7 @@ class CatalogRepository {
       description: meta.description || "",
       releaseInfo: meta.releaseInfo || "",
       runtime: meta.runtime ?? null,
+      imdbRating: meta.imdbRating ?? null,
       genres: Array.isArray(meta.genres) ? meta.genres : []
     };
   }

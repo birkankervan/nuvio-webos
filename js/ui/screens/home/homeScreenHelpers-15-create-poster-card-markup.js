@@ -328,6 +328,10 @@ export function createPosterCardMarkup(
   const loadingClass = isLoading ? " home-poster-card-loading" : "";
   const shouldShowLabels = showLabels && !isLoading && !suppressPosterText;
   const watchedBadge = !isLoading && isTitleItemWatched(normalized, watchedTitleIds) ? renderTitleWatchedBadge() : "";
+  const ratingBadge =
+    !isLoading && normalized.imdbRating && showHomeRatings(cardSettings.homeImdbRatingsVisibility)
+      ? `<div class="home-poster-rating" aria-hidden="true">★ ${escapeHtml(normalized.imdbRating)}</div>`
+      : "";
   const titleWidths = [116, 128, 104, 132, 120, 140, 110, 124, 136, 112];
   const subtitleWidths = [82, 96, 74, 90, 88, 100, 80, 94, 86, 92];
   const safeIndex = Math.max(0, Number(itemIndex) || 0);
@@ -375,6 +379,7 @@ export function createPosterCardMarkup(
         <div class="home-poster-trailer-layer"></div>
         <div class="home-poster-expanded-gradient"></div>
         ${watchedBadge}
+        ${ratingBadge}
         <div class="home-poster-expanded-brand">
           ${
             !isLoading && normalized.logo

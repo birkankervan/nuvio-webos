@@ -1522,3 +1522,6 @@ Samsung'a 1.3.11 kurulmadı.
 - NuvioDesktop: IPTV work committed to branch `feat/macos-iptv` and pushed to the public fork birkankervan/NuvioDesktop.
 - 2026-11-21 macOS IPTV preview HUD: Nuvio controls WKWebView inside the preview container (preview flag: no first responder, no title-bar drag); toggleFullscreen/dblclick → previewDoubleClick → Nuvio player; Kotlin controlsVisible state; controls.css @media (max-width:600px) compaction (also applies to a narrow normal-player window). Build successful, installed; hover/focus/clicks not yet tested by the user. User confirmed it works; committed and pushed to feat/macos-iptv.
 - 2026-11-21 AKTİF: macOS IPTV minimal HUD + diziler planı → plans/2026-11-21-macos-iptv-hud-dizi.md. Adım 1 (minimal HUD) Sonnet'te.
+
+- 2026-11-23 HOME-RATING (root): poster sağ üst IMDb rozeti + mapMeta imdbRating. TV'de doğrulandı. Commitsiz.
+- 2026-11-23 HOME-RATING macOS: NuvioDesktop poster rozeti eklendi, kurulup doğrulandı. Commitsiz.

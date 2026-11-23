@@ -463,3 +463,22 @@
   padding: 48px;
   color: var(--text-color);
 }
+
+.home-poster-rating {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #f5c518;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+  pointer-events: none;
+}
+
+.title-watched-badge + .home-poster-rating {
+  top: 54px;
+}
