@@ -9,7 +9,8 @@ import {
   setModernSidebarExpanded,
   setModernSidebarPillIconOnly
 } from "../../components/sidebarNavigation.js";
-import { TAB_LIVE, ZONE, moveFocus } from "./iptvNavigation.js";
+import { isSeparatorName } from "./iptvCards.js";
+import { TAB_LIVE, TAB_MOVIES, ZONE, moveFocus } from "./iptvNavigation.js";
 
 const DIRECTIONS = { 37: "left", 38: "up", 39: "right", 40: "down" };
 const OK = 13;
@@ -76,6 +77,8 @@ export const iptvFocusMethods = {
       node = this.statusAction;
     }
     this.setManualFocus(node);
+    this.syncPanelSelection();
+    this.applyPanelFocus();
   },
 
   focusSidebar() {
@@ -102,10 +105,6 @@ export const iptvFocusMethods = {
   // ---- Back ---------------------------------------------------------------
   // Router calls this first; returning true consumes Back (see FocusEngine).
   consumeBackRequest() {
-    if (this.closeDetail()) {
-      this.applyFocus();
-      return true;
-    }
     const { zone } = this.focus;
     if (this.mode === "form") {
       if (zone === ZONE.SIDEBAR) return this.leaveToHomeIfNoHistory();
@@ -117,7 +116,11 @@ export const iptvFocusMethods = {
       return true;
     }
     if (zone === ZONE.SIDEBAR) return this.leaveToHomeIfNoHistory();
-    if (zone === ZONE.GRID && this.entries.length) {
+    // Back walks outward: panel -> items -> categories -> sidebar.
+    if (zone === ZONE.PANEL) {
+      this.focus.zone = ZONE.GRID;
+      this.applyFocus();
+    } else if (zone === ZONE.GRID && this.entries.length) {
       this.focus.zone = ZONE.CATEGORIES;
       this.applyFocus();
     } else {
@@ -140,13 +143,14 @@ export const iptvFocusMethods = {
       headerCount: this.headerNodes.length,
       categoryCount: this.entries.length,
       channelCount: this.channels.length || (this.statusAction ? 1 : 0),
-      columns: this.columns
+      columns: 1,
+      panelCount: this.panelFocusable(),
+      isSkipped: (index) => isSeparatorName(this.channels[index]?.name)
     };
   },
 
   async onKeyDown(event) {
     const code = Number(event?.keyCode || 0);
-    if (this.detail) return this.onDetailKey(event);
     const direction = DIRECTIONS[code];
     if (this.layoutPrefs?.modernSidebar && !this.sidebarExpanded && direction) {
       if (code === 40 || code === 38) {
@@ -156,6 +160,7 @@ export const iptvFocusMethods = {
     }
     if (this.focus.zone === ZONE.SIDEBAR) return this.onSidebarKey(event, code, direction);
     if (this.mode === "form") return this.onFormKey(event, code, direction);
+    if (this.focus.zone === ZONE.PANEL) return this.onPanelKey(event, code, direction);
 
     const active = document.activeElement;
     if (isTextField(active)) {
@@ -175,6 +180,7 @@ export const iptvFocusMethods = {
         this.focusSidebar();
         return;
       }
+      if (this.focus.zone === ZONE.PANEL) this.enterPanel();
       this.applyFocus();
       if (result.selectCategory) this.activateCategory(this.focus.category);
       return;
@@ -182,11 +188,17 @@ export const iptvFocusMethods = {
     if (code !== OK) return;
     if (this.focus.zone === ZONE.GRID && this.channels.length && this.tab !== TAB_LIVE) {
       event.preventDefault?.();
-      if (!event.repeat) this.openItem(this.channels[this.focus.channel]);
+      if (event.repeat) return;
+      if (this.tab === TAB_MOVIES) this.playMovie(this.selectedItem());
+      else if (this.panelFocusable()) {
+        this.focus.zone = ZONE.PANEL; // series: OK hands over to the episode list
+        this.enterPanel();
+        this.applyFocus();
+      }
       return;
     }
     if (this.focus.zone === ZONE.GRID && this.channels.length) {
-      // OK plays on release; holding OK toggles the favorite instead.
+      // OK previews/opens on release; holding OK toggles the favorite instead.
       event.preventDefault?.();
       if (event.repeat || this.holdTimer) return;
       this.holdFired = false;
@@ -211,7 +223,7 @@ export const iptvFocusMethods = {
     if (this.holdTimer) {
       clearTimeout(this.holdTimer);
       this.holdTimer = null;
-      this.playChannel(this.channels[this.focus.channel]);
+      this.activateLive(this.selectedItem());
     }
     this.holdFired = false;
   },
@@ -308,7 +320,6 @@ export const iptvFocusMethods = {
 
   // ---- Magic Remote ------------------------------------------------------------
   onPointerFocus(target) {
-    if (this.detail) return this.onDetailPointer(target, false);
     if (this.mode === "form") {
       if (target.closest?.("[data-iptv-form]")) {
         this.focus.zone = FORM_ZONE;
@@ -316,13 +327,17 @@ export const iptvFocusMethods = {
       }
       return;
     }
+    if (this.onPanelPointer(target, false)) return;
     const card = target.closest?.("[data-iptv-card]");
     const category = target.closest?.("[data-iptv-category]");
     const header = this.headerNodes.indexOf(
       target.closest?.(".iptv-header [data-action], .iptv-tab, .iptv-search")
     );
-    if (card) this.focus = { ...this.focus, zone: ZONE.GRID, channel: Number(card.dataset.index) };
-    else if (category)
+    if (card) {
+      const index = Number(card.dataset.index);
+      if (isSeparatorName(this.channels[index]?.name)) return;
+      this.focus = { ...this.focus, zone: ZONE.GRID, channel: index };
+    } else if (category)
       this.focus = {
         ...this.focus,
         zone: ZONE.CATEGORIES,
@@ -334,7 +349,6 @@ export const iptvFocusMethods = {
   },
 
   onPointerActivate(target) {
-    if (this.detail) return this.onDetailPointer(target, true);
     if (isRootSidebarNode(target.closest?.(".focusable"))) return false; // sidebar has its own handler.
     if (this.mode === "form") {
       const node = target.closest?.("[data-iptv-form]");
@@ -342,11 +356,18 @@ export const iptvFocusMethods = {
       this.activateFormNode(node);
       return true;
     }
+    if (this.onPanelPointer(target, true)) return true;
     const card = target.closest?.("[data-iptv-card]");
     if (card) {
       const item = this.channels[Number(card.dataset.index)];
-      if (this.tab === TAB_LIVE) this.playChannel(item);
-      else this.openItem(item);
+      if (!item || isSeparatorName(item.name)) return true;
+      if (this.tab === TAB_LIVE) this.activateLive(item);
+      else if (this.tab === TAB_MOVIES) this.playMovie(item);
+      else if (this.panelFocusable()) {
+        this.focus.zone = ZONE.PANEL;
+        this.enterPanel();
+        this.applyFocus();
+      }
       return true;
     }
     const category = target.closest?.("[data-iptv-category]");

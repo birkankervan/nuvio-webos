@@ -10,15 +10,20 @@ import {
   pickFavorites,
   searchChannels
 } from "./iptvChannelFilter.js";
-import { TAB_LIVE, TAB_MOVIES, TAB_SERIES, ZONE, resolveFocusIndex } from "./iptvNavigation.js";
+import { isSeparatorName } from "./iptvCards.js";
+import {
+  TAB_LIVE,
+  TAB_MOVIES,
+  TAB_SERIES,
+  ZONE,
+  nearestSelectable,
+  resolveFocusIndex
+} from "./iptvNavigation.js";
 import { iptvErrorMessage } from "./iptvFormLogic.js";
 import { t } from "./iptvText.js";
 
 const CATALOG_STALE_MS = 24 * 60 * 60 * 1000;
 const DELETE_CONFIRM_MS = 4000;
-
-// Route-state safe snapshot of a list item (no URLs, no credentials).
-const pickListItem = ({ id, name, poster, ext, rating }) => ({ id, name, poster, ext, rating });
 
 // Data side of the channel screen: catalog loading, views (category / all /
 // favorites), search, favorites, source actions and playback hand-off.
@@ -136,18 +141,6 @@ export const iptvDataMethods = {
     }
   },
 
-  openVodItem(item) {
-    return this.openDetail("movie", item && pickListItem(item));
-  },
-
-  openSeriesItem(item) {
-    return this.openDetail("series", item && pickListItem(item));
-  },
-
-  openItem(item) {
-    return this.tab === TAB_MOVIES ? this.openVodItem(item) : this.openSeriesItem(item);
-  },
-
   setTab(tab) {
     if (tab === this.tab) return;
     this.teardownLists();
@@ -213,6 +206,8 @@ export const iptvDataMethods = {
     let list = this.resultCache.get(viewKey, this.query, version);
     if (!list) {
       list = searchChannels(this.indexFor(base), this.query);
+      // Provider separators are section headers: hidden while searching.
+      if (this.query.trim()) list = list.filter((item) => !isSeparatorName(item.name));
       this.resultCache.set(viewKey, this.query, version, list);
     }
     return list;
@@ -242,10 +237,16 @@ export const iptvDataMethods = {
 
   setChannels(list, { focusId = "", focusIndex = 0, scroll = 0 } = {}) {
     this.channels = list;
-    const index = resolveFocusIndex(list, focusId, focusIndex);
+    // Selection never rests on a separator row.
+    const wanted = resolveFocusIndex(list, focusId, focusIndex);
+    const index = Math.max(
+      0,
+      nearestSelectable(list.length, wanted, (i) => isSeparatorName(list[i].name))
+    );
     this.focus.channel = index;
     const active = this.focus.zone === ZONE.GRID && list.length > 0;
     this.chanList.setItems(list, { focus: active ? index : -1, reveal: index, scroll });
+    this.syncPanelSelection();
     if (list.length) this.setStatus("ready");
     else if (this.query.trim()) this.setStatus("no_results");
     else this.setStatus(this.viewKey === VIEW_FAVORITES ? "no_favorites" : "empty");
@@ -299,13 +300,14 @@ export const iptvDataMethods = {
   // params, history state or snapshots.
   playChannel(channel) {
     if (!channel) return;
+    this.stopPreview(); // the provider allows one connection: free it before the player opens
     IptvSourcesStore.setLastChannel(channel.id);
     Router.navigate("player", {
       itemType: "channel",
       itemId: channel.id,
       playIptv: { sourceId: channel.sourceId, channelId: channel.id },
-      // CH+/CH- zap list: whole source in the All view, else the channel's own category.
-      iptvCategoryId: this.viewKey === VIEW_ALL ? null : channel.categoryId,
+      // CH+/CH- zap and player channel list: the channel's own category (per-category sources cannot list "all").
+      iptvCategoryId: channel.categoryId || null,
       title: channel.name,
       playerTitle: channel.name,
       resumePosition: 0

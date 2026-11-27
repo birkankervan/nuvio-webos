@@ -7,7 +7,7 @@ globalThis.localStorage = {
   setItem: (key, value) => data.set(key, String(value)),
   removeItem: (key) => data.delete(key)
 };
-const { IptvProgressStore: store } = await import("./iptvProgressStore.js");
+const { IptvProgressStore: store, iptvResumePositionMs } = await import("./iptvProgressStore.js");
 const { IptvSourcesStore } = await import("./iptvSourcesStore.js");
 
 test("save/get, <10s ignored, 90% completes", () => {
@@ -20,8 +20,24 @@ test("save/get, <10s ignored, 90% completes", () => {
   assert.equal(entry.title, "A");
   assert.ok(entry.updatedAt > 0);
   assert.equal(store.get("s1:movie:1", "2"), null);
-  store.save("s1:movie:1", { posMs: 90000, durMs: 100000 }, "1");
-  assert.equal(store.get("s1:movie:1", "1"), null);
+  store.save("s1:movie:1", { posMs: 90000, durMs: 100000, title: "A" }, "1");
+  const done = store.get("s1:movie:1", "1");
+  assert.equal(done.watched, true);
+  assert.equal(done.posMs, 90000);
+  store.save("s1:movie:1", { posMs: 30000, durMs: 100000 }, "1");
+  assert.equal(store.get("s1:movie:1", "1").watched, undefined);
+});
+
+test("watched survives persistence; iptvResumePositionMs rules", () => {
+  data.clear();
+  store.save("s1:ep:2", { posMs: 95000, durMs: 100000 }, "1");
+  assert.equal(store.get("s1:ep:2", "1").watched, true);
+  const e = { posMs: 50000, durMs: 100000 };
+  assert.equal(iptvResumePositionMs(e), 50000);
+  assert.equal(iptvResumePositionMs({ ...e, watched: true }), 0);
+  assert.equal(iptvResumePositionMs({ posMs: 11000, durMs: 1000000 }), 0); // <3%
+  assert.equal(iptvResumePositionMs({ posMs: 90000, durMs: 100000 }), 0); // >=90%
+  assert.equal(iptvResumePositionMs(null), 0);
 });
 
 test("bounded to 500, oldest dropped", () => {

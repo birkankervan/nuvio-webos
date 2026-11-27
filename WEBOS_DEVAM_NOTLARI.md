@@ -2282,3 +2282,17 @@ Samsung'a 1.3.11 kurulmadı.
 - Sahip: root. Dosyalar: `homeScreenHelpers-15-create-poster-card-markup.js` (`.home-poster-rating` ★ x.x, sağ üst; `homeImdbRatingsVisibility` HIDE_ALL ise yok), `css/components-11.css` (izlendi rozeti varsa rozet altına kayar), `catalogRepository.mapMeta` artık addon `imdbRating`'ini koruyor (önceden atılıyordu, kök neden).
 - Kontroller: repository+home testleri 122/122, lint, package:webos OK. LG'ye 1.4.4 kuruldu: Home 10/10 kartta rozet (top/right 12px, 67x28), `birkan` yok. Performans ölçümü yapılmadı; commit yok.
 - 2026-11-23 macOS (NuvioDesktop, Dev, commitsiz): `NuvioPosterCard` yeni `ratingText` parametresi (★ x.x, TopEnd; izlendi rozeti varsa TopStart). `HomePosterCard` `MetaPreview.imdbRating`'i geçiyor (parser zaten okuyordu). Release build + /Applications kurulum; Home'da Trending Movies/Series rozetleri ekran görüntüsüyle doğrulandı. macOS'ta home puan gizleme ayarı yok, eklenmedi.
+- 2026-11-24: fd60a236 (rozet) + 06acb3e8 (prettier) pushlandı (personal/merge/upstream-1.4.4). Bu build LG'ye kuruldu: Home 10/10 rozet, birkan yok. Açılışta upstream v1.4.6 güncelleme dialogu çıkıyor (bizim hata değil); 1.4.6 merge'ü henüz yapılmadı.
+
+## IPTV-PARITY — TV IPTV'yi macOS ile eşitleme (2026-11-26, başladı)
+
+- İstek: TV IPTV bölümü görünüm/kullanım olarak macOS IPTV ile tamamen aynı olsun. Araştırma Haiku, kod Sonnet, review root.
+- Durum: T1+T2 tamam, root review edildi. Detay ve açıklar: plans/2026-11-26-iptv-macos-parity.md Günlük.
+- Dosyalar: js/ui/screens/iptv/* (iptvPreview.js, iptvPanel.test.mjs yeni; iptvPosterCards.js silindi), css/iptv.css, xtreamApi.js, iptvRepository.js, iptvProgressStore.js + testleri, iptvVodBarrier.test.mjs.
+- Test: 81/81, lint/prettier/css OK, package:webos OK. LG 1.4.4 kuruldu; CDP ile canlı önizleme, EPG, tam ekran↔Back, dizi/film panelleri doğrulandı. Fiziksel kumanda ve performans ölçümü yok. Commit yok.
+- 2026-11-26 geri bildirim: önizleme yalnız OK ile, film/dizi bilgi listesi tam genişlik 22px. TV doğrulandı, commit yok.
+- 2026-11-26 ek: canlı panel+önizleme yalnız OK ile değişir (gezinme yayını kesmez), Back aktif kanalı sürdürür. Gerçek kumanda olay kaydıyla teşhis edildi, CDP ile doğrulandı. Commit yok.
+- 2026-11-26: player içi Kanallar paneli eklendi (playerScreenMethods-78); TV'de açma, kanal geçişi ve Back doğrulandı; geçiş sonrası yeniden açma doğrulanamadı (inspector koptu).
+- 2026-11-27: kanal paneli LG'de tam doğrulandı (açma, geçiş, geçiş sonrası yeniden açma, çalan kanalda OK=kapat, Back). TV IP'si 192.168.1.146 (ares cihazı güncellendi; IP değişebilir, `arp -a` ile lgwebostv.lan bak). Tam ekran yayında TV Wi-Fi aralıklı kopuyor, CDP asılırsa inspector'ı yeniden başlat.
+- Sonraki adım: kullanıcı onayı, sonra commit kararı.
+- 2026-11-27: rozet sağ üstten sol üste alındı (TV css/components-11.css left:10px, izlendi-kaydırma kuralı silindi; macOS ShelfComponents TopStart). TV'de 10/10 rozet top/left 12px, izlendi tiki sağda, çakışma yok. macOS build kuruldu, görsel kontrolü kullanıcıda. Not: TV build'i commitsiz IPTV-PARITY değişikliklerini de içeriyordu (TV'de zaten kuruluydu). Commit yok.

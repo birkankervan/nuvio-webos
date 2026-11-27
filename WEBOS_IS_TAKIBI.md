@@ -1529,3 +1529,5 @@ Samsung'a 1.3.11 kurulmadı.
 
 - 2026-11-23 HOME-RATING (root): poster sağ üst IMDb rozeti + mapMeta imdbRating. TV'de doğrulandı. Commitsiz.
 - 2026-11-23 HOME-RATING macOS: NuvioDesktop poster rozeti eklendi, kurulup doğrulandı. Commitsiz.
+- 2026-11-24: prettier commit'li build TV'de doğrulandı; upstream 1.4.6 çıktı, SYNC bekliyor.
+- 2026-11-26 IPTV-PARITY (root/Opus): TV IPTV ekranını macOS (NuvioDesktop) IPTV ile görünüm/UX olarak eşitle. Araştırma: 2 Haiku Explore (macOS spec, TV spec), kod: Sonnet, review: root. Dosya sınırı: js/ui/screens/iptv/*, css/iptv.css. Plan: plans/2026-11-26-iptv-macos-parity.md. Durum: TAMAM, TV'de CDP ile doğrulandı, commitsiz; kullanıcı onayı bekliyor.

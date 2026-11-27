@@ -56,6 +56,7 @@ export function createPlayerScreenMethods73() {
         this.closeEpisodeOptionsDialog?.();
         this.chaptersPanelVisible = false;
         this.closeChaptersPanel?.({ restoreFocus: false });
+        this.closeChannelsPanel?.({ restoreFocus: false });
         this.clearPostPlaySynopsisScrollAnimation();
         this.postPlayLongPressTriggered = false;
         this.cancelPostPlayPlayerSurfaceAnimation();

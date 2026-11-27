@@ -1678,7 +1678,8 @@
     <string name="iptv_form_show_password">Şifreyi göster</string>
     <string name="iptv_form_title">IPTV\'ye giriş yap</string>
     <string name="iptv_form_username">Kullanıcı adı</string>
-    <string name="iptv_hold_hint">Favori eklemek veya çıkarmak için OK\'a basılı tutun</string>
+    <string name="iptv_hold_hint">OK: önizle, tekrar OK: tam ekran · basılı tut: favori</string>
+    <string name="player_channels_title">Kanallar</string>
     <string name="iptv_loading">Kanallar yükleniyor...</string>
     <string name="iptv_no_favorites">Henüz favori yok. Eklemek için bir kanalda OK\'a basılı tutun.</string>
     <string name="iptv_no_results">Aramanızla eşleşen kanal yok.</string>

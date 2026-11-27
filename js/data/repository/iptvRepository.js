@@ -8,6 +8,8 @@ const MAX_CACHED_CATALOGS = 8;
 const MAX_CACHED_CATEGORIES = 32;
 const MAX_CACHED_FULL_LISTS = 2; // 7 MB-class lists: memory only, never persisted.
 const MAX_CACHED_INFO = 32;
+const MAX_CACHED_EPG = 200;
+const EPG_TTL_MS = 60_000;
 
 // Single-connection contract (IPTV-04 player integration): when
 // getMaxConnections(source) === 1, the previous native session and its fetch
@@ -44,6 +46,7 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
   const catalogs = new BoundedCache(MAX_CACHED_CATALOGS);
   const vod = new BoundedCache(MAX_CACHED_CATEGORIES + MAX_CACHED_INFO); // categories, per-category lists, info
   const fullLists = new BoundedCache(MAX_CACHED_FULL_LISTS);
+  const epg = new BoundedCache(MAX_CACHED_EPG);
   const inFlight = new Map();
   let generation = 0;
 
@@ -54,6 +57,7 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
     catalogs.clear();
     vod.clear();
     fullLists.clear();
+    epg.clear();
     inFlight.clear();
   }
 
@@ -252,6 +256,19 @@ export function createIptvRepository({ store = IptvSourcesStore, api = XtreamApi
         sourceId: source.id,
         streamId: String(channelId).slice(prefix.length)
       });
+    },
+    /** channelId carries the `${sourceId}:` prefix. Cached 60s per channel; errors propagate. */
+    async getShortEpg(sourceId, channelId, { signal, profileId } = {}) {
+      const source = requireSource(sourceId, profileId);
+      const prefix = `${sourceId}:`;
+      if (!String(channelId || "").startsWith(prefix)) throw new IptvError("not_found");
+      const key = `${keyOf(profileId, sourceId)}|epg|${channelId}`;
+      const hit = epg.get(key);
+      if (hit && Date.now() - hit.at < EPG_TTL_MS) return hit.items;
+      const token = generation;
+      const items = await api.shortEpg(source, String(channelId).slice(prefix.length), { signal });
+      if (token === generation) epg.set(key, { at: Date.now(), items });
+      return items;
     },
     getVodCategories: movies.categories,
     getVodStreams: movies.list,

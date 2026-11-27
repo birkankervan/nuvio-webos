@@ -142,6 +142,8 @@ export function normalizeVodInfo(raw) {
     cast: text(info.cast ?? info.actors),
     director: text(info.director),
     releaseDate: text(info.releasedate ?? info.release_date),
+    country: text(info.country),
+    age: text(info.age || info.mpaa_rating || info.mpaa),
     rating: numberOrNull(info.rating),
     durationSecs: Number(info.duration_secs) || 0,
     poster: posterUrl(info.movie_image ?? info.cover_big),
@@ -195,12 +197,43 @@ export function normalizeSeriesInfo(raw) {
       genre: text(info.genre),
       cast: text(info.cast),
       releaseDate: text(info.releaseDate ?? info.releasedate),
+      country: text(info.country),
+      age: text(info.age || info.mpaa_rating || info.mpaa),
+      runTime: Number(info.episode_run_time) || 0,
       rating: numberOrNull(info.rating),
       poster: posterUrl(info.cover),
       backdrop: httpUrlOrEmpty(firstOf(info.backdrop_path))
     },
     seasons
   };
+}
+
+// Xtream sends EPG title/description base64-encoded; plain text is kept as is.
+function decodeEpgText(value) {
+  const text = String(value ?? "").trim();
+  if (!text || text.length % 4 || !/^[A-Za-z0-9+/]+={0,2}$/.test(text)) return text;
+  try {
+    const binary = atob(text);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes).trim();
+  } catch {
+    return text;
+  }
+}
+
+export function normalizeShortEpg(raw, { limit = 2 } = {}) {
+  const list = Array.isArray(raw?.epg_listings) ? raw.epg_listings : [];
+  const toMs = (ts) => (Number(ts) > 0 ? Number(ts) * 1000 : 0);
+  return list
+    .map((item) => ({
+      title: decodeEpgText(item?.title),
+      description: decodeEpgText(item?.description),
+      startMs: toMs(item?.start_timestamp),
+      endMs: toMs(item?.stop_timestamp)
+    }))
+    .filter((item) => item.title)
+    .sort((a, b) => a.startMs - b.startMs)
+    .slice(0, limit);
 }
 
 export function normalizeAccount(raw, now = Date.now()) {
@@ -414,6 +447,18 @@ export const XtreamApi = {
   async getSeriesInfo(source, seriesId, options = {}) {
     return normalizeSeriesInfo(
       await requestJson(source, { action: "get_series_info", series_id: String(seriesId) }, options)
+    );
+  },
+
+  async shortEpg(source, streamId, options = {}) {
+    const limit = options.limit ?? 2;
+    return normalizeShortEpg(
+      await requestJson(
+        source,
+        { action: "get_short_epg", stream_id: String(streamId), limit: String(limit) },
+        options
+      ),
+      { limit }
     );
   },
 

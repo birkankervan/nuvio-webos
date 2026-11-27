@@ -62,6 +62,17 @@ export function createPlayerScreenMethods70() {
         return true;
       }
 
+      const channelsNode = target.closest?.("[data-channels-action], #playerChannelsPanel .iptv-row");
+      if (channelsNode && this.channelsPanelVisible) {
+        if (String(channelsNode.dataset.channelsAction || "") === "close") {
+          this.closeChannelsPanel();
+        } else {
+          this.channelsFocusIndex = Number(channelsNode.dataset.index);
+          this.activateChannelsFocus();
+        }
+        return true;
+      }
+
       const sourcesNode = target.closest?.("[data-sources-zone]");
       if (sourcesNode && this.sourcesPanelVisible) {
         await this.activateSourcesFocus();
@@ -196,6 +207,7 @@ export function createPlayerScreenMethods70() {
         this.partyPanelVisible ||
         this.sourcesPanelVisible ||
         this.chaptersPanelVisible ||
+        this.channelsPanelVisible ||
         this.subtitleTimingDialogVisible ||
         this.subtitleDelayOverlayVisible ||
         this.subtitleDialogVisible ||
@@ -208,6 +220,10 @@ export function createPlayerScreenMethods70() {
       );
     },
     consumeBackRequest() {
+      if (this.channelsPanelVisible) {
+        this.closeChannelsPanel();
+        return true;
+      }
       if (this.chaptersPanelVisible) {
         this.closeChaptersPanel();
         return true;

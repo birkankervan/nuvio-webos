@@ -18,3 +18,17 @@ export function neighborChannel(list, channelId, direction) {
   }
   return null;
 }
+
+// Player channel panel list: separator rows dropped, plus the playing channel's index (0 when absent).
+export function panelChannels(list, channelId) {
+  const items = (Array.isArray(list) ? list : []).filter(
+    (channel) => !isSeparatorName(channel.name)
+  );
+  return {
+    items,
+    index: Math.max(
+      0,
+      items.findIndex((channel) => channel.id === channelId)
+    )
+  };
+}

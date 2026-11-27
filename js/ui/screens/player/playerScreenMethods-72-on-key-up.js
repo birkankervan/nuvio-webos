@@ -22,7 +22,7 @@ export function createPlayerScreenMethods72() {
   return {
     onKeyUp(event) {
       const keyCode = Number(event?.keyCode || 0);
-      if (this.chaptersPanelVisible || this.episodeOptionsDialogVisible) {
+      if (this.chaptersPanelVisible || this.channelsPanelVisible || this.episodeOptionsDialogVisible) {
         return;
       }
       if (this.episodePanelVisible && this.episodePanelPendingSelect && isSelectKeyCode(keyCode)) {

@@ -28,6 +28,8 @@ export function createVirtualList({
   let mounted = new Map(); // logical index -> node
   let pool = [];
   let focusedNode = null;
+  let selectedIndex = -1;
+  let selectedNode = null;
 
   const geometry = () => ({ count: items.length, columns, rowStride: rowHeight, viewportHeight });
 
@@ -85,6 +87,11 @@ export function createVirtualList({
     if (focusedNode && focusedNode !== next) focusedNode.classList.remove("focused");
     if (next) next.classList.add("focused");
     focusedNode = next;
+    // "selected" persists while the focus is elsewhere (e.g. in the right panel).
+    const chosen = selectedIndex >= 0 ? mounted.get(selectedIndex) || null : null;
+    if (selectedNode && selectedNode !== chosen) selectedNode.classList.remove("is-selected");
+    if (chosen) chosen.classList.add("is-selected");
+    selectedNode = chosen;
   }
 
   return {
@@ -101,7 +108,15 @@ export function createVirtualList({
       mounted = new Map();
       focusedNode?.classList.remove("focused");
       focusedNode = null;
+      selectedNode?.classList.remove("is-selected");
+      selectedNode = null;
+      selectedIndex = -1;
       sync();
+    },
+    // Marks one row as selected (independent of focus); -1 clears it.
+    setSelected(index) {
+      selectedIndex = index >= 0 && index < items.length ? index : -1;
+      paintFocus();
     },
     // index -1 clears the focus mark but keeps the scroll position.
     setFocus(index) {
@@ -128,6 +143,7 @@ export function createVirtualList({
       pool = [];
       items = [];
       focusedNode = null;
+      selectedNode = null;
     }
   };
 }

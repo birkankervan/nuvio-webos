@@ -5,7 +5,8 @@ export const ZONE = Object.freeze({
   SIDEBAR: "sidebar",
   HEADER: "header",
   CATEGORIES: "categories",
-  GRID: "grid"
+  GRID: "grid",
+  PANEL: "panel"
 });
 
 export const TAB_LIVE = "live";
@@ -19,10 +20,27 @@ export function createFocus(overrides = {}) {
   return { zone: ZONE.GRID, header: 0, category: 0, channel: 0, ...overrides };
 }
 
-// ctx: { headerCount, categoryCount, channelCount, columns }
-// Returns { focus, handled, selectCategory }.
+// First non-skipped index at/after `index`, else the nearest one before it.
+// -1 when every row is skipped (e.g. a list of separators only).
+export function nearestSelectable(count, index, isSkipped) {
+  const start = clamp(Number.isFinite(index) ? Math.trunc(index) : 0, 0, Math.max(0, count - 1));
+  for (let i = start; i < count; i += 1) if (!isSkipped(i)) return i;
+  for (let i = start - 1; i >= 0; i -= 1) if (!isSkipped(i)) return i;
+  return -1;
+}
+
+// ctx: { headerCount, categoryCount, channelCount, columns, panelCount, isSkipped(index) }
+// isSkipped marks non-selectable rows (separators); panelCount > 0 lets Right
+// leave the item list for the right panel. Returns { focus, handled, selectCategory }.
 export function moveFocus(focus, direction, ctx) {
-  const { headerCount = 0, categoryCount = 0, channelCount = 0, columns = 1 } = ctx;
+  const {
+    headerCount = 0,
+    categoryCount = 0,
+    channelCount = 0,
+    columns = 1,
+    panelCount = 0,
+    isSkipped = null
+  } = ctx;
   const next = { ...focus };
   const move = (patch, extra = {}) => ({ focus: { ...next, ...patch }, handled: true, ...extra });
   const stay = () => ({ focus: next, handled: true });
@@ -62,23 +80,27 @@ export function moveFocus(focus, direction, ctx) {
         return categoryCount > 0 ? move({ zone: ZONE.CATEGORIES }) : move({ zone: ZONE.SIDEBAR });
       }
       if (direction === "right") {
-        return col < columns - 1 && index + 1 < channelCount
-          ? move({ channel: index + 1 })
-          : stay();
+        if (col < columns - 1 && index + 1 < channelCount) return move({ channel: index + 1 });
+        return panelCount > 0 ? move({ zone: ZONE.PANEL, channel: index }) : stay();
       }
       if (direction === "up") {
-        return index - columns >= 0
-          ? move({ channel: index - columns })
-          : move({ zone: ZONE.HEADER });
+        let target = index - columns;
+        while (target >= 0 && isSkipped?.(target)) target -= columns;
+        return target >= 0 ? move({ channel: target }) : move({ zone: ZONE.HEADER });
       }
       if (direction === "down") {
-        if (index + columns < channelCount) return move({ channel: index + columns });
+        let target = index + columns;
+        while (target < channelCount && isSkipped?.(target)) target += columns;
+        if (target < channelCount) return move({ channel: target });
         // Partial last row: land on its last item instead of getting stuck.
         const lastRow = Math.floor((channelCount - 1) / columns);
         if (Math.floor(index / columns) < lastRow) return move({ channel: channelCount - 1 });
       }
       return stay();
     }
+    case ZONE.PANEL:
+      if (direction === "left") return move({ zone: ZONE.GRID });
+      return stay();
     default:
       return { focus: next, handled: false };
   }

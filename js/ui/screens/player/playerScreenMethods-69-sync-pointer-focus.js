@@ -49,6 +49,12 @@ export function createPlayerScreenMethods69() {
         return;
       }
 
+      const channelsNode = target?.closest?.("#playerChannelsPanel .iptv-row");
+      if (channelsNode && this.channelsPanelVisible) {
+        this.setChannelsFocus(Number(channelsNode.dataset.index));
+        return;
+      }
+
       const sourcesNode = target?.closest?.("[data-sources-zone]");
       if (sourcesNode && this.sourcesPanelVisible) {
         this.sourcesFocus = {

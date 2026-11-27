@@ -194,7 +194,9 @@ export function createPlayerScreenMethods68() {
       }
 
       if (action === "source") {
-        if (this.sourcesPanelVisible) {
+        if (this.isIptvLivePlayback?.()) {
+          this.toggleChannelsPanel();
+        } else if (this.sourcesPanelVisible) {
           this.closeSourcesPanel();
         } else {
           this.openSourcesPanel();

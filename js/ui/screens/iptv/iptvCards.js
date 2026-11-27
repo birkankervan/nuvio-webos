@@ -1,3 +1,5 @@
+import { progressRatio } from "./iptvDetail.js";
+
 // DOM factories/binders for the recycled IPTV list nodes. Built once per node;
 // binding only updates text/classes/src, so scrolling never recreates markup.
 // All provider text goes through textContent (no HTML injection).
@@ -34,14 +36,17 @@ function resolveLogoUrl(url) {
     : url;
 }
 
-export function createChannelCardNode() {
-  const node = el("div", "iptv-card");
+// One row for live channels, movies and series (single-column list).
+// Separator rows reuse the node and show only the (uppercase) name.
+export function createItemRowNode() {
+  const node = el("div", "iptv-row");
   node.setAttribute("role", "button");
   node.dataset.iptvCard = "1";
-  const box = el("div", "iptv-card-box", node);
-  const logo = el("div", "iptv-card-logo", box);
-  const fallback = el("span", "iptv-card-initial", logo);
-  const img = el("img", "iptv-card-img", logo);
+  const box = el("div", "iptv-row-box", node);
+  const number = el("span", "iptv-row-number", box);
+  const logo = el("div", "iptv-row-logo", box);
+  const fallback = el("span", "iptv-row-initial", logo);
+  const img = el("img", "iptv-row-img", logo);
   img.alt = "";
   img.decoding = "async";
   const markNoLogo = () => {
@@ -61,13 +66,16 @@ export function createChannelCardNode() {
   img.onload = () => {
     if (img.naturalWidth < MIN_LOGO_SIZE_PX || img.naturalHeight < MIN_LOGO_SIZE_PX) markNoLogo();
   };
-  const text = el("div", "iptv-card-text", box);
-  const name = el("div", "iptv-card-name", text);
-  const number = el("div", "iptv-card-number", text);
-  const fav = el("span", "iptv-card-fav", box);
+  const text = el("div", "iptv-row-text", box);
+  const name = el("div", "iptv-row-name", text);
+  const bar = el("div", "iptv-row-bar", text);
+  const fill = el("div", "iptv-row-fill", bar);
+  const check = el("span", "iptv-row-check", box);
+  check.textContent = "✓";
+  const fav = el("span", "iptv-row-fav", box);
   fav.setAttribute("aria-hidden", "true");
   fav.textContent = "★";
-  node._parts = { fallback, img, name, number };
+  node._parts = { number, fallback, img, name, bar, fill };
   return node;
 }
 
@@ -81,34 +89,46 @@ export function isSeparatorName(name) {
   return SEPARATOR_RE.test(String(name ?? "").trim());
 }
 
-export function bindChannelCard(node, channel, _index, { isFavorite }) {
-  const { fallback, img, name, number } = node._parts;
-  name.textContent = channel.name;
-  number.textContent = channel.number == null ? "" : `#${channel.number}`;
-  fallback.textContent = initialOf(channel.name);
-  // Logo loads only for mounted (visible/near) cards; recycled nodes drop the old one.
-  if (img._logo !== channel.logo) {
-    img._logo = channel.logo;
+// options: { isFavorite(id), progressOf(item) -> {posMs,durMs,watched}|null }
+export function bindItemRow(node, item, _index, { isFavorite, progressOf }) {
+  const { number, fallback, img, name, bar, fill } = node._parts;
+  name.textContent = item.name;
+  number.textContent = item.number == null ? "" : String(item.number);
+  fallback.textContent = initialOf(item.name);
+  const logo = item.logo || item.poster || "";
+  // Logos load only for mounted (visible/near) rows; recycled nodes drop the old one.
+  if (img._logo !== logo) {
+    img._logo = logo;
     img._failed = false;
-    if (channel.logo) img.src = resolveLogoUrl(channel.logo);
+    if (logo) img.src = resolveLogoUrl(logo);
     else img.removeAttribute("src");
   }
-  node.classList.toggle("has-logo", Boolean(channel.logo) && !img._failed);
-  node.classList.toggle("is-favorite", isFavorite(channel.id));
-  node.classList.toggle("is-separator", isSeparatorName(channel.name));
-  node.dataset.channelId = channel.id;
+  node.classList.toggle("has-logo", Boolean(logo) && !img._failed);
+  node.classList.toggle("is-favorite", isFavorite(item.id));
+  node.classList.toggle("is-separator", isSeparatorName(item.name));
+  const progress = progressOf?.(item) || null;
+  const ratio = progress?.watched ? 0 : progressRatio(progress);
+  bar.hidden = !ratio;
+  fill.style.width = `${Math.round(ratio * 100)}%`;
+  node.classList.toggle("is-watched", Boolean(progress?.watched));
+  node.dataset.channelId = item.id;
 }
 
 export function createCategoryNode() {
   const node = el("div", "iptv-category");
   node.setAttribute("role", "button");
   node.dataset.iptvCategory = "1";
-  node._label = el("span", "iptv-category-label", el("div", "iptv-category-box", node));
+  const box = el("div", "iptv-category-box", node);
+  node._label = el("span", "iptv-category-label", box);
+  node._count = el("span", "iptv-category-count", box);
   return node;
 }
 
-export function bindCategory(node, entry, _index, { isSelected }) {
+// countOf(key) -> number | undefined (known only once the category was loaded).
+export function bindCategory(node, entry, _index, { isSelected, countOf }) {
   node._label.textContent = entry.name;
+  const count = countOf?.(entry.key);
+  node._count.textContent = count > 0 ? String(count) : "";
   node.classList.toggle("is-selected", isSelected(entry.key));
   node.dataset.viewKey = entry.key;
 }

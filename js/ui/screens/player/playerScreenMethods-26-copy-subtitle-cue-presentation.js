@@ -241,6 +241,7 @@ export function createPlayerScreenMethods26() {
         this.audioDialogVisible ||
         this.sourcesPanelVisible ||
         this.chaptersPanelVisible ||
+        this.channelsPanelVisible ||
         this.episodePanelVisible ||
         this.speedDialogVisible;
       modalBackdrop.classList.toggle("hidden", !hasModal);

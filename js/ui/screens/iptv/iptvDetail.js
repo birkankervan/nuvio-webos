@@ -134,3 +134,50 @@ export function plotSizeClass(text) {
   const n = String(text || "").length;
   return n > 1700 ? "plot-xs" : n > 1100 ? "plot-sm" : n > 700 ? "plot-md" : "plot-lg";
 }
+
+// ---- Right-panel helpers (macOS parity) -------------------------------------
+
+const pad2 = (n) => String(Math.max(0, Math.trunc(Number(n) || 0))).padStart(2, "0");
+
+// "<Series> · S01E02 · <Episode title>"; the title part is dropped when empty or
+// when it only repeats the series name.
+export function episodePlayerTitle(seriesName, seasonNumber, episodeNumber, episodeTitle) {
+  const series = String(seriesName || "").trim();
+  const title = String(episodeTitle || "").trim();
+  const parts = [series, `S${pad2(seasonNumber)}E${pad2(episodeNumber)}`];
+  if (title && title.toLowerCase() !== series.toLowerCase()) parts.push(title);
+  return parts.filter(Boolean).join(" · ");
+}
+
+// "45m" under an hour, "1:05" from an hour up; "" when unknown.
+export function formatEpisodeDuration(secs) {
+  const total = Math.round(Number(secs) / 60);
+  if (!(total > 0)) return "";
+  return total < 60 ? `${total}m` : `${Math.floor(total / 60)}:${pad2(total % 60)}`;
+}
+
+// Episode after (seasonIndex, episodeIndex), crossing into the next season.
+// null at the very end.
+export function pickNextEpisode(seasons, seasonIndex, episodeIndex) {
+  const season = seasons[seasonIndex];
+  if (!season) return null;
+  if (episodeIndex + 1 < season.episodes.length)
+    return { season: seasonIndex, episode: episodeIndex + 1 };
+  for (let s = seasonIndex + 1; s < seasons.length; s += 1)
+    if (seasons[s].episodes.length) return { season: s, episode: 0 };
+  return null;
+}
+
+// Back from a finished episode the selection moves on (no autoplay).
+// isWatched(episode) -> boolean.
+export function advancePastWatched(seasons, at, isWatched) {
+  const episode = seasons[at.season]?.episodes[at.episode];
+  if (!episode || !isWatched(episode)) return at;
+  return pickNextEpisode(seasons, at.season, at.episode) || at;
+}
+
+// HH:mm (24h, local time) for EPG ranges.
+export function formatClockTime(ms) {
+  const date = new Date(ms);
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}

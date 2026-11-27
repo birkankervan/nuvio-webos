@@ -18,11 +18,9 @@ export function createPlayerScreenMethods71() {
         const { sourceId, channelId } = this.params?.playIptv || {};
         if (!steps || !channelId) return;
         try {
-          const [{ IptvRepository }, { neighborChannel }, { IptvSourcesStore }, { RouteStateStore }] = await Promise.all([
+          const [{ IptvRepository }, { neighborChannel }] = await Promise.all([
             import("../../../data/repository/iptvRepository.js"),
-            import("../iptv/iptvZap.js"),
-            import("../../../data/local/iptvSourcesStore.js"),
-            import("../../navigation/routeStateStore.js")
+            import("../iptv/iptvZap.js")
           ]);
           const categoryId = this.params.iptvCategoryId ?? null;
           const list = await IptvRepository.getChannels(sourceId, categoryId).catch(() => null);
@@ -32,25 +30,34 @@ export function createPlayerScreenMethods71() {
             id = next?.id || id;
           }
           if (!next || next.id === channelId || !this.playerRouteActive) return;
-          IptvSourcesStore.setLastChannel(next.id);
-          const iptvState = RouteStateStore.get("route:iptv");
-          if (iptvState) RouteStateStore.set("route:iptv", { ...iptvState, channelId: next.id });
-          Router.navigate(
-            "player",
-            {
-              ...this.params,
-              streamUrl: undefined,
-              itemId: next.id,
-              playIptv: { sourceId, channelId: next.id },
-              title: next.name,
-              playerTitle: next.name
-            },
-            { replaceHistory: true }
-          );
+          await this.switchIptvChannel(next);
         } catch (_) {
           // Zap is best effort; the current channel keeps playing.
         }
       }, 400);
+    },
+    // Re-mounts the player on another channel of the same source (zap and channels panel).
+    async switchIptvChannel(next) {
+      const [{ IptvSourcesStore }, { RouteStateStore }] = await Promise.all([
+        import("../../../data/local/iptvSourcesStore.js"),
+        import("../../navigation/routeStateStore.js")
+      ]);
+      const { sourceId } = this.params?.playIptv || {};
+      IptvSourcesStore.setLastChannel(next.id);
+      const iptvState = RouteStateStore.get("route:iptv");
+      if (iptvState) RouteStateStore.set("route:iptv", { ...iptvState, channelId: next.id });
+      Router.navigate(
+        "player",
+        {
+          ...this.params,
+          streamUrl: undefined,
+          itemId: next.id,
+          playIptv: { sourceId, channelId: next.id },
+          title: next.name,
+          playerTitle: next.name
+        },
+        { replaceHistory: true }
+      );
     },
     async onKeyDown(event) {
       if (this.episodeOptionsDialogVisible) {
@@ -80,6 +87,16 @@ export function createPlayerScreenMethods71() {
         event?.stopImmediatePropagation?.();
         this.showStreamInfo();
         return;
+      }
+      if (this.channelsPanelVisible) {
+        if (this.handleChannelsPanelKey(event)) {
+          return;
+        }
+        if (!isBackKey) {
+          event?.preventDefault?.();
+          event?.stopPropagation?.();
+          return;
+        }
       }
       if (this.chaptersPanelVisible) {
         if (this.handleChaptersPanelKey(event)) {
@@ -253,7 +270,9 @@ export function createPlayerScreenMethods71() {
       }
 
       if (keyCode === 67) {
-        if (this.sourcesPanelVisible) {
+        if (this.isIptvLivePlayback?.()) {
+          this.toggleChannelsPanel();
+        } else if (this.sourcesPanelVisible) {
           this.closeSourcesPanel();
         } else {
           this.openSourcesPanel();

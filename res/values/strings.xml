@@ -2065,7 +2065,8 @@
     <string name="iptv_form_show_password">Show password</string>
     <string name="iptv_form_title">Sign in to IPTV</string>
     <string name="iptv_form_username">Username</string>
-    <string name="iptv_hold_hint">Hold OK to add or remove a favorite</string>
+    <string name="iptv_hold_hint">OK: preview, OK again: fullscreen · hold: favorite</string>
+    <string name="player_channels_title">Channels</string>
     <string name="iptv_loading">Loading channels...</string>
     <string name="iptv_no_favorites">No favorites yet. Hold OK on a channel to add one.</string>
     <string name="iptv_no_results">No channels match your search.</string>

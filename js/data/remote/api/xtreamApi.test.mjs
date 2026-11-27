@@ -13,6 +13,7 @@ const {
   normalizeSeries,
   normalizeSeriesInfo,
   normalizeVodInfo,
+  normalizeShortEpg,
   resolveVodUrl
 } = api;
 const fast = { retryDelaysMs: [1, 1] };
@@ -318,7 +319,10 @@ test("normalizeSeriesInfo groups, sorts, drops empty seasons", () => {
       plot: "P",
       cover: "https://image.tmdb.org/t/p/w600_and_h900_bestv2/c.jpg",
       backdrop_path: ["https://b/1.jpg"],
-      releaseDate: "2020"
+      releaseDate: "2020",
+      country: "US",
+      mpaa: "TV-14",
+      episode_run_time: "45"
     },
     seasons: [
       { season_number: 2, name: "Second" },
@@ -349,6 +353,7 @@ test("normalizeSeriesInfo groups, sorts, drops empty seasons", () => {
   });
   assert.equal(out.info.poster, "https://image.tmdb.org/t/p/w342/c.jpg");
   assert.equal(out.info.backdrop, "https://b/1.jpg");
+  assert.deepEqual([out.info.country, out.info.age, out.info.runTime], ["US", "TV-14", 45]);
   assert.deepEqual(
     out.seasons.map((s) => [s.number, s.name, s.episodes.map((e) => e.id)]),
     [
@@ -379,6 +384,9 @@ test("normalizeVodInfo", () => {
       cast: "c",
       director: "d",
       releasedate: "2001",
+      country: "TR",
+      age: "18",
+      mpaa_rating: "R",
       rating: "6",
       duration_secs: 90,
       movie_image: "http://p/i.jpg",
@@ -393,6 +401,8 @@ test("normalizeVodInfo", () => {
     cast: "c",
     director: "d",
     releaseDate: "2001",
+    country: "TR",
+    age: "18",
     rating: 6,
     durationSecs: 90,
     poster: "http://p/i.jpg",
@@ -476,4 +486,30 @@ test("resolveVodUrl builders", () => {
   assert.match(resolveVodUrl(source, "movie", "42"), /\/42\.mp4$/);
   assert.throws(() => resolveVodUrl(source, "live", "1", "mp4"), { code: "bad_response" });
   assert.throws(() => resolveVodUrl(source, "movie", "a/b", "mp4"), { code: "bad_response" });
+});
+
+test("short epg: base64 + plain text, sorted, limited, untitled skipped", async () => {
+  const b64 = (t) => Buffer.from(t, "utf8").toString("base64");
+  const raw = {
+    epg_listings: [
+      {
+        title: b64("İkinci"),
+        description: b64("Açıklama ğüş"),
+        start_timestamp: "200",
+        stop_timestamp: "300"
+      },
+      { title: "Plain Title", description: "abc", start_timestamp: "100", stop_timestamp: "200" },
+      { title: "", start_timestamp: "50", stop_timestamp: "100" },
+      { title: b64("Third"), start_timestamp: "300", stop_timestamp: "400" }
+    ]
+  };
+  const out = normalizeShortEpg(raw, { limit: 2 });
+  assert.deepEqual(out, [
+    { title: "Plain Title", description: "abc", startMs: 100000, endMs: 200000 },
+    { title: "İkinci", description: "Açıklama ğüş", startMs: 200000, endMs: 300000 }
+  ]);
+  assert.deepEqual(normalizeShortEpg(null), []);
+  stub(() => json(raw));
+  assert.equal((await XtreamApi.shortEpg(source, 12, { limit: 3 })).length, 3);
+  assert.match(calls[0].url, /action=get_short_epg&stream_id=12&limit=3/);
 });

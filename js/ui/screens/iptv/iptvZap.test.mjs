@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { neighborChannel, zapDirection } from "./iptvZap.js";
+import { neighborChannel, panelChannels, zapDirection } from "./iptvZap.js";
 
 const list = [
   { id: "a", name: "One" },
@@ -25,4 +25,15 @@ test("unknown id, empty or single list", () => {
 
 test("key codes", () => {
   assert.deepEqual([33, 427, 34, 428, 13].map(zapDirection), [1, 1, -1, -1, 0]);
+});
+
+test("panelChannels drops separators and finds the playing index", () => {
+  const { items, index } = panelChannels(list, "c");
+  assert.deepEqual(
+    items.map((c) => c.id),
+    ["a", "c", "d"]
+  );
+  assert.equal(index, 1);
+  assert.equal(panelChannels(list, "zzz").index, 0);
+  assert.deepEqual(panelChannels(null, "a"), { items: [], index: 0 });
 });

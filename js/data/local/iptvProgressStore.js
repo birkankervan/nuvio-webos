@@ -8,6 +8,15 @@ const MIN_POS_MS = 10000;
 const COMPLETED_RATIO = 0.9;
 const SILENT = { silentSync: true };
 
+const MIN_RESUME_RATIO = 0.03;
+
+/** Resume position for an entry: 0 when missing, watched, or outside 3%..90%. */
+export function iptvResumePositionMs(entry) {
+  if (!entry || entry.watched || !(entry.durMs > 0)) return 0;
+  const ratio = entry.posMs / entry.durMs;
+  return ratio >= MIN_RESUME_RATIO && ratio < COMPLETED_RATIO ? entry.posMs : 0;
+}
+
 export function iptvProgressKey({ sourceId, kind, streamId } = {}) {
   return `${sourceId}:${kind === "episode" ? "ep" : "movie"}:${streamId}`;
 }
@@ -22,7 +31,8 @@ function normalizeState(value) {
         posMs,
         durMs,
         updatedAt: Number(entry.updatedAt) || 0,
-        title: String(entry.title || "")
+        title: String(entry.title || ""),
+        ...(entry.watched === true ? { watched: true } : {})
       };
     }
   });
@@ -60,16 +70,13 @@ export const IptvProgressStore = {
       return;
     }
     write(profileId, (entries) => {
-      if (pos / dur >= COMPLETED_RATIO) {
-        delete entries[key];
-      } else {
-        entries[key] = {
-          posMs: Math.trunc(pos),
-          durMs: Math.trunc(dur),
-          updatedAt: Date.now(),
-          title: String(title || "")
-        };
-      }
+      entries[key] = {
+        posMs: Math.trunc(pos),
+        durMs: Math.trunc(dur),
+        updatedAt: Date.now(),
+        title: String(title || ""),
+        ...(pos / dur >= COMPLETED_RATIO ? { watched: true } : {})
+      };
     });
   },
 

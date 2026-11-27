@@ -46,6 +46,10 @@ function setup(overrides = {}) {
       log.info = (log.info || 0) + 1;
       return { name: `m${id}` };
     },
+    shortEpg: async (_s, streamId) => {
+      log.epg = (log.epg || []).concat(streamId);
+      return [{ title: "T", description: "", startMs: 1, endMs: 2 }];
+    },
     getSeriesCategories: async () => [],
     getSeries: async () => [{ id: "2" }],
     getSeriesInfo: async () => ({ info: {}, seasons: [] }),
@@ -339,4 +343,17 @@ test("live: orphan adult separator rows are hidden, similar titles stay", async 
     (await repo.getChannels(source.id, null, { profileId: "1" })).map((i) => i.id),
     ["a"]
   );
+});
+
+test("getShortEpg strips the source prefix, caches, rejects foreign ids", async () => {
+  const { repo, log } = setup();
+  const source = await repo.addSource(credentials, { profileId: "1" });
+  const o = { profileId: "1" };
+  assert.equal((await repo.getShortEpg(source.id, `${source.id}:42`, o))[0].title, "T");
+  await repo.getShortEpg(source.id, `${source.id}:42`, o);
+  assert.deepEqual(log.epg, ["42"]);
+  await assert.rejects(repo.getShortEpg(source.id, "other:42", o), { code: "not_found" });
+  repo.invalidate();
+  await repo.getShortEpg(source.id, `${source.id}:42`, o);
+  assert.deepEqual(log.epg, ["42", "42"]);
 });

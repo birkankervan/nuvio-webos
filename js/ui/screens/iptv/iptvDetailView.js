@@ -1,275 +1,538 @@
 import { Router } from "../../navigation/routerState.js";
 import { IptvRepository } from "../../../data/repository/iptvRepository.js";
-import { IptvProgressStore, iptvProgressKey } from "../../../data/local/iptvProgressStore.js";
+import {
+  IptvProgressStore,
+  iptvProgressKey,
+  iptvResumePositionMs
+} from "../../../data/local/iptvProgressStore.js";
+import { allowDpadRepeat } from "../../navigation/dpadRepeatThrottle.js";
 import { createVirtualList } from "./iptvVirtualList.js";
-import { createPosterCardNode, bindPosterCard } from "./iptvPosterCards.js";
 import {
   DZONE,
-  captureDetailState,
+  advancePastWatched,
+  episodePlayerTitle,
   formatClock,
+  formatClockTime,
+  formatEpisodeDuration,
   formatReleaseDate,
-  movieActions,
   moveDetailFocus,
-  plotSizeClass,
   pickDefaultEpisode,
   progressRatio,
   releaseYear,
-  resolveDetailFocus,
-  seasonLabel
+  resolveDetailFocus
 } from "./iptvDetail.js";
+import { isSeparatorName } from "./iptvCards.js";
+import { TAB_LIVE, TAB_MOVIES, TAB_SERIES, ZONE } from "./iptvNavigation.js";
+import { createIptvPreview } from "./iptvPreview.js";
+import { zapDirection } from "./iptvZap.js";
+import { loadStreamingLibs } from "../../../runtime/loadStreamingLibs.js";
 import { escapeHtml, t } from "./iptvText.js";
-import { I18n } from "../../../i18n/index.js";
 
-const EPISODE_ROW_HEIGHT = 168;
-const MIN_THUMB_PX = 8;
+const PANEL_DEBOUNCE_MS = 300; // detail/EPG fetch after the selection settles
+const EPISODE_ROW_HEIGHT = 84;
+const MIN_IMAGE_PX = 8; // providers send 1x1 placeholders
 const OK = 13;
-const KEYS = { 37: "left", 38: "up", 39: "right", 40: "down" };
 
-const minutes = (secs) =>
-  secs > 0 ? t("iptv_min_short", `${Math.round(secs / 60)} dk`, { n: Math.round(secs / 60) }) : "";
-const seasonName = (season) => seasonLabel(season, (n) => t("iptv_season_n", `Sezon ${n}`, { n }));
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const ratingText = (rating) => (rating > 0 ? `★ ${Number(rating).toFixed(1)}` : "");
+const pick = (item, info, key) => info?.[key] || item?.[key] || "";
+
+const durationText = (secs) => {
+  const min = Math.round(Number(secs) / 60);
+  if (!(min > 0)) return "";
+  return min < 60 ? `${min}dk` : `${Math.floor(min / 60)}s ${min % 60}dk`;
+};
+
+// "2024 · ★ 7.8 · 1s 52dk · Dram, Gerilim"; parts without data drop out.
+function factsLine(item, info, duration) {
+  return [
+    releaseYear(info?.releaseDate),
+    ratingText(info?.rating > 0 ? info.rating : item.rating),
+    duration,
+    info?.genre
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+// label: value rows (secondary colour); a row only exists when its value does.
+function fillFacts(host, rows) {
+  host.replaceChildren(
+    ...rows
+      .filter(([, value]) => value)
+      .map(([label, value, cls]) => {
+        const row = document.createElement("div");
+        if (cls) row.className = cls;
+        const dt = document.createElement("dt");
+        const dd = document.createElement("dd");
+        dt.textContent = label;
+        dd.textContent = value;
+        row.append(dt, dd);
+        return row;
+      })
+  );
+}
+
+const factLabels = () => ({
+  director: t("iptv_fact_director", "Yönetmen"),
+  cast: t("iptv_fact_cast", "Oyuncular"),
+  country: t("iptv_fact_country", "Ülke"),
+  age: t("iptv_fact_age", "Yaş sınırı"),
+  released: t("iptv_fact_released", "Çıkış tarihi")
+});
+
+// Shows an image only when it loads as a real picture (not a 1x1 placeholder).
+function loadInto(holder, img, url) {
+  holder.classList.remove("has-img");
+  img.onload = () => {
+    if (img.naturalWidth >= MIN_IMAGE_PX) holder.classList.add("has-img");
+  };
+  img.onerror = () => holder.classList.remove("has-img");
+  if (url) img.src = url;
+  else img.removeAttribute("src");
+}
 
 function createEpisodeNode() {
   const node = document.createElement("div");
   node.className = "iptv-ep";
+  node.setAttribute("role", "button");
   node.innerHTML =
-    '<div class="iptv-ep-box"><div class="iptv-ep-thumb"><span class="iptv-ep-initial"></span><img class="iptv-ep-img" alt="" decoding="async"></div>' +
-    '<div class="iptv-ep-text"><div class="iptv-ep-title"></div><div class="iptv-ep-meta"></div><div class="iptv-ep-plot"></div></div>' +
-    '<div class="iptv-ep-bar"><div class="iptv-ep-fill"></div></div></div>';
-  const img = node.querySelector("img");
-  img.onload = () => {
-    if (img.getAttribute("src") === img._src && img.naturalWidth >= MIN_THUMB_PX)
-      node.classList.add("has-thumb");
-  };
-  img.onerror = () => node.classList.remove("has-thumb");
+    '<div class="iptv-ep-box"><span class="iptv-ep-number"></span>' +
+    '<div class="iptv-ep-thumb"><img class="iptv-ep-img" alt="" decoding="async"></div>' +
+    '<div class="iptv-ep-text"><div class="iptv-ep-title"></div>' +
+    '<div class="iptv-ep-bar"><div class="iptv-ep-fill"></div></div></div>' +
+    '<span class="iptv-ep-check">✓</span><span class="iptv-ep-dur"></span></div>';
   node._parts = {
-    initial: node.querySelector(".iptv-ep-initial"),
-    img,
+    number: node.querySelector(".iptv-ep-number"),
+    thumb: node.querySelector(".iptv-ep-thumb"),
+    img: node.querySelector("img"),
     title: node.querySelector(".iptv-ep-title"),
-    meta: node.querySelector(".iptv-ep-meta"),
-    plot: node.querySelector(".iptv-ep-plot"),
     bar: node.querySelector(".iptv-ep-bar"),
-    fill: node.querySelector(".iptv-ep-fill")
+    fill: node.querySelector(".iptv-ep-fill"),
+    dur: node.querySelector(".iptv-ep-dur")
   };
   return node;
 }
 
 function bindEpisode(node, episode, progress) {
-  const { initial, img, title, meta, plot, bar, fill } = node._parts;
-  initial.textContent = episode.number;
-  title.textContent = `${t("iptv_episode_short", `B${episode.number}`, { n: episode.number })} · ${episode.title}`;
-  meta.textContent = minutes(episode.durationSecs);
-  plot.textContent = episode.plot || "";
-  const ratio = progressRatio(progress);
+  const { number, thumb, img, title, bar, fill, dur } = node._parts;
+  number.textContent = episode.number || "";
+  title.textContent = episode.title;
+  dur.textContent = formatEpisodeDuration(episode.durationSecs);
+  const ratio = progress?.watched ? 0 : progressRatio(progress);
   bar.hidden = !ratio;
   fill.style.width = `${Math.round(ratio * 100)}%`;
+  node.classList.toggle("is-watched", Boolean(progress?.watched));
   if (img._src !== episode.image) {
     img._src = episode.image;
-    node.classList.remove("has-thumb");
-    img.removeAttribute("src");
-    if (episode.image) img.src = episode.image;
+    loadInto(thumb, img, episode.image);
   }
 }
 
-// Movie / series detail inside the IPTV screen. State lives in `this.detail`
-// (logical focus only); the DOM overlay mirrors it. Mixed into IptvScreen.
+// Right-hand panel of the IPTV screen: live preview + EPG, movie details or
+// series seasons/episodes for the selected item. Selection = focus in the item
+// list; panel content follows it with a debounce and an AbortController, so
+// stale results are dropped. Mixed into IptvScreen; `this` is the screen.
 export const iptvDetailMethods = {
-  progressOf(kind, id) {
-    const detail = this.detail;
-    if (!detail.progress.has(id)) {
-      detail.progress.set(
-        id,
-        IptvProgressStore.get(iptvProgressKey({ sourceId: this.source.id, kind, streamId: id }))
-      );
-    }
-    return detail.progress.get(id);
+  // ---- Selection -> panel ------------------------------------------------------
+  selectedItem() {
+    const item = this.channels?.[this.focus.channel];
+    return item && !isSeparatorName(item.name) ? item : null;
   },
 
-  // saved: captureDetailState() result when returning from the player.
-  async openDetail(kind, item, saved = null) {
-    if (!item) return;
-    this.closeDetail();
-    const series = kind === "series";
-    const controller = new AbortController();
-    const detail = (this.detail = {
-      kind,
-      item,
-      info: null,
-      seasons: [],
-      progress: new Map(),
-      controller,
-      focus: { zone: series ? DZONE.EPISODES : DZONE.BUTTONS, button: 0, season: 0, episode: 0 }
-    });
-    const node = (detail.node = document.createElement("div"));
-    node.className = "iptv-detail";
-    this.container.querySelector(".iptv-main")?.appendChild(node);
-    this.renderDetail();
+  syncPanelSelection() {
+    if (this.mode !== "channels" || !this.panelNode) return;
+    const live = this.tab === TAB_LIVE;
+    // Live: the panel shows the channel opened with OK, never the focused row.
+    let autoplay = false;
+    if (live && this.restoreActiveId && this.channels.length) {
+      const restored = this.channels.find((c) => c.id === this.restoreActiveId);
+      this.restoreActiveId = "";
+      if (restored) this.activeLive = autoplay = restored;
+    }
+    const item = live ? this.activeLive : this.selectedItem();
+    this.chanList?.setSelected(
+      !item ? -1 : live ? this.channels.findIndex((c) => c.id === item.id) : this.focus.channel
+    );
+    const id = item?.id || "";
+    if (id === this.panelItemId && this.tab === this.panelTab) return;
+    this.panelItemId = id;
+    this.panelTab = this.tab;
+    this.loadPanel(item);
+    if (autoplay) void this.startPreview(item);
+  },
+
+  progressOf(kind, id) {
+    const key = iptvProgressKey({ sourceId: this.source.id, kind, streamId: id });
+    this.progressCache ||= new Map();
+    if (!this.progressCache.has(key)) this.progressCache.set(key, IptvProgressStore.get(key));
+    return this.progressCache.get(key);
+  },
+
+  categoryNameOf(item) {
+    const entries = this.entries || [];
+    const own = item.categoryId != null && entries.find((e) => e.categoryId === item.categoryId);
+    if (own) return own.name;
+    const current = entries.find((entry) => entry.key === this.viewKey);
+    return current?.categoryId != null ? current.name : "";
+  },
+
+  // Number of focusable panel targets (0: Right does not enter the panel).
+  panelFocusable() {
+    const panel = this.panel;
+    if (!panel || !(this.tab === TAB_LIVE ? this.activeLive : this.selectedItem())) return 0;
+    if (panel.kind === TAB_SERIES) return panel.seasons?.length ? 1 : 0;
+    return 1;
+  },
+
+  cancelPanelWork() {
+    clearTimeout(this.panelTimer);
+    this.panelTimer = null;
+    this.panel?.controller?.abort();
+    if (this.panel) this.panel.controller = null;
+  },
+
+  // Stops everything the panel started; also used by tab switches and cleanup.
+  teardownPanel() {
+    this.cancelPanelWork();
+    this.stopPreview();
+    this.panel?.preview?.destroy();
+    this.panel?.epList?.destroy();
+    this.panel = null;
+    this.panelItemId = null;
+    this.panelTab = null;
+    this.panelNode?.replaceChildren();
+  },
+
+  ensurePanelShell(kind) {
+    if (this.panel?.kind === kind) return;
+    const selectedId = this.panelItemId;
+    this.teardownPanel();
+    this.panelItemId = selectedId;
+    this.panelTab = this.tab;
+    const node = this.panelNode;
+    node.className = `iptv-panel is-${kind}`;
+    const panel = (this.panel = { kind, item: null, controller: null });
+    if (kind === TAB_LIVE) {
+      node.innerHTML = `
+        <div class="iptv-panel-body iptv-live">
+          <div class="iptv-live-video"></div>
+          <div class="iptv-live-info">
+            <div class="iptv-live-logo"><span class="iptv-live-initial"></span><img alt="" decoding="async"></div>
+            <div class="iptv-live-meta"><div class="iptv-live-name"></div><div class="iptv-live-cat"></div></div>
+            <button type="button" class="iptv-btn iptv-btn-primary iptv-btn-panel" data-panel-action="fullscreen">${escapeHtml(t("iptv_fullscreen", "Tam ekran"))}</button>
+          </div>
+          <div class="iptv-epg"></div>
+        </div>
+        <div class="iptv-panel-empty"></div>`;
+      panel.preview = createIptvPreview(node.querySelector(".iptv-live-video"));
+    } else {
+      node.innerHTML = '<div class="iptv-panel-body"></div><div class="iptv-panel-empty"></div>';
+    }
+    panel.body = node.querySelector(".iptv-panel-body");
+    panel.empty = node.querySelector(".iptv-panel-empty");
+  },
+
+  setPanelEmpty(text) {
+    const { panel } = this;
+    this.panelNode.classList.toggle("is-empty", Boolean(text));
+    panel.empty.textContent = text || "";
+  },
+
+  loadPanel(item) {
+    this.cancelPanelWork();
+    this.ensurePanelShell(this.tab);
+    this.panel.item = item;
+    this.panelFocus = { zone: DZONE.BUTTONS, button: 0, season: 0, episode: 0 };
+    if (this.tab === TAB_LIVE) this.loadLivePanel(item);
+    else if (this.tab === TAB_MOVIES) this.loadMoviePanel(item);
+    else this.loadSeriesPanel(item);
+  },
+
+  // ---- Live ----------------------------------------------------------------------
+  loadLivePanel(item) {
+    const { panel } = this;
+    panel.body.querySelector(".iptv-epg").replaceChildren();
+    this.setPanelEmpty(item ? "" : t("iptv_select_channel", "Select a channel"));
+    if (!item) {
+      this.stopPreview();
+      return;
+    }
+    const logo = panel.body.querySelector(".iptv-live-logo");
+    panel.body.querySelector(".iptv-live-name").textContent = item.name;
+    panel.body.querySelector(".iptv-live-cat").textContent = this.categoryNameOf(item);
+    panel.body.querySelector(".iptv-live-initial").textContent =
+      String(item.name || "")
+        .match(/[\p{L}\p{N}]/u)?.[0]
+        ?.toUpperCase() || "#";
+    loadInto(logo, logo.querySelector("img"), item.logo);
+    this.panelTimer = setTimeout(() => this.loadEpg(item), PANEL_DEBOUNCE_MS);
+  },
+
+  async loadEpg(item) {
+    this.panelTimer = null;
+    if (typeof IptvRepository.getShortEpg !== "function") return;
+    const controller = (this.panel.controller = new AbortController());
     try {
-      if (series) {
-        const data = await IptvRepository.getSeriesInfo(this.source.id, item.id, {
+      const list = await IptvRepository.getShortEpg(item.sourceId, item.id, {
+        signal: controller.signal
+      });
+      if (controller.signal.aborted || this.panelItemId !== item.id) return;
+      this.renderEpg(list);
+    } catch (_) {
+      // EPG is a nicety: a failure leaves the block empty.
+    }
+  },
+
+  renderEpg(list) {
+    const host = this.panel?.body.querySelector(".iptv-epg");
+    if (!host) return;
+    const now = Date.now();
+    const rows = (Array.isArray(list) ? list : []).filter((e) => e.endMs > now).slice(0, 2);
+    host.replaceChildren(
+      ...rows.map((entry) => {
+        const row = document.createElement("div");
+        row.className = "iptv-epg-row";
+        const label = entry.startMs <= now ? t("iptv_epg_now", "Now") : t("iptv_epg_next", "Next");
+        const head = document.createElement("div");
+        head.className = "iptv-epg-head";
+        head.textContent = `${label}  ${formatClockTime(entry.startMs)} - ${formatClockTime(entry.endMs)}`;
+        const title = document.createElement("div");
+        title.className = "iptv-epg-title";
+        title.textContent = entry.title;
+        const desc = document.createElement("div");
+        desc.className = "iptv-epg-desc";
+        desc.textContent = entry.description || "";
+        row.append(head, title, desc);
+        return row;
+      })
+    );
+  },
+
+  // OK on a live row: a new channel becomes the panel's active one and previews
+  // (the old stream plays until the new one opens); the active row goes fullscreen.
+  activateLive(item) {
+    if (!item) return;
+    if (this.activeLive?.id === item.id) return this.playChannel(item);
+    this.activeLive = item;
+    this.syncPanelSelection();
+    void this.startPreview(item);
+  },
+
+  async startPreview(item) {
+    const preview = this.panel?.preview;
+    if (!preview) return;
+    const run = (this.previewRun = (this.previewRun || 0) + 1);
+    this.previewItemId = item.id;
+    try {
+      // The URL carries credentials: it lives in this scope only.
+      const url = await IptvRepository.resolveChannelPlaybackUrl(item.sourceId, item.id);
+      // hls.js is lazy-loaded by the player; the preview needs it too.
+      await loadStreamingLibs({ hls: true, dash: false });
+      if (run !== this.previewRun || this.panelItemId !== item.id) return;
+      preview.play(url);
+    } catch (_) {
+      if (run === this.previewRun) this.stopPreview();
+    }
+  },
+
+  // Releases the provider connection synchronously (before the player opens).
+  stopPreview() {
+    this.previewRun = (this.previewRun || 0) + 1;
+    this.panel?.preview?.stop();
+    this.previewItemId = null;
+  },
+
+  // ---- Movie ---------------------------------------------------------------------
+  loadMoviePanel(item) {
+    this.panel.info = null;
+    this.setPanelEmpty(item ? "" : t("iptv_select_movie", "Select a movie"));
+    this.renderMovie();
+    if (!item) return;
+    this.panelTimer = setTimeout(async () => {
+      this.panelTimer = null;
+      const controller = (this.panel.controller = new AbortController());
+      try {
+        const info = await IptvRepository.getVodInfo(this.source.id, item.id, {
           signal: controller.signal
         });
-        if (this.detail !== detail) return;
-        detail.info = data.info;
-        detail.seasons = (data.seasons || []).filter((season) => season.episodes?.length);
-        if (!detail.seasons.length) throw Object.assign(new Error("empty"), { code: "not_found" });
-        const at = saved
-          ? resolveDetailFocus(detail.seasons, saved)
-          : pickDefaultEpisode(detail.seasons, (episode) => this.progressOf("episode", episode.id));
-        detail.focus = { ...detail.focus, ...at };
-      } else {
-        // A failed info call still leaves Play usable with the list data.
-        detail.info = await IptvRepository.getVodInfo(this.source.id, item.id, {
-          signal: controller.signal
-        }).catch(() => null);
-        if (this.detail !== detail) return;
+        if (controller.signal.aborted || this.panelItemId !== item.id) return;
+        this.panel.info = info;
+        this.renderMovie();
+      } catch (_) {
+        // Details are optional: Play keeps working from the list data.
       }
-    } catch (error) {
-      if (this.detail !== detail || error?.code === "aborted") return;
-      detail.error = this.messageFor(error);
+    }, PANEL_DEBOUNCE_MS);
+  },
+
+  renderMovie() {
+    const { panel } = this;
+    const { item } = panel;
+    if (!item) {
+      panel.body.replaceChildren();
+      return;
     }
-    detail.ready = true;
-    this.renderDetail();
-  },
-
-  closeDetail() {
-    const detail = this.detail;
-    if (!detail) return false;
-    this.detail = null;
-    detail.controller.abort();
-    detail.epList?.destroy();
-    detail.node.remove();
-    return true;
-  },
-
-  captureDetailState() {
-    return captureDetailState(this.detail);
-  },
-
-  detailActions() {
-    const { detail } = this;
-    if (detail.kind !== "movie" || !detail.ready) return [];
-    const progress = this.progressOf("movie", detail.item.id);
-    return movieActions(progress).map((entry) => ({
-      ...entry,
-      label:
-        entry.action === "resume"
-          ? t("iptv_detail_resume", `Devam et (${formatClock(entry.posMs)})`, {
-              time: formatClock(entry.posMs)
-            })
-          : entry.action === "restart"
-            ? t("iptv_detail_restart", "Baştan oynat")
-            : t("iptv_detail_play", "Oynat")
-    }));
-  },
-
-  renderDetail() {
-    const { detail } = this;
-    const { node, item, info, kind } = detail;
-    detail.epList?.destroy();
-    detail.epList = null;
-    const meta = { ...item, ...info };
-    const facts = [
-      releaseYear(meta.releaseDate),
-      meta.rating > 0 ? `★ ${Number(meta.rating).toFixed(1)}` : "",
-      kind === "movie" ? minutes(meta.durationSecs) : "",
-      meta.genre
-    ].filter(Boolean);
-    const crew = [
-      meta.director &&
-        t("iptv_detail_director", `Yönetmen: ${meta.director}`, { v: meta.director }),
-      meta.cast && t("iptv_detail_cast", `Oyuncular: ${meta.cast}`, { v: meta.cast })
-    ].filter(Boolean);
-    const rows =
-      kind === "movie"
-        ? [
-            [t("iptv_detail_label_director", "Yönetmen"), meta.director],
-            [t("iptv_detail_label_cast", "Oyuncular"), meta.cast, "is-cast"],
-            [t("iptv_detail_label_genre", "Tür"), meta.genre],
-            [t("iptv_detail_label_duration", "Süre"), minutes(meta.durationSecs)],
-            [
-              t("iptv_detail_label_release", "Çıkış tarihi"),
-              formatReleaseDate(meta.releaseDate, I18n.getLocale() || "tr-TR")
-            ]
-          ].filter((row) => row[1])
-        : [];
-    const actions = this.detailActions();
-    const progress = kind === "movie" ? this.progressOf("movie", item.id) : null;
-    detail.actions = actions;
-    node.className = `iptv-detail is-${kind}`;
-    node.innerHTML = `
-      <img class="iptv-detail-backdrop" alt="" hidden>
-      <div class="iptv-detail-shade"></div>
-      <div class="iptv-detail-head">
-        <div class="iptv-detail-info">
-          <h2 class="iptv-detail-title">${escapeHtml(meta.name || item.name)}</h2>
-          <div class="iptv-detail-facts">${escapeHtml(facts.join(" · "))}</div>
-          <p class="iptv-detail-plot ${plotSizeClass(meta.plot)}">${escapeHtml(meta.plot || "")}</p>
-          <div class="iptv-detail-crew">${escapeHtml(kind === "movie" ? "" : crew.join("   "))}</div>
-          <div class="iptv-detail-actions">${actions
-            .map((a, i) => {
-              const ratio = a.action === "resume" ? progressRatio(progress) : 0;
-              const bar = ratio
-                ? `<span class="iptv-btn-bar"><span style="width:${Math.round(ratio * 100)}%"></span></span>`
-                : "";
-              return `<button type="button" class="iptv-btn iptv-btn-hero${i === 0 ? " iptv-btn-primary" : ""}" data-detail-action="${a.action}" data-i="${i}">${i === 0 ? '<span class="iptv-btn-icon">&#9654;</span>' : ""}${escapeHtml(a.label)}${bar}</button>`;
-            })
-            .join("")}</div>
-        </div>
-        <div class="iptv-detail-side">
-          <div class="iptv-detail-poster-slot"></div>
-          <dl class="iptv-detail-facts-list">${rows
-            .map(
-              ([label, value, cls]) =>
-                `<div class="iptv-detail-row ${cls || ""}"><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`
-            )
-            .join("")}</dl>
+    const { info } = panel;
+    const resume = iptvResumePositionMs(this.progressOf("movie", item.id));
+    const label = resume
+      ? t("iptv_detail_resume", `Devam et (${formatClock(resume)})`, { time: formatClock(resume) })
+      : t("iptv_detail_play", "Oynat");
+    panel.body.innerHTML = `
+      <div class="iptv-movie-head">
+        <div class="iptv-movie-poster"><span class="iptv-movie-initial"></span><img alt="" decoding="async"></div>
+        <div class="iptv-movie-info">
+          <h2 class="iptv-movie-title"></h2>
+          <div class="iptv-panel-sub"></div>
+          <div class="iptv-panel-rating"></div>
+          <button type="button" class="iptv-btn iptv-btn-primary iptv-btn-panel" data-panel-action="play">${escapeHtml(label)}</button>
         </div>
       </div>
-      ${kind === "series" ? '<div class="iptv-detail-seasons"></div><div class="iptv-detail-episodes"></div>' : ""}
-      <div class="iptv-detail-status" ${detail.ready && !detail.error ? "hidden" : ""}></div>`;
-    const backdrop = node.querySelector(".iptv-detail-backdrop");
-    // Apple TV style: backdrop hero; the poster is only shown when there is none.
-    if (kind === "movie") this.mountDetailPoster(meta);
-    if (meta.backdrop) {
-      node.classList.add("has-backdrop");
-      backdrop.onload = () => (backdrop.hidden = false);
-      backdrop.onerror = () => {
-        backdrop.remove();
-        node.classList.remove("has-backdrop");
-        this.mountDetailPoster(meta);
-      };
-      backdrop.src = meta.backdrop;
-    } else this.mountDetailPoster(meta);
-    const status = node.querySelector(".iptv-detail-status");
-    if (detail.error) status.textContent = detail.error;
-    else if (!detail.ready) status.textContent = t("iptv_loading_vod", "Yükleniyor...");
-    if (kind === "series" && detail.ready && !detail.error) this.renderSeasons();
-    this.applyDetailFocus();
+      <dl class="iptv-facts"></dl>
+      <p class="iptv-panel-plot"></p>`;
+    const poster = panel.body.querySelector(".iptv-movie-poster");
+    panel.body.querySelector(".iptv-movie-title").textContent = pick(item, info, "name");
+    panel.body.querySelector(".iptv-panel-sub").textContent = this.categoryNameOf(item);
+    panel.body.querySelector(".iptv-panel-rating").textContent = factsLine(
+      item,
+      info,
+      durationText(info?.durationSecs)
+    );
+    const labels = factLabels();
+    fillFacts(panel.body.querySelector(".iptv-facts"), [
+      [labels.director, info?.director],
+      [labels.cast, info?.cast, "is-long"],
+      [labels.country, info?.country],
+      [labels.age, info?.age],
+      [labels.released, formatReleaseDate(info?.releaseDate)]
+    ]);
+    panel.body.querySelector(".iptv-panel-plot").textContent = info?.plot || "";
+    panel.body.querySelector(".iptv-movie-initial").textContent =
+      String(item.name || "")
+        .match(/[\p{L}\p{N}]/u)?.[0]
+        ?.toUpperCase() || "#";
+    loadInto(poster, poster.querySelector("img"), pick(item, info, "poster"));
+    this.applyPanelFocus();
   },
 
-  mountDetailPoster(meta) {
-    const { node, item } = this.detail;
-    const slot = node.querySelector(".iptv-detail-poster-slot");
-    if (!slot || slot.firstChild || !(meta.poster || item.poster)) return;
-    const poster = createPosterCardNode();
-    bindPosterCard(poster, { ...meta, id: item.id, poster: meta.poster || item.poster });
-    delete poster.dataset.iptvCard;
-    poster.classList.add("iptv-detail-poster");
-    slot.appendChild(poster);
+  playMovie(item) {
+    if (!item) return;
+    this.stopPreview();
+    const sourceId = this.source.id;
+    const key = iptvProgressKey({ sourceId, kind: "movie", streamId: item.id });
+    Router.navigate("player", {
+      itemType: "iptvvod",
+      itemId: key,
+      playIptv: {
+        sourceId,
+        kind: "movie",
+        streamId: item.id,
+        ext: item.ext || this.panel?.info?.ext,
+        title: item.name
+      },
+      title: item.name,
+      playerTitle: item.name,
+      resumePositionMs: iptvResumePositionMs(IptvProgressStore.get(key))
+    });
   },
 
-  renderSeasons() {
-    const { detail } = this;
-    const bar = detail.node.querySelector(".iptv-detail-seasons");
-    bar.innerHTML = detail.seasons
-      .map(
-        (season, i) =>
-          `<button type="button" class="iptv-chip" data-season="${i}">${escapeHtml(seasonName(season))}</button>`
-      )
-      .join("");
-    detail.epList = createVirtualList({
-      viewport: detail.node.querySelector(".iptv-detail-episodes"),
+  // ---- Series ----------------------------------------------------------------------
+  loadSeriesPanel(item) {
+    const { panel } = this;
+    panel.epList?.destroy();
+    panel.epList = null;
+    panel.seasons = [];
+    panel.info = null;
+    panel.ready = false;
+    this.setPanelEmpty(item ? "" : t("iptv_select_series", "Select a series"));
+    if (!item) {
+      panel.body.replaceChildren();
+      return;
+    }
+    panel.body.innerHTML = `
+      <div class="iptv-series-head">
+        <div class="iptv-series-cover"><span class="iptv-movie-initial"></span><img alt="" decoding="async"></div>
+        <div class="iptv-series-info">
+          <h2 class="iptv-series-title"></h2>
+          <div class="iptv-panel-rating"></div>
+          <p class="iptv-panel-plot"></p>
+        </div>
+      </div>
+      <dl class="iptv-facts"></dl>
+      <div class="iptv-series-seasons"></div>
+      <div class="iptv-series-episodes"></div>
+      <div class="iptv-panel-status"></div>`;
+    panel.body.querySelector(".iptv-movie-initial").textContent =
+      String(item.name || "")
+        .match(/[\p{L}\p{N}]/u)?.[0]
+        ?.toUpperCase() || "#";
+    this.fillSeriesHead();
+    const restoring = this.restorePanel?.seriesId === item.id;
+    const fetch = () => this.fetchSeries(item);
+    if (restoring) fetch();
+    else this.panelTimer = setTimeout(fetch, PANEL_DEBOUNCE_MS);
+  },
+
+  fillSeriesHead() {
+    const { panel } = this;
+    const { item, info } = panel;
+    const body = panel.body;
+    body.querySelector(".iptv-series-title").textContent = pick(item, info, "name");
+    body.querySelector(".iptv-panel-rating").textContent = factsLine(
+      item,
+      info,
+      info?.runTime > 0 ? `${info.runTime} dk` : ""
+    );
+    const labels = factLabels();
+    fillFacts(body.querySelector(".iptv-facts"), [
+      [labels.cast, info?.cast, "is-long"],
+      [labels.country, info?.country],
+      [labels.age, info?.age]
+    ]);
+    body.querySelector(".iptv-panel-plot").textContent = info?.plot || "";
+    const cover = body.querySelector(".iptv-series-cover");
+    loadInto(cover, cover.querySelector("img"), pick(item, info, "poster"));
+  },
+
+  async fetchSeries(item) {
+    this.panelTimer = null;
+    const { panel } = this;
+    const controller = (panel.controller = new AbortController());
+    const status = panel.body.querySelector(".iptv-panel-status");
+    try {
+      const data = await IptvRepository.getSeriesInfo(this.source.id, item.id, {
+        signal: controller.signal
+      });
+      if (controller.signal.aborted || this.panel !== panel) return;
+      panel.info = data.info;
+      panel.seasons = (data.seasons || []).filter((season) => season.episodes?.length);
+      if (!panel.seasons.length) throw Object.assign(new Error("empty"), { code: "empty" });
+    } catch (error) {
+      if (controller.signal.aborted || this.panel !== panel) return;
+      status.textContent =
+        error?.code === "empty" ? t("iptv_no_episodes", "No episodes") : this.messageFor(error);
+      return;
+    }
+    this.fillSeriesHead();
+    const { seasons } = panel;
+    const watched = (episode) => Boolean(this.progressOf("episode", episode.id)?.watched);
+    const saved = this.restorePanel?.seriesId === item.id ? this.restorePanel : null;
+    const memo = this.seasonMemo?.get(item.id);
+    let at;
+    if (saved) at = advancePastWatched(seasons, resolveDetailFocus(seasons, saved), watched);
+    else if (memo) at = resolveDetailFocus(seasons, memo);
+    else
+      at = advancePastWatched(
+        seasons,
+        pickDefaultEpisode(seasons, (episode) => this.progressOf("episode", episode.id)),
+        watched
+      );
+    this.restorePanel = null;
+    this.panelFocus = { zone: DZONE.EPISODES, button: 0, ...at };
+    panel.ready = true;
+    status.textContent = "";
+    this.renderSeasonChips();
+    panel.epList = createVirtualList({
+      viewport: panel.body.querySelector(".iptv-series-episodes"),
       columns: 1,
       rowHeight: EPISODE_ROW_HEIGHT,
       createNode: createEpisodeNode,
@@ -280,91 +543,53 @@ export const iptvDetailMethods = {
       }
     });
     this.showSeason();
+    // Back from the player inside the panel: keep the remote where it was.
+    if (saved?.zone === "panel" && this.focus.zone === ZONE.GRID) {
+      this.focus.zone = ZONE.PANEL;
+      this.applyFocus();
+    } else this.applyPanelFocus();
+  },
+
+  renderSeasonChips() {
+    const bar = this.panel.body.querySelector(".iptv-series-seasons");
+    bar.innerHTML = this.panel.seasons
+      .map(
+        (season, i) =>
+          `<button type="button" class="iptv-chip" data-season="${i}">S${escapeHtml(season.number)}</button>`
+      )
+      .join("");
   },
 
   showSeason() {
-    const { detail } = this;
-    const { zone, season, episode } = detail.focus;
-    const episodes = detail.seasons[season].episodes;
-    detail.epList.setItems(episodes, {
-      focus: zone === DZONE.EPISODES ? episode : -1,
-      reveal: episode
+    const { panel, panelFocus } = this;
+    const episodes = panel.seasons[panelFocus.season].episodes;
+    const active = this.focus.zone === ZONE.PANEL && panelFocus.zone === DZONE.EPISODES;
+    panel.epList.setItems(episodes, {
+      focus: active ? panelFocus.episode : -1,
+      reveal: panelFocus.episode
     });
+    panel.epList.setSelected(panelFocus.episode);
+    this.rememberSeries();
+    this.applyPanelFocus();
   },
 
-  applyDetailFocus() {
-    const { detail } = this;
-    if (!detail) return;
-    const { zone, button, season, episode } = detail.focus;
-    detail.node
-      .querySelectorAll("[data-detail-action]")
-      .forEach((node, i) =>
-        node.classList.toggle("focused", zone === DZONE.BUTTONS && i === button)
-      );
-    detail.node.querySelectorAll(".iptv-chip").forEach((node, i) => {
-      node.classList.toggle("is-selected", i === season);
-      node.classList.toggle("focused", zone === DZONE.SEASONS && i === season);
-      if (zone === DZONE.SEASONS && i === season) node.parentNode.scrollLeft = node.offsetLeft - 48;
-    });
-    detail.epList?.setFocus(zone === DZONE.EPISODES ? episode : -1);
-    // Blur the search field / header node so keys reach the detail.
-    this.setManualFocus?.(null);
-  },
-
-  onDetailKey(event) {
-    const { detail } = this;
-    const code = Number(event?.keyCode || 0);
-    const direction = KEYS[code];
-    if (direction) {
-      event.preventDefault?.();
-      const season = detail.seasons[detail.focus.season];
-      const result = moveDetailFocus(detail.focus, direction, {
-        buttonCount: detail.actions?.length || 0,
-        seasonCount: detail.seasons.length,
-        episodeCount: season?.episodes.length || 0
-      });
-      detail.focus = result.focus;
-      if (result.seasonChanged) this.showSeason();
-      this.applyDetailFocus();
-    } else if (code === OK) {
-      event.preventDefault?.();
-      if (!event.repeat) this.activateDetail();
-    }
-  },
-
-  activateDetail() {
-    const { detail } = this;
-    if (!detail.ready) return;
-    const { zone, button, season, episode } = detail.focus;
-    if (zone === DZONE.BUTTONS) return this.playDetailMovie(detail.actions[button]);
-    if (zone === DZONE.EPISODES)
-      return this.playEpisode(detail.seasons[season].episodes[episode], detail.seasons[season]);
-  },
-
-  playDetailMovie(action) {
-    const { item } = this.detail;
-    const sourceId = this.source.id;
-    Router.navigate("player", {
-      itemType: "iptvvod",
-      itemId: iptvProgressKey({ sourceId, kind: "movie", streamId: item.id }),
-      playIptv: {
-        sourceId,
-        kind: "movie",
-        streamId: item.id,
-        ext: item.ext || this.detail.info?.ext,
-        title: item.name
-      },
-      title: item.name,
-      playerTitle: item.name,
-      resumePositionMs: action?.posMs || 0
+  rememberSeries() {
+    const { panel, panelFocus } = this;
+    if (panel?.kind !== TAB_SERIES || !panel.ready) return;
+    this.seasonMemo ||= new Map();
+    const season = panel.seasons[panelFocus.season];
+    this.seasonMemo.set(panel.item.id, {
+      season: season.number,
+      episodeId: season.episodes[panelFocus.episode]?.id || ""
     });
   },
 
   playEpisode(episode, season) {
-    if (!episode) return;
-    const { item } = this.detail;
+    const series = this.panel?.item;
+    if (!episode || !series) return;
+    this.stopPreview();
     const sourceId = this.source.id;
-    const title = `${item.name} · ${seasonName(season)} B${episode.number}`;
+    const title = episodePlayerTitle(series.name, season.number, episode.number, episode.title);
     Router.navigate("player", {
       itemType: "iptvvod",
       itemId: iptvProgressKey({ sourceId, kind: "episode", streamId: episode.id }),
@@ -374,40 +599,137 @@ export const iptvDetailMethods = {
         streamId: episode.id,
         ext: episode.ext,
         title,
-        seriesId: item.id,
+        seriesId: series.id,
         season: season.number,
         episode: episode.number
       },
       title,
       playerTitle: title,
-      resumePositionMs: this.progressOf("episode", episode.id)?.posMs || 0
+      resumePositionMs: iptvResumePositionMs(this.progressOf("episode", episode.id))
     });
   },
 
-  // Magic Remote: returns true when the click was handled by the detail view.
-  onDetailPointer(target, activate) {
-    const { detail } = this;
-    if (!target.closest?.(".iptv-detail")) return false;
-    const button = target.closest?.("[data-detail-action]");
+  // Route state: ids only, resolved against fresh data on restore.
+  capturePanelState() {
+    const { panel, panelFocus } = this;
+    if (panel?.kind !== TAB_SERIES || !panel.ready) return null;
+    const season = panel.seasons[panelFocus.season];
+    return {
+      seriesId: panel.item.id,
+      season: season.number,
+      episodeId: season.episodes[panelFocus.episode]?.id || "",
+      zone: this.focus.zone === ZONE.PANEL ? "panel" : "items"
+    };
+  },
+
+  // ---- Focus + keys ------------------------------------------------------------------
+  enterPanel() {
+    const { panel } = this;
+    const episodes = panel?.kind === TAB_SERIES && panel.epList;
+    this.panelFocus.zone = !episodes ? DZONE.BUTTONS : DZONE.EPISODES;
+    if (episodes) this.showSeason();
+  },
+
+  applyPanelFocus() {
+    const { panel, panelFocus } = this;
+    if (!panel) return;
+    const active = this.focus.zone === ZONE.PANEL;
+    this.panelNode.querySelectorAll("[data-panel-action]").forEach((node) => {
+      node.classList.toggle("focused", active && panelFocus.zone === DZONE.BUTTONS);
+    });
+    this.panelNode.querySelectorAll(".iptv-chip").forEach((node, i) => {
+      node.classList.toggle("is-selected", i === panelFocus.season);
+      const focused = active && panelFocus.zone === DZONE.SEASONS && i === panelFocus.season;
+      node.classList.toggle("focused", focused);
+      if (focused) node.parentNode.scrollLeft = Math.max(0, node.offsetLeft - 48);
+    });
+    panel.epList?.setFocus(active && panelFocus.zone === DZONE.EPISODES ? panelFocus.episode : -1);
+  },
+
+  onPanelKey(event, code, direction) {
+    const { panel, panelFocus } = this;
+    const series = panel?.kind === TAB_SERIES;
+    const zap = zapDirection(code);
+    if (zap) {
+      // CH+/CH- (and PageUp/PageDown): next/previous season.
+      event.preventDefault?.();
+      if (series && panel.ready) this.stepSeason(zap);
+      return;
+    }
+    if (direction) {
+      if (!allowDpadRepeat(this, event, { horizontalMs: 80, verticalMs: 80 })) return;
+      event.preventDefault?.();
+      if (direction === "left" && (panelFocus.zone !== DZONE.SEASONS || panelFocus.season === 0)) {
+        this.focus.zone = ZONE.GRID;
+        this.applyFocus();
+        return;
+      }
+      const season = panel?.seasons?.[panelFocus.season];
+      const result = moveDetailFocus(panelFocus, direction, {
+        buttonCount: series ? 0 : 1,
+        seasonCount: series ? panel.seasons.length : 0,
+        episodeCount: season?.episodes.length || 0
+      });
+      this.panelFocus = result.focus;
+      if (result.seasonChanged) this.showSeason();
+      else {
+        this.rememberSeries();
+        this.applyPanelFocus();
+      }
+      return;
+    }
+    if (code === OK) {
+      event.preventDefault?.();
+      if (!event.repeat) this.activatePanel();
+    }
+  },
+
+  stepSeason(delta) {
+    const { panel, panelFocus } = this;
+    const season = clamp(panelFocus.season + delta, 0, panel.seasons.length - 1);
+    if (season === panelFocus.season) return;
+    this.panelFocus = { ...panelFocus, season, episode: 0 };
+    this.showSeason();
+  },
+
+  activatePanel() {
+    const { panel, panelFocus } = this;
+    if (!panel) return;
+    if (panel.kind === TAB_LIVE) return this.playChannel(this.activeLive);
+    if (panel.kind === TAB_MOVIES) return this.playMovie(this.selectedItem());
+    if (panelFocus.zone !== DZONE.EPISODES || !panel.ready) return;
+    const season = panel.seasons[panelFocus.season];
+    this.playEpisode(season.episodes[panelFocus.episode], season);
+  },
+
+  // Magic Remote: true when the target belongs to the panel (and was handled).
+  onPanelPointer(target, activate) {
+    const { panel } = this;
+    if (!panel || !target.closest?.(".iptv-panel")) return false;
+    const button = target.closest?.("[data-panel-action]");
     const chip = target.closest?.("[data-season]");
     const row = target.closest?.("[data-iptv-episode]");
-    if (button)
-      detail.focus = { ...detail.focus, zone: DZONE.BUTTONS, button: Number(button.dataset.i) };
+    if (button) this.panelFocus = { ...this.panelFocus, zone: DZONE.BUTTONS };
     else if (chip) {
       const season = Number(chip.dataset.season);
-      const changed = season !== detail.focus.season;
-      detail.focus = {
-        ...detail.focus,
+      const changed = season !== this.panelFocus.season;
+      this.panelFocus = {
+        ...this.panelFocus,
         zone: DZONE.SEASONS,
         season,
-        episode: changed ? 0 : detail.focus.episode
+        episode: changed ? 0 : this.panelFocus.episode
       };
       if (changed) this.showSeason();
     } else if (row)
-      detail.focus = { ...detail.focus, zone: DZONE.EPISODES, episode: Number(row.dataset.index) };
+      this.panelFocus = {
+        ...this.panelFocus,
+        zone: DZONE.EPISODES,
+        episode: Number(row.dataset.index)
+      };
     else return true;
-    this.applyDetailFocus();
-    if (activate && !chip) this.activateDetail();
+    this.focus.zone = ZONE.PANEL;
+    this.applyFocus();
+    if (activate && !chip) this.activatePanel();
     return true;
   }
 };

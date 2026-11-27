@@ -53,7 +53,7 @@ test("iptvvod flush writes only the local store", async () => {
   await controller.flushProgress(60000, 100000, false, ctx);
   assert.equal(IptvProgressStore.get(key).posMs, 60000);
   await controller.flushProgress(95000, 100000, true, ctx);
-  assert.equal(IptvProgressStore.get(key), null);
+  assert.equal(IptvProgressStore.get(key).watched, true);
   assert.deepEqual(calls, []);
 });
 

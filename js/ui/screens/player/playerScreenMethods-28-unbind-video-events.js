@@ -73,7 +73,7 @@ export function createPlayerScreenMethods28() {
       base.push({
         action: "source",
         icon: "assets/icons/ic_player_source.svg",
-        title: t("sources_title", {}, "Sources")
+        title: this.isIptvLivePlayback?.() ? t("player_channels_title", {}, "Channels") : t("sources_title", {}, "Sources")
       });
 
       if (Array.isArray(uiState.episodesAll) && uiState.episodesAll.length) {
@@ -296,6 +296,7 @@ export function createPlayerScreenMethods28() {
         this.audioDialogVisible ||
         this.sourcesPanelVisible ||
         this.chaptersPanelVisible ||
+        this.channelsPanelVisible ||
         this.episodePanelVisible ||
         this.speedDialogVisible ||
         Boolean(this.partyPanelVisible)
