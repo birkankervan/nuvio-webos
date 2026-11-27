@@ -200,6 +200,7 @@ export function createMetaDetailsScreenMethods03() {
       await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
       if (token !== this.detailLoadToken) return;
       void this.refreshLibraryMembership(token);
+      this.refreshRatingSource();
       this.maybeAutoOpenContinueWatchingStream();
       this.maybePlayOnLoad(token);
       void this.refreshTrailerSource(meta, token);

@@ -142,31 +142,76 @@ function sanitizeHeaders(headers) {
   return output;
 }
 
+function stripCrossOriginAuthHeaders(headers, fromParsed, toUrl) {
+  var source = headers || {};
+  var sameOrigin = false;
+  try {
+    var nextParsed = new URL(toUrl);
+    sameOrigin =
+      String(nextParsed.protocol || "").toLowerCase() ===
+        String(fromParsed.protocol || "").toLowerCase() &&
+      String(nextParsed.host || "").toLowerCase() === String(fromParsed.host || "").toLowerCase();
+  } catch (_) {
+    sameOrigin = false;
+  }
+  if (sameOrigin) {
+    return source;
+  }
+  var cleaned = {};
+  Object.keys(source).forEach(function (name) {
+    var lower = String(name || "")
+      .trim()
+      .toLowerCase();
+    if (lower === "authorization" || lower === "apikey") {
+      return;
+    }
+    cleaned[name] = source[name];
+  });
+  return cleaned;
+}
+
 function parseRequestBody(req, callback) {
   var chunks = [];
   var bodyBytes = 0;
+  var settled = false;
+
+  function done(err, data) {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    callback(err, data);
+  }
 
   req.on("data", function (chunk) {
+    if (settled) {
+      return;
+    }
     bodyBytes += chunk.length;
     if (bodyBytes > MAX_REQUEST_BYTES) {
-      callback(new Error("Proxy request body too large"));
-      req.destroy();
+      done(new Error("Proxy request body too large"));
+      if (typeof req.destroy === "function") {
+        req.destroy();
+      }
       return;
     }
     chunks.push(chunk);
   });
 
   req.on("end", function () {
+    if (settled) {
+      return;
+    }
     try {
       var raw = Buffer.concat(chunks).toString("utf8");
-      callback(null, raw ? JSON.parse(raw) : {});
+      done(null, raw ? JSON.parse(raw) : {});
     } catch (error) {
-      callback(error);
+      done(error);
     }
   });
 
   req.on("error", function (error) {
-    callback(error);
+    done(error);
   });
 }
 
@@ -189,6 +234,25 @@ function proxySupabaseRequest(payload, redirectsLeft, callback, redirectChain) {
     headers["Content-Length"] = Buffer.byteLength(body);
   }
 
+  var settled = false;
+  function finish(err, res) {
+    if (settled) {
+      return;
+    }
+    settled = true;
+    callback(err, res);
+  }
+  function abortRequest(req) {
+    if (!req) {
+      return;
+    }
+    if (typeof req.abort === "function") {
+      req.abort();
+    } else if (typeof req.destroy === "function") {
+      req.destroy();
+    }
+  }
+
   var transport = parsed.protocol === "http:" ? http : https;
   var request = transport.request(
     {
@@ -206,7 +270,7 @@ function proxySupabaseRequest(payload, redirectsLeft, callback, redirectChain) {
       if (statusCode >= 300 && statusCode < 400 && location) {
         response.resume();
         if (redirectsLeft <= 0) {
-          callback(null, {
+          finish(null, {
             statusCode: 502,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
             body:
@@ -216,9 +280,23 @@ function proxySupabaseRequest(payload, redirectsLeft, callback, redirectChain) {
           return;
         }
 
-        var nextUrl = new URL(location, validated.target).toString();
+        var nextUrl;
+        try {
+          nextUrl = new URL(location, validated.target).toString();
+        } catch (_) {
+          finish(null, {
+            statusCode: 502,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+            body: "Supabase proxy invalid redirect URL"
+          });
+          return;
+        }
+        settled = true;
         proxySupabaseRequest(
-          Object.assign({}, payload, { url: nextUrl }),
+          Object.assign({}, payload, {
+            url: nextUrl,
+            headers: stripCrossOriginAuthHeaders(payload && payload.headers, parsed, nextUrl)
+          }),
           redirectsLeft - 1,
           callback,
           (redirectChain || []).concat(nextUrl)
@@ -229,21 +307,42 @@ function proxySupabaseRequest(payload, redirectsLeft, callback, redirectChain) {
       var responseChunks = [];
       var responseBytes = 0;
       response.on("data", function (chunk) {
-        responseBytes += chunk.length;
-        if (responseBytes <= MAX_RESPONSE_BYTES) {
-          responseChunks.push(chunk);
+        if (settled) {
+          return;
         }
-      });
-      response.on("end", function () {
+        responseBytes += chunk.length;
         if (responseBytes > MAX_RESPONSE_BYTES) {
-          callback(null, {
+          if (typeof response.destroy === "function") {
+            response.destroy();
+          } else {
+            response.resume();
+          }
+          abortRequest(request);
+          finish(null, {
             statusCode: 502,
             headers: { "Content-Type": "text/plain; charset=utf-8" },
             body: "Supabase proxy response too large"
           });
           return;
         }
-        callback(null, {
+        responseChunks.push(chunk);
+      });
+      response.on("error", function (error) {
+        finish(error);
+      });
+      response.on("end", function () {
+        if (settled) {
+          return;
+        }
+        if (responseBytes > MAX_RESPONSE_BYTES) {
+          finish(null, {
+            statusCode: 502,
+            headers: { "Content-Type": "text/plain; charset=utf-8" },
+            body: "Supabase proxy response too large"
+          });
+          return;
+        }
+        finish(null, {
           statusCode: statusCode,
           headers: {
             "Content-Type": response.headers["content-type"] || "application/json; charset=utf-8",
@@ -257,10 +356,11 @@ function proxySupabaseRequest(payload, redirectsLeft, callback, redirectChain) {
   );
 
   request.setTimeout(REQUEST_TIMEOUT_MS, function () {
-    request.destroy(new Error("Supabase proxy request timed out"));
+    abortRequest(request);
+    finish(new Error("Supabase proxy request timed out"));
   });
   request.on("error", function (error) {
-    callback(error);
+    finish(error);
   });
   if (body) {
     request.write(body);

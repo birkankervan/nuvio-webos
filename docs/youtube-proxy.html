@@ -45,6 +45,7 @@
         var autoplay = params.autoplay !== "0";
         var loop = params.loop !== "0";
         var captionsEnabled = params.cc_load_policy === "1";
+        var captionsLanguage = String(params.cc_lang_pref || "").trim();
         var directEmbedRequested = params.direct === "1";
         var statePollMs = Math.max(
           0,
@@ -294,10 +295,14 @@
             "playsinline=1",
             "rel=0",
             "modestbranding=1",
-            "cc_load_policy=0",
+            "cc_load_policy=" + (captionsEnabled ? "1" : "0"),
             "iv_load_policy=3",
             "widget_referrer=" + encodeURIComponent(widgetReferrer)
-          ].join("&");
+          ];
+          if (captionsEnabled && captionsLanguage) {
+            directParams.push("cc_lang_pref=" + encodeURIComponent(captionsLanguage));
+          }
+          directParams = directParams.join("&");
           var src =
             "https://www.youtube.com/embed/" + encodeURIComponent(videoId) + "?" + directParams;
           document.body.innerHTML =
@@ -348,6 +353,7 @@
               loop: loop ? 1 : 0,
               modestbranding: 1,
               cc_load_policy: captionsEnabled ? 1 : 0,
+              cc_lang_pref: captionsLanguage || undefined,
               origin: pageOriginIsHttp ? pageOrigin : undefined,
               playsinline: 1,
               playlist: loop ? videoId : undefined,
@@ -392,7 +398,18 @@
                 pushState(true);
               },
               onError: function onError(event) {
-                fallbackToDirectEmbed();
+                var errorCode = Number(event && event.data) || 0;
+                // Fatal playback error: stop polling and make sure the pre-ready
+                // watchdog cannot replace the player with a direct embed afterwards.
+                if (readyWatchdog) {
+                  clearTimeout(readyWatchdog);
+                  readyWatchdog = null;
+                }
+                if (stateTimer) {
+                  clearInterval(stateTimer);
+                  stateTimer = null;
+                }
+                postToParent("error", { videoId: videoId, code: errorCode });
               }
             }
           });

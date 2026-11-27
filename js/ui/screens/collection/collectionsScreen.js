@@ -2,6 +2,14 @@ import { Router } from "../../navigation/routerState.js";
 import { ScreenUtils } from "../../navigation/screen.js";
 import { CollectionsStore } from "../../../data/local/collectionsStore.js";
 import { NuvioDialog } from "../../components/nuvioDialog.js";
+import {
+  beginReorder,
+  cancelReorder,
+  confirmReorder,
+  createReorderSession,
+  isReordering,
+  moveReorderBy
+} from "../../components/reorderSession.js";
 import { I18n } from "../../../i18n/index.js";
 
 function t(key, fallback, params = {}) {
@@ -21,50 +29,89 @@ export const CollectionsScreen = {
   async mount() {
     this.container = document.getElementById("collections");
     ScreenUtils.show(this.container);
+    this.ensureClickDelegation();
     this.focusKey = this.focusKey || "new";
     this.render();
   },
 
+  ensureClickDelegation() {
+    if (!this.container) {
+      return;
+    }
+    if (!this._boundClickHandler) {
+      this._boundClickHandler = async (event) => {
+        const node = event?.target?.closest?.(".collections-focusable");
+        if (!node || !this.container?.contains(node)) {
+          return;
+        }
+        this.focusKey = String(node.dataset.focusKey || this.focusKey);
+        this.applyFocus();
+        await this.activateFocused();
+      };
+    }
+    if (this._boundClickContainer === this.container) {
+      return;
+    }
+    if (this._boundClickContainer) {
+      this._boundClickContainer.removeEventListener("click", this._boundClickHandler);
+    }
+    this.container.addEventListener("click", this._boundClickHandler);
+    this._boundClickContainer = this.container;
+  },
+
   render() {
-    const collections = CollectionsStore.get();
+    const prevScrollTop = Number(
+      this.container?.querySelector(".collections-main")?.scrollTop || 0
+    );
+    const collections = Array.isArray(this.reorderCollections)
+      ? this.reorderCollections
+      : CollectionsStore.get();
     this.collections = collections;
+    const movingId = this.reorderSession?.movingKey || "";
     const rows = collections
       .map((collection, index) => {
+        const isMoving = movingId === collection.id;
+        const actionLocked = Boolean(movingId) && !isMoving;
+        const folderCountText = t(
+          "collections_folder_count",
+          `${collection.folders.length} folder(s)`
+        ).replace("%1$d", String(collection.folders.length));
+        const subtitle = collection.pinToTop
+          ? `${folderCountText} · ${t("collections_pinned", "Pinned")}`
+          : folderCountText;
         return `
-          <article class="collections-card">
+          <article class="collections-card${isMoving ? " is-moving" : ""}">
             <div class="collections-card-copy">
               <h2>${escapeHtml(collection.title)}</h2>
-              <p class="collections-card-subtitle">${escapeHtml(
-                t("collections_folder_count", `${collection.folders.length} folder(s)`).replace(
-                  "%1$d",
-                  String(collection.folders.length)
-                )
-              )}</p>
-              ${collection.pinToTop ? `<p class="collections-card-pinned">${escapeHtml(t("collections_editor_pin_above", "Pinned above catalogs"))}</p>` : ""}
+              <p class="collections-card-subtitle">${escapeHtml(subtitle)}</p>
             </div>
             <div class="collections-card-actions">
-              <button type="button" class="collections-action collections-focusable"
-                      data-focus-key="collection:${escapeHtml(collection.id)}:up"
-                      data-action="moveUp" data-id="${escapeHtml(collection.id)}"
-                      ${index === 0 ? 'aria-disabled="true"' : ""}>
-                <span class="material-icons" aria-hidden="true">arrow_upward</span>
-              </button>
-              <button type="button" class="collections-action collections-focusable"
-                      data-focus-key="collection:${escapeHtml(collection.id)}:down"
-                      data-action="moveDown" data-id="${escapeHtml(collection.id)}"
-                      ${index === collections.length - 1 ? 'aria-disabled="true"' : ""}>
-                <span class="material-icons" aria-hidden="true">arrow_downward</span>
-              </button>
-              <button type="button" class="collections-action collections-focusable"
+              ${
+                isMoving
+                  ? `<button type="button" class="collections-action collections-focusable"
+                      data-focus-key="collection:${escapeHtml(collection.id)}:reorder"
+                      data-action="done" data-id="${escapeHtml(collection.id)}">
+                      <span class="material-icons" aria-hidden="true">check</span>
+                      <span class="reorder-done-label">${escapeHtml(t("collections_done", "Done"))}</span>
+                    </button>`
+                  : actionLocked
+                    ? ""
+                    : `<button type="button" class="collections-action collections-focusable"
+                      data-focus-key="collection:${escapeHtml(collection.id)}:reorder"
+                      data-action="reorder" data-id="${escapeHtml(collection.id)}">
+                      <span class="material-icons" aria-hidden="true">reorder</span>
+                    </button>
+                    <button type="button" class="collections-action collections-focusable"
                       data-focus-key="collection:${escapeHtml(collection.id)}"
                       data-action="edit" data-id="${escapeHtml(collection.id)}">
-                <span class="material-icons" aria-hidden="true">edit</span>
-              </button>
-              <button type="button" class="collections-action collections-focusable collections-action-danger"
+                      <span class="material-icons" aria-hidden="true">edit</span>
+                    </button>
+                    <button type="button" class="collections-action collections-focusable collections-action-danger"
                       data-focus-key="collection:${escapeHtml(collection.id)}:delete"
                       data-action="delete" data-id="${escapeHtml(collection.id)}">
-                <span class="material-icons" aria-hidden="true">delete</span>
-              </button>
+                      <span class="material-icons" aria-hidden="true">delete</span>
+                    </button>`
+              }
             </div>
           </article>
         `;
@@ -103,14 +150,11 @@ export const CollectionsScreen = {
       </div>
     `;
 
-    this.container.querySelectorAll(".collections-focusable").forEach((node) => {
-      node.addEventListener("click", async () => {
-        this.focusKey = String(node.dataset.focusKey || this.focusKey);
-        this.applyFocus();
-        await this.activateFocused();
-      });
-    });
-
+    const main = this.container.querySelector(".collections-main");
+    if (main && prevScrollTop > 0) {
+      main.scrollTop = prevScrollTop;
+    }
+    this.ensureClickDelegation();
     this.applyFocus();
   },
 
@@ -127,6 +171,24 @@ export const CollectionsScreen = {
     this.focusKey = String(target.dataset.focusKey || "");
     target.classList.add("focused");
     target.focus?.({ preventScroll: true });
+    this.scrollFocusedIntoView(target, nodes);
+  },
+
+  scrollFocusedIntoView(target, nodes = null) {
+    if (!target) {
+      return;
+    }
+    const main = this.container?.querySelector(".collections-main");
+    const focusables =
+      nodes || Array.from(this.container?.querySelectorAll(".collections-focusable") || []);
+    const isTopControl =
+      (focusables.length > 0 && target === focusables[0]) ||
+      (isReordering(this.reorderSession) &&
+        String(this.collections?.[0]?.id || "") === String(this.reorderSession?.movingKey || ""));
+    if (main && isTopControl) {
+      main.scrollTop = 0;
+      return;
+    }
     target.scrollIntoView?.({ block: "nearest" });
   },
 
@@ -151,24 +213,82 @@ export const CollectionsScreen = {
       this.confirmDelete(id);
       return;
     }
-    if (action === "moveUp" || action === "moveDown") {
-      this.moveCollection(id, action === "moveUp" ? -1 : 1);
+    if (action === "reorder") {
+      this.startReorder(id);
+    } else if (action === "done") {
+      this.finishReorder();
     }
   },
 
-  moveCollection(id, direction) {
+  startReorder(id) {
     const list = CollectionsStore.get();
-    const index = list.findIndex((collection) => collection.id === id);
-    const target = index + direction;
-    if (index < 0 || target < 0 || target >= list.length) {
+    this.reorderSession = createReorderSession({ keys: list.map((collection) => collection.id) });
+    if (!beginReorder(this.reorderSession, id)) {
+      this.reorderSession = null;
       return;
     }
-    const next = [...list];
-    const [moved] = next.splice(index, 1);
-    next.splice(target, 0, moved);
-    CollectionsStore.replace(next);
-    this.focusKey = `collection:${id}`;
+    this.reorderCollections = list;
+    this.focusKey = `collection:${id}:reorder`;
     this.render();
+  },
+  applyReorderOrder() {
+    const source = Array.isArray(this.reorderCollections)
+      ? this.reorderCollections
+      : CollectionsStore.get();
+    const byId = new Map(source.map((collection) => [collection.id, collection]));
+    const next = (this.reorderSession?.keys || []).map((key) => byId.get(key)).filter(Boolean);
+    if (next.length) {
+      this.reorderCollections = next;
+    }
+  },
+  moveCollection(delta) {
+    if (!moveReorderBy(this.reorderSession, delta)) {
+      return;
+    }
+    this.applyReorderOrder();
+    this.focusKey = `collection:${this.reorderSession.movingKey}:reorder`;
+    this.render();
+  },
+  finishReorder() {
+    if (!this.reorderSession) {
+      return;
+    }
+    // Reconcile the session order with the latest store so collections synced in
+    // while the move was open are kept instead of being dropped on confirm.
+    const session = this.reorderSession;
+    const movingId = session.movingKey;
+    confirmReorder(session);
+    const current = CollectionsStore.get();
+    const byId = new Map(current.map((collection) => [collection.id, collection]));
+    const next = session.keys.map((key) => byId.get(key)).filter(Boolean);
+    const seen = new Set(next.map((collection) => collection.id));
+    current.forEach((collection) => {
+      if (!seen.has(collection.id)) {
+        next.push(collection);
+      }
+    });
+    const unchanged =
+      next.length === current.length &&
+      next.every((collection, index) => collection.id === current[index].id);
+    this.focusKey = `collection:${movingId}:reorder`;
+    this.reorderSession = null;
+    this.reorderCollections = null;
+    if (next.length && !unchanged) {
+      CollectionsStore.replace(next);
+    }
+    this.render();
+  },
+  cancelReorderState() {
+    if (!isReordering(this.reorderSession)) {
+      return false;
+    }
+    const movingId = this.reorderSession.movingKey;
+    cancelReorder(this.reorderSession);
+    this.focusKey = `collection:${movingId}:reorder`;
+    this.reorderSession = null;
+    this.reorderCollections = null;
+    this.render();
+    return true;
   },
 
   confirmDelete(id) {
@@ -216,6 +336,10 @@ export const CollectionsScreen = {
       this.closeDeleteDialog();
       return true;
     }
+    if (isReordering(this.reorderSession)) {
+      this.cancelReorderState();
+      return true;
+    }
     return false;
   },
 
@@ -223,10 +347,29 @@ export const CollectionsScreen = {
     if (this.deleteDialog) {
       return;
     }
+    if (isReordering(this.reorderSession)) {
+      const reorderCode = Number(event?.keyCode || 0);
+      if (reorderCode === 38 || reorderCode === 40) {
+        event?.preventDefault?.();
+        this.moveCollection(reorderCode === 38 ? -1 : 1);
+        return;
+      }
+      if (reorderCode === 37 || reorderCode === 39) {
+        event?.preventDefault?.();
+        return;
+      }
+      if (reorderCode === 13 || reorderCode === 23 || reorderCode === 66 || reorderCode === 160) {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+        this.finishReorder();
+        return;
+      }
+      return;
+    }
     if (ScreenUtils.handleDpadNavigation(event, this.container, ".collections-focusable")) {
       const focused = this.container?.querySelector(".collections-focusable.focused");
       this.focusKey = String(focused?.dataset?.focusKey || this.focusKey);
-      focused?.scrollIntoView?.({ block: "nearest" });
+      this.scrollFocusedIntoView(focused);
       return;
     }
     const code = Number(event?.keyCode || 0);
@@ -239,6 +382,12 @@ export const CollectionsScreen = {
 
   cleanup() {
     this.closeDeleteDialog();
+    this.reorderSession = null;
+    this.reorderCollections = null;
+    if (this._boundClickContainer && this._boundClickHandler) {
+      this._boundClickContainer.removeEventListener("click", this._boundClickHandler);
+    }
+    this._boundClickContainer = null;
     ScreenUtils.hide(this.container);
     this.container = null;
   }

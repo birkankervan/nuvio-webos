@@ -4,6 +4,7 @@ import * as internals from "./homeScreenContext.js";
 
 export function createHomeScreenMethods07() {
   const {
+    Router,
     watchedItemsRepository,
     savedLibraryRepository,
     libraryRepository,
@@ -14,6 +15,14 @@ export function createHomeScreenMethods07() {
     t,
     normalizeCatalogItem
   } = internals;
+
+  // FolderDetailScreen inherits these methods and opens the same hold menu, so the
+  // guard checks the screen that started the request, not the "home" route name.
+  const isDialogRequestActive = (screen, loadToken, dialogToken) =>
+    loadToken === screen.homeLoadToken &&
+    dialogToken === screen.homeDialogRequestToken &&
+    Boolean(screen.container) &&
+    Router.getCurrentScreen?.() === screen;
 
   return {
     mountContinueWatchingDialog() {
@@ -33,6 +42,7 @@ export function createHomeScreenMethods07() {
           label: option.label,
           key: option.action,
           onAction: () => {
+            this.suppressHoldMenuEnterUntilKeyUp = false;
             this.continueWatchingMenu = {
               ...(this.continueWatchingMenu || {}),
               optionIndex: index
@@ -40,7 +50,10 @@ export function createHomeScreenMethods07() {
             void this.activateContinueWatchingMenuOption();
           }
         })),
-        onDismiss: () => this.dismissContinueWatchingMenu()
+        onDismiss: () => {
+          this.suppressHoldMenuEnterUntilKeyUp = false;
+          this.dismissContinueWatchingMenu();
+        }
       }).mount(document.body);
       this.suppressHoldMenuEnterUntilKeyUp = true;
       this.scheduleHoldMenuScrollRestore();
@@ -63,6 +76,7 @@ export function createHomeScreenMethods07() {
           label: option.label,
           key: option.action,
           onAction: () => {
+            this.suppressHoldMenuEnterUntilKeyUp = false;
             this.posterHoldMenu = {
               ...(this.posterHoldMenu || {}),
               optionIndex: index
@@ -70,7 +84,10 @@ export function createHomeScreenMethods07() {
             void this.activatePosterHoldMenuOption();
           }
         })),
-        onDismiss: () => this.dismissPosterHoldMenu()
+        onDismiss: () => {
+          this.suppressHoldMenuEnterUntilKeyUp = false;
+          this.dismissPosterHoldMenu();
+        }
       }).mount(document.body);
       this.suppressHoldMenuEnterUntilKeyUp = true;
       this.scheduleHoldMenuScrollRestore();
@@ -105,6 +122,7 @@ export function createHomeScreenMethods07() {
         panelClassName: "poster-list-picker-dialog-panel",
         actionsClassName: "poster-list-picker-actions",
         onDismiss: () => {
+          this.suppressHoldMenuEnterUntilKeyUp = false;
           this._homeHoldDialog = null;
           this.posterListPicker = null;
           this.restorePosterHoldMenuFocus();
@@ -118,7 +136,12 @@ export function createHomeScreenMethods07() {
       if (!item?.id) {
         return false;
       }
+      const loadToken = this.homeLoadToken;
+      const dialogToken = (this.homeDialogRequestToken = (this.homeDialogRequestToken || 0) + 1);
       const tabs = await libraryRepository.getListTabs().catch(() => []);
+      if (!isDialogRequestActive(this, loadToken, dialogToken)) {
+        return false;
+      }
       const contentType = item.type || "movie";
       const resolvedTabs =
         Array.isArray(tabs) && tabs.length
@@ -138,7 +161,13 @@ export function createHomeScreenMethods07() {
         imdbRating: item.imdbRating == null ? null : Number(item.imdbRating),
         genres: Array.isArray(item.genres) ? item.genres : []
       };
-      const snapshot = await libraryRepository.getMembershipSnapshot(libraryItem).catch(() => ({ listMembership: {} }));
+      const [snapshot, sourceMode] = await Promise.all([
+        libraryRepository.getMembershipSnapshot(libraryItem).catch(() => ({ listMembership: {} })),
+        libraryRepository.getSourceMode().catch(() => LibrarySourceMode.LOCAL)
+      ]);
+      if (!isDialogRequestActive(this, loadToken, dialogToken)) {
+        return false;
+      }
       if (this.posterHoldMenu) {
         this.pendingPosterHoldFocus = {
           rowIndex: Number(this.posterHoldMenu.rowIndex || 0),
@@ -150,7 +179,7 @@ export function createHomeScreenMethods07() {
       this.posterHoldMenu = null;
       this.posterListPicker = {
         item: libraryItem,
-        sourceMode: await libraryRepository.getSourceMode().catch(() => LibrarySourceMode.LOCAL),
+        sourceMode,
         tabs: resolvedTabs,
         membership: Object.fromEntries(resolvedTabs.map((tab) => [tab.key, Boolean(snapshot?.listMembership?.[tab.key])])),
         error: ""
@@ -233,16 +262,21 @@ export function createHomeScreenMethods07() {
       if (!item?.id) {
         return false;
       }
+      const loadToken = this.homeLoadToken;
+      const dialogToken = (this.homeDialogRequestToken = (this.homeDialogRequestToken || 0) + 1);
       this.cancelPendingContinueWatchingEnter();
       this.cancelPendingContinueWatchingHold();
       this.continueWatchingMenu = null;
       this.holdMenuScrollState = this.captureHoldMenuScrollState();
-      const [isSaved, repositoryWatched] = await Promise.all([
+      const [isSaved, repositoryWatched, librarySourceMode] = await Promise.all([
         savedLibraryRepository.isSaved(item.id).catch(() => false),
-        watchedItemsRepository.isWatched(item.id).catch(() => false)
+        watchedItemsRepository.isWatched(item.id).catch(() => false),
+        libraryRepository.getSourceMode().catch(() => LibrarySourceMode.LOCAL)
       ]);
+      if (!isDialogRequestActive(this, loadToken, dialogToken)) {
+        return false;
+      }
       const isWatched = isTitleItemWatched(item, this.watchedTitleIds) || Boolean(repositoryWatched);
-      const librarySourceMode = await libraryRepository.getSourceMode().catch(() => LibrarySourceMode.LOCAL);
       this.posterHoldMenu = {
         item,
         index: Number(node?.dataset?.itemIndex || 0),
@@ -256,6 +290,8 @@ export function createHomeScreenMethods07() {
       return this.mountPosterHoldDialog();
     },
     closePosterHoldMenu() {
+      this.homeDialogRequestToken = (this.homeDialogRequestToken || 0) + 1;
+      this.suppressHoldMenuEnterUntilKeyUp = false;
       if (!this.posterHoldMenu) {
         return false;
       }
@@ -276,6 +312,7 @@ export function createHomeScreenMethods07() {
       if (!item?.contentId) {
         return false;
       }
+      this.homeDialogRequestToken = (this.homeDialogRequestToken || 0) + 1;
       this.cancelPendingContinueWatchingEnter();
       this.posterHoldMenu = null;
       this.holdMenuScrollState = this.captureHoldMenuScrollState();
@@ -290,6 +327,7 @@ export function createHomeScreenMethods07() {
       return this.mountContinueWatchingDialog();
     },
     closeContinueWatchingMenu() {
+      this.suppressHoldMenuEnterUntilKeyUp = false;
       if (!this.continueWatchingMenu) {
         return false;
       }

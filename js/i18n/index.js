@@ -282,6 +282,7 @@ const KEY_ALIASES = {
   "settings.layout.trailerTarget.title": "layout_trailer_location",
   "settings.layout.trailerTargets.expandedCard": "layout_trailer_expanded_card",
   "settings.layout.trailerTargets.heroMedia": "layout_trailer_hero_media",
+  "settings.layout.trailerTargets.heroMediaNoExpand": "layout_trailer_hero_media_no_expand",
   "settings.layout.useEpisodeThumbnailsInCw.subtitle": "layout_use_episode_thumbnails_cw_sub",
   "settings.layout.useEpisodeThumbnailsInCw.title": "layout_use_episode_thumbnails_cw",
   "settings.playback.nextEpisodeThresholdMinutes.subtitle": "autoplay_threshold_min_sub",
@@ -667,6 +668,8 @@ function warnMissingKey(locale, key) {
   console.warn(`Missing translation for "${key}" in locale "${locale}"`);
 }
 
+let localeInitSeq = 0;
+
 export const I18n = {
   async init(preferred = null) {
     const locale = resolvePreferredLocale(preferred);
@@ -677,17 +680,26 @@ export const I18n = {
       return await initPromise;
     }
 
+    // The newest request wins: a slower earlier load must not overwrite the
+    // locale that a later init() already switched to.
+    const seq = ++localeInitSeq;
     currentLocale = locale;
     initPromise = (async () => {
-      activeMessages = await loadLocaleMessages(locale);
-      initialized = true;
+      const loaded = await loadLocaleMessages(locale);
+      if (seq === localeInitSeq) {
+        activeMessages = loaded;
+        currentLocale = locale;
+        initialized = true;
+      }
       return currentLocale;
     })();
 
     try {
       return await initPromise;
     } finally {
-      initPromise = null;
+      if (seq === localeInitSeq) {
+        initPromise = null;
+      }
     }
   },
 

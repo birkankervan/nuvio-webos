@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import * as internals from "./metaDetailsScreenContext.js";
+import { addonEpisodeAirDates } from "../../../data/repository/episodeRatingsAlignment.js";
 
 export function createMetaDetailsScreenMethods06() {
   const {
@@ -33,6 +34,7 @@ export function createMetaDetailsScreenMethods06() {
         if (!tmdbId) {
           return meta;
         }
+        this.detailTmdbId = tmdbId;
         const isSeries = isSeriesDetailMeta(meta, meta?.videos || this.episodes);
         const [enrichment, episodeMap] = await Promise.all([
           TmdbMetadataService.fetchEnrichment({
@@ -214,7 +216,12 @@ export function createMetaDetailsScreenMethods06() {
         if (!imdbId && !tmdbId) {
           return {};
         }
-        return await imdbEpisodeRatingsRepository.getEpisodeRatings({ imdbId, tmdbId });
+        return await imdbEpisodeRatingsRepository.getEpisodeRatings({
+          imdbId,
+          tmdbId,
+          // The add-on episodes shown here, so ratings follow its season split (Android).
+          addonEpisodes: addonEpisodeAirDates(episodes)
+        });
       } catch (error) {
         console.warn("Series ratings enrichment failed", error);
         return {};

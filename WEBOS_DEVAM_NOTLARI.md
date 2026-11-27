@@ -2296,3 +2296,12 @@ Samsung'a 1.3.11 kurulmadı.
 - 2026-11-27: kanal paneli LG'de tam doğrulandı (açma, geçiş, geçiş sonrası yeniden açma, çalan kanalda OK=kapat, Back). TV IP'si 192.168.1.146 (ares cihazı güncellendi; IP değişebilir, `arp -a` ile lgwebostv.lan bak). Tam ekran yayında TV Wi-Fi aralıklı kopuyor, CDP asılırsa inspector'ı yeniden başlat.
 - Sonraki adım: kullanıcı onayı, sonra commit kararı.
 - 2026-11-27: rozet sağ üstten sol üste alındı (TV css/components-11.css left:10px, izlendi-kaydırma kuralı silindi; macOS ShelfComponents TopStart). TV'de 10/10 rozet top/left 12px, izlendi tiki sağda, çakışma yok. macOS build kuruldu, görsel kontrolü kullanıcıda. Not: TV build'i commitsiz IPTV-PARITY değişikliklerini de içeriyordu (TV'de zaten kuruluydu). Commit yok.
+
+## SYNC-05 upstream 1.4.9 merge (2026-11-27)
+
+- `git merge --no-ff --no-commit 1.4.9` yapıldı; 15 conflict çözüldü, merge henüz COMMIT EDİLMEDİ (kullanıcı onayı bekleniyor).
+- Kararlar: httpClient/boundedCache/tmdb cache/metaRepository upstream'den alındı (superset). Router: fork lazy route'lar + iptv korundu, yeni `addonOrder` lazy eklendi. Route-return back guard lazy load + stale check sonrası. homeDomUpdate değişiklikleri `keyedDomUpdate.js`'e port edildi. Home-30 `cleanup({discardPreservedDom})` + `canPreserveRenderedTvHome()` birleşik. Player-70 `consumeBackRequest` önce channelsPanel kapatır. Versiyon 1.4.9 (package.json/appinfo.json/lock).
+- Fork-only metotlar için 3 upstream teste stub eklendi (scheduleDetailScreenPrefetch, cancelDataHomePagination).
+- Doğrulama: 614/614 node test, test:perf 204/204, lint, prettier, package:webos OK. TV (nuvio-lg-145): Home, IPTV (son kanal + EPG + önizleme), sidebar->Home dönüşü OK; birkan etiketi yok.
+- Açık risk: fork'un eski boundedCache boyut testleri upstream testiyle değişti; sign-out cleanup ve player kanal paneli bu merge sonrası TV'de ayrıca denenmedi.
+- Sonraki adım: kullanıcı onayıyla merge commit + push (personal/merge/upstream-1.4.4).

@@ -43,7 +43,8 @@ function cardStubs(onRead) {
     buildLazyImageAttributes: (src, { defer = false } = {}) =>
       defer ? `data-src="${src}"` : `src="${src}"`,
     getTvRuntimePerformanceProfile: () => ({ isTvRuntime: false, isPerformanceConstrained: false }),
-    buildModernRowKey: (row) => String(row?.catalogId || "row")
+    buildModernRowKey: (row) => String(row?.catalogId || "row"),
+    isMediaServerResumeRow: () => false
   };
 }
 

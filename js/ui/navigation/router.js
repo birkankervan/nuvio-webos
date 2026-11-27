@@ -87,6 +87,7 @@ const WEBOS_NON_RESTORABLE_ROUTES = new Set([
   "plugin",
   "plugins",
   "catalogOrder",
+  "addonOrder",
   "collections",
   "collectionEditor",
   "detail",
@@ -180,6 +181,10 @@ Object.assign(Router, {
     catalogOrder: createLazyRoute(
       () => import("../screens/plugin/catalogOrderScreen.js"),
       "CatalogOrderScreen"
+    ),
+    addonOrder: createLazyRoute(
+      () => import("../screens/plugin/addonOrderScreen.js"),
+      "AddonOrderScreen"
     ),
     stream: createLazyRoute(() => import("../screens/stream/streamScreen.js"), "StreamScreen"),
     castDetail: createLazyRoute(

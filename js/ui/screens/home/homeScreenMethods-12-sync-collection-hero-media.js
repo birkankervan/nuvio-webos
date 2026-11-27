@@ -164,6 +164,7 @@ export function createHomeScreenMethods12() {
       if (!container) {
         return;
       }
+      this.homeTrailerHandoff = null;
       const pendingCleanup = this.homeTrailerLayerCleanupTimers?.get?.(container);
       const pendingHide = this.homeTrailerLayerHideTimers?.get?.(container);
       // Home mounts an empty trailer layer for every poster. Leaving Home used
@@ -171,6 +172,7 @@ export function createHomeScreenMethods12() {
       // avoidable on constrained TV runtimes. Keep handling active, populated,
       // and scheduled layers so trailer teardown semantics remain unchanged.
       if (!container.classList.contains("is-active") && !container.firstElementChild && !pendingCleanup) {
+        this.mountedHomeTrailerLayers?.delete(container);
         return;
       }
       if (pendingHide) {
@@ -183,6 +185,9 @@ export function createHomeScreenMethods12() {
       if (activeFrame) {
         this.homeTrailerFrameCleanup?.get(activeFrame)?.();
         this.homeTrailerFrameCleanup?.delete(activeFrame);
+        try {
+          activeFrame.remove?.();
+        } catch (_) {}
         try {
           activeFrame.src = "about:blank";
         } catch (_) {}
@@ -199,6 +204,7 @@ export function createHomeScreenMethods12() {
       }
       container.innerHTML = "";
       container.classList.remove("is-active", "is-trailer-layer-idle-hidden");
+      this.mountedHomeTrailerLayers?.delete(container);
     },
     pauseTrailerLayer(container) {
       if (!container) {
@@ -247,8 +253,34 @@ export function createHomeScreenMethods12() {
       }, 520);
       this.homeTrailerLayerHideTimers.set(container, timer);
     },
+    getHomeTrailerLayers(selector, { activeOnly = false } = {}) {
+      if (this.mountedHomeTrailerLayers instanceof Set) {
+        const layers = [];
+        this.mountedHomeTrailerLayers.forEach((layer) => {
+          if (!layer || layer.isConnected === false) {
+            this.mountedHomeTrailerLayers.delete(layer);
+            return;
+          }
+          if (activeOnly && !layer.classList?.contains?.("is-active")) {
+            return;
+          }
+          layers.push(layer);
+        });
+        return layers;
+      }
+      if (
+        typeof this.container?.getElementsByTagName === "function" &&
+        this.container.getElementsByTagName("iframe").length === 0 &&
+        this.container.getElementsByTagName("video").length === 0
+      ) {
+        return [];
+      }
+      return Array.from(this.container?.querySelectorAll?.(selector) || []);
+    },
     pauseActiveTrailerLayersForNavigation() {
-      const layers = this.container?.querySelectorAll(".home-hero-trailer-layer.is-active, .home-poster-trailer-layer.is-active");
+      const layers = this.getHomeTrailerLayers(".home-hero-trailer-layer.is-active, .home-poster-trailer-layer.is-active", {
+        activeOnly: true
+      });
       layers?.forEach((layer) => {
         this.pauseTrailerLayer(layer);
         layer.classList.remove("is-active");
@@ -298,7 +330,7 @@ export function createHomeScreenMethods12() {
       this.scheduleTrailerLayerHide(container);
     },
     refreshPendingHomeTrailerCleanup() {
-      const layers = this.container?.querySelectorAll(".home-poster-trailer-layer, .home-hero-trailer-layer");
+      const layers = this.getHomeTrailerLayers(".home-poster-trailer-layer, .home-hero-trailer-layer");
       // A YouTube iframe that has not shown a frame yet is pure boot work on the
       // app's thread: 2.4 s of long tasks on a 2025 OLED, far more on slow sets.
       // Once the user moves on nothing visible is lost by dropping it, on any TV.
@@ -331,8 +363,9 @@ export function createHomeScreenMethods12() {
       });
     },
     clearHomeTrailerLayers() {
-      const layers = this.container?.querySelectorAll(".home-poster-trailer-layer, .home-hero-trailer-layer");
+      const layers = this.getHomeTrailerLayers(".home-poster-trailer-layer, .home-hero-trailer-layer");
       layers?.forEach((layer) => this.clearTrailerLayer(layer));
+      this.mountedHomeTrailerLayers?.clear();
     },
     setHeroTrailerActive(active = false, heroMedia = null) {
       const isActive = Boolean(active);
@@ -362,7 +395,7 @@ export function createHomeScreenMethods12() {
       if (shouldExpand) {
         this.expandFocusedPoster(node);
       }
-      if (!shouldPreviewTrailer || trailerTarget !== "hero_media" || !flowKey) {
+      if (!shouldPreviewTrailer || !["hero_media", "hero_media_no_expand"].includes(trailerTarget) || !flowKey) {
         return false;
       }
       const cachedState = this.heroTrailerPlaybackState;
@@ -385,14 +418,14 @@ export function createHomeScreenMethods12() {
     getFocusedPosterFlowConfig(prefs = this.layoutPrefs || {}) {
       const useLandscapePosters = Boolean(prefs.modernLandscapePostersEnabled);
       const expandSettingEnabled = Boolean(prefs.focusedPosterBackdropExpandEnabled);
-      const requestedTrailerTarget =
-        String(prefs.focusedPosterBackdropTrailerPlaybackTarget || "hero_media").toLowerCase() === "expanded_card"
-          ? "expanded_card"
-          : "hero_media";
+      const storedTrailerTarget = String(prefs.focusedPosterBackdropTrailerPlaybackTarget || "hero_media").toLowerCase();
+      const requestedTrailerTarget = ["expanded_card", "hero_media_no_expand"].includes(storedTrailerTarget)
+        ? storedTrailerTarget
+        : "hero_media";
       const trailerEnabled = Boolean(prefs.focusedPosterBackdropTrailerEnabled) && !this.shouldSuppressAutomaticTrailerPlayback();
       const shouldPreviewTrailer = trailerEnabled && (useLandscapePosters || expandSettingEnabled);
       const landscapeExpandedCardMode = useLandscapePosters && shouldPreviewTrailer && requestedTrailerTarget === "expanded_card";
-      const suppressCardExpansionForHeroTrailer = shouldPreviewTrailer && requestedTrailerTarget === "hero_media";
+      const suppressCardExpansionForHeroTrailer = shouldPreviewTrailer && requestedTrailerTarget === "hero_media_no_expand";
       const shouldExpand =
         !suppressCardExpansionForHeroTrailer && ((expandSettingEnabled && !useLandscapePosters) || landscapeExpandedCardMode);
       return {

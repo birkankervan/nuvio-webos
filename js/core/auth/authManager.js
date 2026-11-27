@@ -2,6 +2,7 @@ import { AuthState } from "./authState.js";
 import { clearAccountLocalData, hasAccountLocalData } from "./accountLocalDataReset.js";
 import { SessionStore } from "../storage/sessionStore.js";
 import { fetchSupabaseAuth } from "./supabaseAuthFetch.js";
+import { resetSyncBackoff } from "../sync/syncBackoffPolicy.js";
 import { PluginCodeStore } from "../../data/local/pluginCodeStore.js";
 import { HomeCatalogSnapshotStore } from "../../data/local/homeCatalogSnapshotStore.js";
 import { ServerConfigurationStore } from "../../data/local/serverConfigurationStore.js";
@@ -316,15 +317,13 @@ class AuthManagerClass {
       waitForInFlight: true
     });
     const sessionRequestsDrained = await waitForPendingSessionRequests();
+    // Reset only after in-flight work drained: a request that fails during
+    // teardown must not restore the previous account's cooldown.
+    resetSyncBackoff();
 
-    // Notify the UI only after teardown listeners have captured and drained
-    // their in-flight work. The app-level signed-out listener also calls
-    // StartupSyncService.stop(), so changing state earlier would discard the
-    // promises we need to await here.
-    if (!wasSignedOut) {
-      this.setState(AuthState.SIGNED_OUT);
-    }
-
+    // Clear local account data after teardown listeners have drained in-flight
+    // work, but before notifying AuthState.SIGNED_OUT subscribers so UI and
+    // sync handlers observe the cleared state and bumped LocalStore revisions.
     let accountDataCleared = true;
     if (shouldClearAccountData) {
       try {
@@ -333,6 +332,14 @@ class AuthManagerClass {
         accountDataCleared = false;
         console.warn("Account-local data reset failed during session teardown", error);
       }
+    }
+
+    // Notify the UI only after teardown listeners have captured and drained
+    // their in-flight work. The app-level signed-out listener also calls
+    // StartupSyncService.stop(), so changing state earlier would discard the
+    // promises we need to await here.
+    if (!wasSignedOut) {
+      this.setState(AuthState.SIGNED_OUT);
     }
 
     let pluginDataCleared = true;

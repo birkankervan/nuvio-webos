@@ -1531,3 +1531,12 @@ Samsung'a 1.3.11 kurulmadı.
 - 2026-11-23 HOME-RATING macOS: NuvioDesktop poster rozeti eklendi, kurulup doğrulandı. Commitsiz.
 - 2026-11-24: prettier commit'li build TV'de doğrulandı; upstream 1.4.6 çıktı, SYNC bekliyor.
 - 2026-11-26 IPTV-PARITY (root/Opus): TV IPTV ekranını macOS (NuvioDesktop) IPTV ile görünüm/UX olarak eşitle. Araştırma: 2 Haiku Explore (macOS spec, TV spec), kod: Sonnet, review: root. Dosya sınırı: js/ui/screens/iptv/*, css/iptv.css. Plan: plans/2026-11-26-iptv-macos-parity.md. Durum: TAMAM, TV'de CDP ile doğrulandı, commitsiz; kullanıcı onayı bekliyor.
+
+## SYNC-05 upstream 1.4.9 merge (2026-11-27)
+
+- `git merge --no-ff --no-commit 1.4.9` yapıldı; 15 conflict çözüldü, merge henüz COMMIT EDİLMEDİ (kullanıcı onayı bekleniyor).
+- Kararlar: httpClient/boundedCache/tmdb cache/metaRepository upstream'den alındı (superset). Router: fork lazy route'lar + iptv korundu, yeni `addonOrder` lazy eklendi. Route-return back guard lazy load + stale check sonrası. homeDomUpdate değişiklikleri `keyedDomUpdate.js`'e port edildi. Home-30 `cleanup({discardPreservedDom})` + `canPreserveRenderedTvHome()` birleşik. Player-70 `consumeBackRequest` önce channelsPanel kapatır. Versiyon 1.4.9 (package.json/appinfo.json/lock).
+- Fork-only metotlar için 3 upstream teste stub eklendi (scheduleDetailScreenPrefetch, cancelDataHomePagination).
+- Doğrulama: 614/614 node test, test:perf 204/204, lint, prettier, package:webos OK. TV (nuvio-lg-145): Home, IPTV (son kanal + EPG + önizleme), sidebar->Home dönüşü OK; birkan etiketi yok.
+- Açık risk: fork'un eski boundedCache boyut testleri upstream testiyle değişti; sign-out cleanup ve player kanal paneli bu merge sonrası TV'de ayrıca denenmedi.
+- Sonraki adım: kullanıcı onayıyla merge commit + push (personal/merge/upstream-1.4.4).

@@ -4,9 +4,11 @@ import { watchedItemsRepository } from "../../data/repository/watchedItemsReposi
 import { ProfileManager } from "./profileManager.js";
 import { LocalStore } from "../storage/localStore.js";
 import { TraktAuthStore } from "../../data/local/traktAuthStore.js";
+import { MdbListAccount } from "../../data/repository/mdbListAccount.js";
 import { SimklAuthStore } from "../../data/local/simklAuthStore.js";
 import { TraktSettingsStore, WatchProgressSource } from "../../data/local/traktSettingsStore.js";
 import { isSyncBackoffActive } from "../sync/syncBackoffPolicy.js";
+import { isDeviceLocalWatchId } from "./syncLocalIds.js";
 
 const PULL_RPC = "sync_pull_watched_items";
 const PUSH_RPC = "sync_push_watched_items";
@@ -24,11 +26,15 @@ function resolveProfileId(profileId = null) {
   return Number.isFinite(raw) && raw > 0 ? Math.trunc(raw) : 1;
 }
 
-function shouldUseSupabaseWatchProgressSync() {
-  const source = TraktSettingsStore.get().watchProgressSource || WatchProgressSource.TRAKT;
+function shouldUseSupabaseWatchProgressSync(profileId = null) {
+  const resolvedProfileId = resolveProfileId(profileId);
+  const source =
+    TraktSettingsStore.getForProfile(resolvedProfileId).watchProgressSource ||
+    WatchProgressSource.TRAKT;
   const providerSelected =
-    (TraktAuthStore.isAuthenticated() && source === WatchProgressSource.TRAKT) ||
-    (SimklAuthStore.isAuthenticated() && source === WatchProgressSource.SIMKL);
+    (TraktAuthStore.isAuthenticated(resolvedProfileId) && source === WatchProgressSource.TRAKT) ||
+    (SimklAuthStore.isAuthenticated(resolvedProfileId) && source === WatchProgressSource.SIMKL) ||
+    (MdbListAccount.connected(resolvedProfileId) && source === WatchProgressSource.MDBLIST);
   return !providerSelected;
 }
 
@@ -87,7 +93,7 @@ function writeWatchedStateForProfile(profileId = resolveProfileId(), patch = {})
   LocalStore.set(SYNC_STATE_KEY, next);
 }
 
-function mergeWatchedItems(localItems = [], remoteItems = [], lastSuccessfulPushAt = 0) {
+export function mergeWatchedItems(localItems = [], remoteItems = [], lastSuccessfulPushAt = 0) {
   if (!remoteItems.length) {
     return [...localItems];
   }
@@ -113,8 +119,22 @@ function mergeWatchedItems(localItems = [], remoteItems = [], lastSuccessfulPush
   };
 
   remoteItems.forEach((item) => upsert(item, true));
+  // Media-server watched state is device-local (Android keeps it out of the
+  // cloud snapshot), so it must survive a pull that never contains it.
+  localItems.forEach((item) => {
+    if (!isDeviceLocalWatchId(item.contentId)) {
+      return;
+    }
+    const key = watchedItemKey(item);
+    if (!key.startsWith(":")) {
+      byKey.set(key, item);
+    }
+  });
   if (lastSuccessfulPushAt > 0) {
     localItems.forEach((item) => {
+      if (isDeviceLocalWatchId(item.contentId)) {
+        return;
+      }
       const key = watchedItemKey(item);
       if (!byKey.has(key) && Number(item.watchedAt || 0) > lastSuccessfulPushAt) {
         byKey.set(key, item);
@@ -129,6 +149,9 @@ function mergeWatchedItems(localItems = [], remoteItems = [], lastSuccessfulPush
 function hasUnsyncedLocalItems(localItems = [], remoteItems = [], lastSuccessfulPushAt = 0) {
   const remoteByKey = new Map(remoteItems.map((item) => [watchedItemKey(item), item]));
   return localItems.some((item) => {
+    if (isDeviceLocalWatchId(item.contentId)) {
+      return false;
+    }
     const watchedAt = Number(item.watchedAt || 0);
     if (watchedAt <= Number(lastSuccessfulPushAt || 0)) {
       return false;
@@ -224,11 +247,11 @@ export const WatchedItemsSyncService = {
         lastPullStatus = "signed-out";
         return [];
       }
-      if (!shouldUseSupabaseWatchProgressSync()) {
+      const resolvedProfileId = resolveProfileId(profileId);
+      if (!shouldUseSupabaseWatchProgressSync(resolvedProfileId)) {
         lastPullStatus = "skipped";
         return [];
       }
-      const resolvedProfileId = resolveProfileId(profileId);
       localItems = await watchedItemsRepository.getAll(5000, resolvedProfileId);
       const lastSuccessfulPushAt = Number(
         watchedStateForProfile(resolvedProfileId).lastSuccessfulPushAt || 0
@@ -236,10 +259,12 @@ export const WatchedItemsSyncService = {
       const rows = await pullRemoteWatchedItems(resolvedProfileId);
       const remoteItems = (rows || [])
         .map((row) => mapRemoteItem(row))
-        .filter((item) => Boolean(item.contentId));
+        .filter((item) => Boolean(item.contentId) && !isDeviceLocalWatchId(item.contentId));
       if (!remoteItems.length && localItems.length) {
         lastPullHadUnsynced = localItems.some(
-          (item) => Number(item.watchedAt || 0) > lastSuccessfulPushAt
+          (item) =>
+            !isDeviceLocalWatchId(item.contentId) &&
+            Number(item.watchedAt || 0) > lastSuccessfulPushAt
         );
         lastPullStatus = "ok";
         return localItems;
@@ -272,11 +297,12 @@ export const WatchedItemsSyncService = {
       if (!AuthManager.isAuthenticated) {
         return false;
       }
-      if (!shouldUseSupabaseWatchProgressSync()) {
+      const resolvedProfileId = resolveProfileId(profileId);
+      if (!shouldUseSupabaseWatchProgressSync(resolvedProfileId)) {
         return true;
       }
-      const resolvedProfileId = resolveProfileId(profileId);
-      const items = await watchedItemsRepository.getAll(5000, resolvedProfileId);
+      const localItems = await watchedItemsRepository.getAll(5000, resolvedProfileId);
+      const items = localItems.filter((item) => !isDeviceLocalWatchId(item.contentId));
       if (!items.length) {
         // Android does not send an empty full snapshot. An empty payload must
         // never be allowed to mean "delete everything" on the server.
@@ -308,12 +334,12 @@ export const WatchedItemsSyncService = {
       if (!AuthManager.isAuthenticated) {
         return false;
       }
-      if (!shouldUseSupabaseWatchProgressSync()) {
+      const resolvedProfileId = resolveProfileId(profileId);
+      if (!shouldUseSupabaseWatchProgressSync(resolvedProfileId)) {
         return true;
       }
-      const resolvedProfileId = resolveProfileId(profileId);
       const keys = (Array.isArray(items) ? items : [])
-        .filter((item) => Boolean(item?.contentId))
+        .filter((item) => Boolean(item?.contentId) && !isDeviceLocalWatchId(item.contentId))
         .map((item) => toDeleteKey(item));
       if (!keys.length) {
         return true;

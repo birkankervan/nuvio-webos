@@ -6,6 +6,9 @@ import { BoundedCache } from "../../core/util/boundedCache.js";
 import { normalizeTmdbLogoUrl } from "../../core/tmdb/tmdbImageUrl.js";
 
 const INSTALLED_ADDONS_WAIT_MS = 750;
+// Android keeps 32 entries per meta cache; each title is stored under its
+// requested and inferred types, so 200 keys hold a comparable working set.
+const MAX_META_CACHE_ENTRIES = 200;
 
 function normalizeDisplayText(value) {
   return String(value ?? "")
@@ -25,7 +28,7 @@ function firstNonBlank(...values) {
 
 class MetaRepository {
   constructor() {
-    this.metaCache = new BoundedCache(120);
+    this.metaCache = new BoundedCache(MAX_META_CACHE_ENTRIES);
     this.inFlightMeta = new Map();
     this.inFlightMetaAll = new Map();
   }

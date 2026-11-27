@@ -13,13 +13,13 @@ export function createPlayerControllerMethods08() {
   } = internals;
 
   return {
-    setAvPlayDisplayRect(rect = null, displayMethod = null) {
+    setAvPlayDisplayRect(rect = null, displayMethod = null, { honorRect = false } = {}) {
       const avplay = this.getAvPlay();
       if (!avplay) {
         return;
       }
       const viewport = this.getAvPlayViewportSize();
-      if (Platform.isTizen() && displayMethod === "PLAYER_DISPLAY_MODE_LETTER_BOX") {
+      if (Platform.isTizen() && displayMethod === "PLAYER_DISPLAY_MODE_LETTER_BOX" && !honorRect) {
         // AVPlay applies letterboxing inside the display area. Keep that area
         // fullscreen instead of passing an already letterboxed rectangle.
         this.avplayDisplayRect = {
@@ -38,6 +38,12 @@ export function createPlayerControllerMethods08() {
       }
       if (displayMethod) {
         this.avplayDisplayMethod = String(displayMethod);
+      }
+      // Samsung forbids every other AVPlay call until seekTo() reports back.
+      // Keep the desired geometry and apply it when the seek settles.
+      if (Platform.isTizen() && this.avplaySeekInFlight) {
+        this.avplayDisplayRectDeferred = true;
+        return;
       }
       let targetRect = this.avplayDisplayRect || {
         x: 0,
@@ -92,10 +98,19 @@ export function createPlayerControllerMethods08() {
       }
       apply();
     },
+    clearAvPlayPreparedPoll() {
+      if (this.avplayPreparedPollTimer) {
+        clearTimeout(this.avplayPreparedPollTimer);
+        this.avplayPreparedPollTimer = null;
+      }
+    },
     teardownAvPlay() {
+      this.clearAvPlayPreparedPoll();
+      this.avplayPreparedHandled = false;
       this.clearAvPlaySeekTimeout();
       this.avplaySeekRequestToken = Number(this.avplaySeekRequestToken || 0) + 1;
       this.avplaySeekInFlight = false;
+      this.avplayDisplayRectDeferred = false;
       this.avplayDeferredSeekMs = 0;
       this.avplayStartAfterSeek = null;
       this.avplaySeekTraceDumped = false;

@@ -1,11 +1,11 @@
 import { normalizeTmdbLanguageCode, TmdbSettingsStore } from "../../data/local/tmdbSettingsStore.js";
 
 import { TMDB_API_KEY } from "../../config.js";
+import { BoundedCache } from "../util/boundedCache.js";
 
 import { tmdbShowReleaseInfo, tmdbYearPart } from "../util/tmdbReleaseRange.js";
 
 import { sortCollectionPartsByReleaseDate } from "./tmdbCollectionOrdering.js";
-import { BoundedCache } from "../util/boundedCache.js";
 import { fetchTmdbJson } from "./tmdbService.js";
 
 export const TMDB_BASE_URL = "https://api.themoviedb.org/3";
@@ -79,13 +79,17 @@ export const TMDB_LANGUAGE_DEFAULT_REGIONS = Object.freeze({
   zh: "CN"
 });
 
-export const entityHeaderCache = new BoundedCache(40);
+// Android recreates these TMDB collections with their screens; the Smart TV app
+// keeps them for the session, so bound them instead of growing without limit.
+const MAX_TMDB_ENTITY_CACHE_ENTRIES = 150;
 
-export const entityRailCache = new BoundedCache(80);
+export const entityHeaderCache = new BoundedCache(MAX_TMDB_ENTITY_CACHE_ENTRIES);
 
-export const entityBrowseCache = new BoundedCache(20);
+export const entityRailCache = new BoundedCache(MAX_TMDB_ENTITY_CACHE_ENTRIES);
 
-export const moreLikeThisCache = new BoundedCache(40);
+export const entityBrowseCache = new BoundedCache(MAX_TMDB_ENTITY_CACHE_ENTRIES);
+
+export const moreLikeThisCache = new BoundedCache(MAX_TMDB_ENTITY_CACHE_ENTRIES);
 
 export function resolveType(contentType) {
   const normalized = String(contentType || "").toLowerCase();

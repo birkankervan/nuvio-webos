@@ -1,5 +1,6 @@
 import { ScreenUtils } from "../../navigation/screen.js";
 import { focusWithoutScroll } from "../../navigation/focusWithoutScroll.js";
+import { scrollFocusedIntoContainer } from "../../navigation/scrollFocusedIntoContainer.js";
 import { Router } from "../../navigation/routerState.js";
 import { Platform } from "../../../platform/index.js";
 import { I18n } from "../../../i18n/index.js";
@@ -308,6 +309,20 @@ export const PluginsScreen = {
               : ""
           }
           ${
+            this.pendingRepositoryRemoval
+              ? `<div class="plugins-confirm-backdrop">
+            <section class="plugins-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="plugins-repo-delete-title">
+              <h2 id="plugins-repo-delete-title">${escapeHtml(t("plugin_repo_delete_confirm_title", {}, "Delete repository?"))}</h2>
+              <p>${escapeHtml(t("plugin_repo_delete_confirm_message", {}, "Are you sure you want to delete it?"))}</p>
+              <div class="plugins-confirm-actions">
+                ${button({ focusKey: "repo-delete:no", action: "dismiss-repository-removal", label: t("plugin_repo_delete_no", {}, "No") })}
+                ${button({ focusKey: "repo-delete:yes", action: "confirm-repository-removal", label: t("plugin_repo_delete_yes", {}, "Yes") })}
+              </div>
+            </section>
+          </div>`
+              : ""
+          }
+          ${
             this.pendingScraperEnable
               ? `<div class="plugins-confirm-backdrop">
             <section class="plugins-confirm-dialog" role="dialog" aria-modal="true" aria-labelledby="plugins-risky-title">
@@ -348,23 +363,15 @@ export const PluginsScreen = {
         ".plugins-provider-row, .plugins-test-result, .plugins-repository-card, .plugins-settings-card, .plugins-section-label"
       ) ||
       target;
-    const pad = 56;
-    const containerRect = container.getBoundingClientRect();
-    const anchorRect = anchor.getBoundingClientRect();
-    const anchorTop = anchorRect.top - containerRect.top + container.scrollTop;
-    const anchorBottom = anchorRect.bottom - containerRect.top + container.scrollTop;
-    const viewTop = container.scrollTop;
-    const viewBottom = viewTop + container.clientHeight;
-    const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-
-    if (anchorBottom > viewBottom - pad) {
-      container.scrollTop = Math.min(
-        maxScrollTop,
-        Math.max(0, anchorBottom - container.clientHeight + pad)
-      );
-    } else if (anchorTop < viewTop + pad) {
-      container.scrollTop = Math.max(0, anchorTop - pad);
-    }
+    const firstFocusable = Array.from(
+      container.querySelectorAll?.(".plugins-focusable") || []
+    ).find((node) => !node.disabled);
+    const firstAnchor =
+      firstFocusable?.closest?.(
+        ".plugins-provider-row, .plugins-repository-card, .plugins-settings-card"
+      ) || firstFocusable;
+    const isTopRow = Boolean(firstAnchor && (anchor === firstAnchor || target === firstFocusable));
+    scrollFocusedIntoContainer(container, target, { anchor, pad: 56, isTopRow });
   },
   applyFocus() {
     const focusables = Array.from(this.container?.querySelectorAll?.(".plugins-focusable") || []);
@@ -420,6 +427,14 @@ export const PluginsScreen = {
       target?.disabled ||
       target?.getAttribute?.("aria-disabled") === "true"
     ) {
+      return;
+    }
+    if (action === "dismiss-repository-removal") {
+      this.dismissRepositoryRemoval();
+      return;
+    }
+    if (action === "confirm-repository-removal") {
+      await this.confirmRepositoryRemoval();
       return;
     }
     if (action === "dismiss-risky-scraper") {
@@ -489,11 +504,32 @@ export const PluginsScreen = {
       return;
     }
     if (kind === "remove") {
-      if (await PluginManager.removeRepository(id)) {
-        this.setStatus(t("plugin_repo_removed", {}, "Repository removed."), "success");
-      }
+      // Android asks before deleting: the button sits where an accidental press is easy on TV.
+      this.pendingRepositoryRemoval = { repositoryId: id };
+      this.focusKey = "repo-delete:no";
       this.render();
     }
+  },
+  dismissRepositoryRemoval() {
+    const pending = this.pendingRepositoryRemoval;
+    this.pendingRepositoryRemoval = null;
+    if (pending) this.focusKey = `remove:${pending.repositoryId}`;
+    this.render();
+  },
+  async confirmRepositoryRemoval() {
+    const pending = this.pendingRepositoryRemoval;
+    this.pendingRepositoryRemoval = null;
+    if (!pending) return;
+    // Android: focus the neighbouring repository's delete button, or the grouping
+    // card when none is left, instead of jumping back to the top.
+    const repositories = Array.isArray(this.model?.repositories) ? this.model.repositories : [];
+    const index = repositories.findIndex((repository) => repository.id === pending.repositoryId);
+    const neighbour = index >= 0 ? repositories[index + 1] || repositories[index - 1] : null;
+    this.focusKey = neighbour ? `remove:${neighbour.id}` : "global:group";
+    if (await PluginManager.removeRepository(pending.repositoryId)) {
+      this.setStatus(t("plugin_repo_removed", {}, "Repository removed."), "success");
+    }
+    this.render();
   },
   async addRepository() {
     const value = String(this.addDraft || "").trim();

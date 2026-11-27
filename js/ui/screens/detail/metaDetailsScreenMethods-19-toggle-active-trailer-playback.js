@@ -4,7 +4,7 @@ import { shouldContinueTrailerInBackgroundOnBack } from "../../../core/detail/tr
 import { focusWithoutScroll } from "../../navigation/focusWithoutScroll.js";
 
 export function createMetaDetailsScreenMethods19() {
-  const { t, escapeHtml, buildInlineYoutubePlayerUrl, LayoutPreferences, PlayerSettingsStore } = internals;
+  const { Router, t, escapeHtml, buildInlineYoutubePlayerUrl, LayoutPreferences, PlayerSettingsStore } = internals;
 
   return {
     toggleActiveTrailerPlayback() {
@@ -206,16 +206,23 @@ export function createMetaDetailsScreenMethods19() {
         `
           : "";
       if (this.trailerSource.kind === "youtube") {
+        const captionOptions = {
+          captionsEnabled: Boolean(this.trailerSubtitlesEnabled),
+          captionsLanguage: String(
+            PlayerSettingsStore.get().subtitleStyle?.preferredLanguage || PlayerSettingsStore.get().subtitleLanguage || ""
+          ).trim()
+        };
         const youtubeFrameUrl =
           buildInlineYoutubePlayerUrl(this.trailerSource.ytId, {
             muted: this.trailerMuted,
             loop: false,
-            statePollMs: this.trailerPlaybackMode === "manual" ? 500 : 0
+            statePollMs: this.trailerPlaybackMode === "manual" ? 500 : 0,
+            ...captionOptions
           }) ||
           this.trailerSource.embedUrl ||
           "";
         layer.innerHTML = `
-            <div class="detail-trailer-media detail-trailer-youtube" data-trailer-media>
+            <div class="detail-trailer-media detail-trailer-youtube" data-trailer-media inert>
               <iframe
                 class="detail-trailer-frame"
                 src="${youtubeFrameUrl}"
@@ -226,6 +233,7 @@ export function createMetaDetailsScreenMethods19() {
                 scrolling="no"
                 tabindex="-1"
                 aria-hidden="true"
+                inert
               ></iframe>
             </div>
             ${controlsMarkup}
@@ -252,6 +260,23 @@ export function createMetaDetailsScreenMethods19() {
       }
       this.applyTrailerVideoSubtitleState(this.trailerUiRefs?.video || null);
       this.bindTrailerVideoEvents(this.trailerUiRefs?.video || null);
+      if (Number(this.trailerPendingSeekSeconds || 0) > 0) {
+        const pendingSeek = Number(this.trailerPendingSeekSeconds);
+        this.trailerPendingSeekSeconds = 0;
+        const video = this.trailerUiRefs?.video || null;
+        if (video) {
+          const applySeek = () => {
+            try {
+              video.currentTime = pendingSeek;
+            } catch (_) {}
+          };
+          if (video.readyState >= 1) {
+            applySeek();
+          } else {
+            video.addEventListener("loadedmetadata", applySeek, { once: true });
+          }
+        }
+      }
       const playAttempt = this.trailerUiRefs?.video?.play?.();
       if (playAttempt?.catch) {
         playAttempt.catch(() => {});
@@ -260,13 +285,17 @@ export function createMetaDetailsScreenMethods19() {
         this.startTrailerProgressTimer();
       }
     },
-    async playTrailer({ muted = null, restart = false, initiatedByUser = true, preserveSource = false } = {}) {
+    async playTrailer({ muted = null, restart = false, initiatedByUser = true, preserveSource = false, startAtSeconds = 0 } = {}) {
+      const token = this.detailLoadToken;
       const requestedFocusRestore = initiatedByUser ? this.captureDetailFocus() : null;
       // Android TV resolves TMDB first and only then falls back to the catalog
       // trailer. Re-check here as well so a fast user action cannot use the
       // addon trailer while the background resolution is still in flight.
       if (!preserveSource) {
         const preferredSource = await this.resolvePreferredTrailerSource(this.meta);
+        if (token !== this.detailLoadToken || !this.container || (Router?.getCurrent && Router.getCurrent() !== "detail")) {
+          return;
+        }
         if (preferredSource) {
           this.trailerSource = preferredSource;
         }
@@ -290,7 +319,8 @@ export function createMetaDetailsScreenMethods19() {
         restartAutoplay: false,
         restoreFocus: false
       });
-      this.trailerSubtitlesEnabled = false;
+      this.trailerSubtitlesEnabled = PlayerSettingsStore.get().trailerSubtitles === true;
+      this.trailerPendingSeekSeconds = Math.max(0, Number(startAtSeconds || 0));
       this.trailerPlaybackMode = initiatedByUser ? "manual" : "autoplay";
       this.trailerFocusRestore =
         initiatedByUser && requestedFocusRestore?.selector?.includes(".series-detail-actions")

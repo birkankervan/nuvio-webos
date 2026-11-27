@@ -5,6 +5,7 @@ export function createTizenStreamingServerResolverMethods01() {
   const {
     Platform,
     TizenEngineFsService,
+    TorrentSettingsStore,
     TizenCapabilities,
     TIZEN_STREAMING_KIND,
     removeRequestsByInfoHash,
@@ -28,6 +29,15 @@ export function createTizenStreamingServerResolverMethods01() {
   return {
     canResolveStream(stream = {}) {
       return Platform.isTizen() && TizenCapabilities.canUseP2p() && Boolean(getInfoHash(stream));
+    },
+    // Starting EngineFS takes several seconds on Tizen 6 (#1609); begin while the
+    // source list is open so playback does not wait for it.
+    warmUpForStreams(streams = []) {
+      if (!TorrentSettingsStore.get().p2pEnabled || !streams.some((stream) => this.canResolveStream(stream))) {
+        return false;
+      }
+      void TizenEngineFsService.ensureStarted({ purpose: "p2p" }).catch(() => {});
+      return true;
     },
     isTorrentStream(stream = {}) {
       return Boolean(getInfoHash(stream));
@@ -171,7 +181,10 @@ export function createTizenStreamingServerResolverMethods01() {
             detail: "Tizen streaming server did not return a playable file index"
           };
         }
-        const sources = needsCreate && trackerSources.length ? buildPeerSearchSources(infoHash, trackerSources) : [];
+        // Android announces to its default trackers on every torrent; a stream
+        // that already carries its file index skips the create call, so the
+        // playback URL must carry them or the engine searches DHT only.
+        const sources = buildPeerSearchSources(infoHash, trackerSources);
         const playbackUrl = buildPlaybackUrl(baseUrl, infoHash, fileIdx, sources);
         const filename = getFilename(createJson, fileIdx);
         logTizenP2pDebug("TizenStreamingServerResolver: P2P stream resolved", {

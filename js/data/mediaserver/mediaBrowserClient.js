@@ -1,4 +1,6 @@
 import { LocalStore } from "../../core/storage/localStore.js";
+import { ProfileManager } from "../../core/profile/profileManager.js";
+import { withRequestTimeout } from "../../core/network/requestTimeout.js";
 export function normalizeMediaServerAddress(value, provider) {
   try {
     const url = new URL(String(value).trim());
@@ -17,7 +19,10 @@ export function normalizeMediaServerAddress(value, provider) {
     return null;
   }
 }
-export function mediaServerDeviceId() {
+// Android ServerRepository.profileDeviceId: Jellyfin revokes a user's previous token when the
+// same DeviceId signs in again, so each secondary profile gets its own. The primary profile
+// keeps the installation id, so existing sign-ins stay valid.
+export function mediaServerDeviceId(profileId = ProfileManager.getActiveProfileId()) {
   let id = LocalStore.get("mediaServerDeviceId", null);
   if (!id) {
     const data = new Uint8Array(16);
@@ -25,7 +30,8 @@ export function mediaServerDeviceId() {
     id = Array.from(data, (byte) => byte.toString(16).padStart(2, "0")).join("");
     LocalStore.set("mediaServerDeviceId", id);
   }
-  return id;
+  const pid = String(profileId ?? "1").trim() || "1";
+  return pid === "1" ? id : `${id}-p${pid}`;
 }
 export function mediaServerApiRoot(connection) {
   return connection.address + (connection.providerId === "emby" ? "/emby" : "");
@@ -46,41 +52,37 @@ export async function mediaServerRequest(
   path,
   { method = "GET", query = {}, body, signal, publicInfo = false } = {}
 ) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 15000);
-  const abort = () => controller.abort();
-  signal?.addEventListener("abort", abort, { once: true });
-  if (signal?.aborted) controller.abort();
-  try {
-    const response = await fetch(mediaServerUrl(connection, path, query), {
-      method,
-      headers: {
-        Accept: "application/json",
-        ...mediaServerHeaders(connection),
-        ...(body ? { "Content-Type": "application/json" } : {})
-      },
-      body: body == null ? undefined : JSON.stringify(body),
-      signal: controller.signal,
-      redirect: publicInfo ? "follow" : "error"
-    });
-    if (!response.ok) {
-      const error = new Error(
-        response.status === 401
-          ? "servers_error_auth"
-          : response.status === 403
-            ? "servers_error_forbidden"
-            : "servers_error_failed"
-      );
-      error.status = response.status;
-      throw error;
-    }
-    if (response.status === 204) return null;
-    const raw = await response.text();
-    return raw ? JSON.parse(raw) : null;
-  } finally {
-    clearTimeout(timer);
-    signal?.removeEventListener("abort", abort);
-  }
+  return withRequestTimeout(
+    async (requestSignal) => {
+      const response = await fetch(mediaServerUrl(connection, path, query), {
+        method,
+        headers: {
+          Accept: "application/json",
+          ...mediaServerHeaders(connection),
+          ...(body ? { "Content-Type": "application/json" } : {})
+        },
+        body: body == null ? undefined : JSON.stringify(body),
+        ...(requestSignal ? { signal: requestSignal } : {}),
+        redirect: publicInfo ? "follow" : "error"
+      });
+      if (!response.ok) {
+        const error = new Error(
+          response.status === 401
+            ? "servers_error_auth"
+            : response.status === 403
+              ? "servers_error_forbidden"
+              : "servers_error_failed"
+        );
+        error.status = response.status;
+        throw error;
+      }
+      if (response.status === 204) return null;
+      const raw = await response.text();
+      return raw ? JSON.parse(raw) : null;
+    },
+    15000,
+    signal
+  );
 }
 export function serverEndpoint(connection, kind, itemId = "") {
   const user = encodeURIComponent(connection.remoteUserId);
